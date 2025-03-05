@@ -145,7 +145,38 @@ export const TiktokBusinessSchema = z.object({
     auths: z
         .array(z.union([AuthItemSchema, z.null()]))
         .optional()
-        .default([])
+        .default([]),
+    registrationDetails: z
+        .object({
+            locationId: z.number({
+                required_error: '企业所在地是必填项'
+            }),
+            legalRepName: z
+                .string({
+                    required_error: '法人姓名是必填项'
+                })
+                .min(2, '法人姓名至少2个字符')
+                .max(50, '法人姓名最多50个字符'),
+            idType: z.number({
+                required_error: '证件类型是必填项'
+            }),
+            idNumber: z
+                .string({
+                    required_error: '证件号码是必填项'
+                })
+                .regex(/^[0-9X]{18}$/, '请输入有效的身份证号码'),
+            legalRepPhone: z
+                .string({
+                    required_error: '法人手机号是必填项'
+                })
+                .regex(/^1[3-9]\d{9}$/, '请输入有效的手机号码'),
+            legalRepBankCard: z
+                .string({
+                    required_error: '法人银行卡号是必填项'
+                })
+                .regex(/^\d{16,19}$/, '请输入有效的银行卡号')
+        })
+        .optional()
 })
 
 export type TiktokBusiness = z.infer<typeof TiktokBusinessSchema>

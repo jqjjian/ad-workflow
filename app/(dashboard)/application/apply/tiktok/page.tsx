@@ -29,8 +29,51 @@ import {
 } from '@ant-design/icons'
 // import { useRouter } from 'next/navigation'
 // import Logo from '@/public/images/Google.ee741aca.svg'
+import { z } from 'zod'
+
 const { Text, Title } = Typography
 const { Item: FormItem } = Form
+
+// 定义接口提交的数据类型
+type TiktokBusinessSubmitData = z.infer<typeof TiktokBusinessSchema>
+
+// 示例数据结构
+const defaultBusinessData: TiktokBusinessSubmitData = {
+    // ... 其他必填字段 ...
+
+    // 可选的企业信息
+    registrationDetails: {
+        locationId: 0, // 企业所在地ID
+        legalRepName: '', // 法人姓名
+        idType: 0, // 证件类型
+        idNumber: '', // 证件号码
+        legalRepPhone: '', // 法人手机号
+        legalRepBankCard: '' // 法人银行卡号
+    }
+}
+
+// 提交函数示例
+const submitBusinessApplication = async (data: TiktokBusinessSubmitData) => {
+    try {
+        // 验证数据
+        const validatedData = TiktokBusinessSchema.parse(data)
+
+        // 发送到接口
+        const response = await fetch('/api/tiktok-business', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(validatedData)
+        })
+
+        return response.json()
+    } catch (error) {
+        console.error('Submit error:', error)
+        throw error
+    }
+}
+
 export default function Page() {
     const [form] = Form.useForm()
     const handleSubmit = (values: TiktokBusiness) => {
@@ -132,7 +175,7 @@ export default function Page() {
                                         </Button>
                                     </Upload>
                                     <Text className="text-gray-400">
-                                        如重新上传营业执照，营业执照中的“公司名称”与“营业执照统一社会信用代码"需与下方的信息一致。
+                                        如重新上传营业执照，营业执照中的"公司名称"与"营业执照统一社会信用代码"需与下方的信息一致。
                                         仅支持图片格式：JPG/JPEG/PNG；附件大小上限为10M；香港主体请提供BR
                                     </Text>
                                 </FormItem>
@@ -142,7 +185,7 @@ export default function Page() {
                                         className="mt-[-20px] pr-[52px]"
                                     >
                                         <Text className="text-gray-400">
-                                            如重新上传营业执照，营业执照中的“公司名称”与“营业执照统一社会信用代码"需与下方的信息一致。
+                                            如重新上传营业执照，营业执照中的"公司名称"与"营业执照统一社会信用代码"需与下方的信息一致。
                                             仅支持图片格式：JPG/JPEG/PNG；附件大小上限为10M；香港主体请提供BR
                                         </Text>
                                     </Col> */}
