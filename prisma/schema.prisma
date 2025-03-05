@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// prisma/schema.prisma
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+//   // uncomment next line if you use Prisma <5.10
+//   // directUrl = env("DATABASE_URL_UNPOOLED")
+// }
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// datasource db {
+//   provider  = "postgresql"
+//   url       = env("POSTGRES_PRISMA_URL") // uses connection pooling
+//   directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
+// }
+
+// datasource db {
+//   provider  = "postgresql"
+//   url       = env("bn_PRISMA_URL") // uses connection pooling
+//   directUrl = env("bn_URL_NON_POOLING") // uses a direct connection
+// }
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model User {
+  id              String           @id @default(cuid())
+  username        String?          @unique
+  name            String?
+  password        String?
+  email           String?          @unique
+  emailVerified   DateTime?        @map("email_verified")
+  image           String?
+  accounts        Account[]
+  role            UserRole         @default(USER)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  companyName     String?
+  phoneNumber     String?
+  areaCode        String?
+  thirdPartyTasks ThirdPartyTask[]
+
+  @@map("tecdo_users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("tecdo_accounts")
+}
+
+model VerificationToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+  @@map("tecdo_verification_tokens")
+}
+
+// 字典类型枚举
+enum DictType {
+  SYSTEM // 系统配置
+  BUSINESS // 业务配置
+  USER // 用户配置
+  OTHER // 其他配置
+}
+
+// 字典主表
+model Dictionary {
+  id          Int              @id @default(autoincrement())
+  dictType    DictType // 字典类型
+  dictCode    String           @db.VarChar(50) // 字典编码，限制长度
+  dictName    String           @db.VarChar(100) // 字典名称，限制长度
+  description String?          @db.Text // 描述，使用Text类型
+  status      Boolean          @default(true) // 状态：启用/禁用
+  sort        Int              @default(0) // 排序
+  createdAt   DateTime         @default(now()) // 创建时间
+  updatedAt   DateTime         @updatedAt // 更新时间
+  items       DictionaryItem[] // 关联字典项
+
+  @@unique([dictType, dictCode])
+  @@map("tecdo_dictionaries")
+}
+
+// 字典项表
+model DictionaryItem {
+  id           Int        @id @default(autoincrement())
+  dictionaryId Int // 关联的字典ID
+  itemCode     String     @db.VarChar(50) // 字典项编码，限制长度
+  itemName     String     @db.VarChar(100) // 字典项名称，限制长度
+  itemValue    String     @db.VarChar(255) // 字典项值，限制长度
+  description  String?    @db.Text // 描述，使用Text类型
+  status       Boolean    @default(true) // 状态：启用/禁用
+  sort         Int        @default(0) // 排序
+  createdAt    DateTime   @default(now()) // 创建时间
+  updatedAt    DateTime   @updatedAt // 更新时间
+  dictionary   Dictionary @relation(fields: [dictionaryId], references: [id], onDelete: Cascade)
+
+  @@unique([dictionaryId, itemCode])
+  @@map("tecdo_dictionary_items")
+}
+
+// 第三方任务记录
+model ThirdPartyTask {
+  id        Int                        @id @default(autoincrement())
+  taskId    Int                        @unique // 第三方返回的任务ID
+  typeId    Int // 任务类型ID，关联字典表
+  status    String // 任务状态
+  userId    String // 关联的用户ID
+  user      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  details   CompanyRegistrationDetail? // 一对一关联详细信息
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+
+  @@unique([typeId, taskId])
+  @@map("tecdo_third_party_tasks")
+}
+
+// 详细登记信息
+model CompanyRegistrationDetail {
+  id               Int            @id @default(autoincrement())
+  taskId           Int            @unique // 关联的任务ID
+  task             ThirdPartyTask @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  locationId       Int            @map("company_location_id") // 开户公司所在地
+  legalRepName     String         @map("legal_representative_name") // 开户公司法人姓名
+  idType           Int            @map("id_type") // 证件类型
+  idNumber         String         @map("id_number") // 证件号码
+  legalRepPhone    String         @map("legal_representative_phone") // 法人手机号
+  legalRepBankCard String         @map("legal_representative_bank_card") // 法人银行卡号
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("tecdo_company_registration_details")
+}
