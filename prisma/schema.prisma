@@ -53,6 +53,7 @@ model User {
   phoneNumber     String?
   areaCode        String?
   thirdPartyTasks ThirdPartyTask[]
+  promotionLinks  PromotionLink[]
 
   @@map("tecdo_users")
 }
@@ -94,6 +95,7 @@ enum DictType {
   BUSINESS // 业务配置
   USER // 用户配置
   OTHER // 其他配置
+  PROMOTION_LINK // 推广链接配置
 }
 
 // 字典主表
@@ -131,28 +133,48 @@ model DictionaryItem {
   @@map("tecdo_dictionary_items")
 }
 
+// 推广链接表
+model PromotionLink {
+  id        Int              @id @default(autoincrement())
+  link      String           @db.Text // 推广链接
+  userId    String // 关联的用户ID
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks     ThirdPartyTask[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("tecdo_promotion_links")
+}
+
 // 第三方任务记录
 model ThirdPartyTask {
-  id        Int                        @id @default(autoincrement())
-  taskId    Int                        @unique // 第三方返回的任务ID
-  typeId    Int // 任务类型ID，关联字典表
-  status    String // 任务状态
-  userId    String // 关联的用户ID
-  user      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  details   CompanyRegistrationDetail? // 一对一关联详细信息
-  createdAt DateTime                   @default(now())
-  updatedAt DateTime                   @updatedAt
+  id              Int                        @id @default(autoincrement())
+  taskNumber      String                     @unique // 任务编号
+  taskId          String                     @unique // 第三方返回的任务ID
+  typeId          Int // 任务类型ID，关联字典表
+  status          String // 任务状态
+  userId          String // 关联的用户ID
+  promotionLinkId Int? // 推广链接ID
+  rawData         String?                    @db.Text // 存储原始请求数据的JSON字符串
+  rawResponse     String?                    @db.Text // 存储原始响应数据的JSON字符串
+  failureReason   String?                    @db.Text // 失败原因
+  promotionLink   PromotionLink?             @relation(fields: [promotionLinkId], references: [id])
+  user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  details         CompanyRegistrationDetail? // 一对一关联详细信息
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
 
-  @@unique([typeId, taskId])
   @@map("tecdo_third_party_tasks")
 }
 
 // 详细登记信息
 model CompanyRegistrationDetail {
   id               Int            @id @default(autoincrement())
-  taskId           Int            @unique // 关联的任务ID
+  taskId           String         @unique // 关联的任务ID
   task             ThirdPartyTask @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
-  locationId       Int            @map("company_location_id") // 开户公司所在地
+  companyName      String         @map("company_name") // 开户公司名称
+  companyNameEN    String         @map("company_name_en") // 开户公司英文名称
+  locationId       Int            @default(1) @map("company_location_id") // 开户公司所在地
   legalRepName     String         @map("legal_representative_name") // 开户公司法人姓名
   idType           Int            @map("id_type") // 证件类型
   idNumber         String         @map("id_number") // 证件号码

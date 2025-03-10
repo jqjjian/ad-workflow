@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useTransition } from 'react'
 import {
     Card,
     Row,
@@ -12,7 +13,9 @@ import {
     Breadcrumb,
     Form,
     Input,
-    Upload
+    Upload,
+    message,
+    type FormProps
 } from 'antd'
 import { ConfigProvider } from 'antd'
 import { StyleProvider } from '@ant-design/cssinjs'
@@ -27,72 +30,70 @@ import {
     DeleteOutlined,
     UploadOutlined
 } from '@ant-design/icons'
+import { getDictionaryItems } from '@/app/actions/dictionary'
 // import { useRouter } from 'next/navigation'
 // import Logo from '@/public/images/Google.ee741aca.svg'
-import { z } from 'zod'
-
 const { Text, Title } = Typography
 const { Item: FormItem } = Form
-
-// 定义接口提交的数据类型
-type TiktokBusinessSubmitData = z.infer<typeof TiktokBusinessSchema>
-
-// 示例数据结构
-const defaultBusinessData: TiktokBusinessSubmitData = {
-    // ... 其他必填字段 ...
-
-    // 可选的企业信息
-    registrationDetails: {
-        locationId: 0, // 企业所在地ID
-        legalRepName: '', // 法人姓名
-        idType: 0, // 证件类型
-        idNumber: '', // 证件号码
-        legalRepPhone: '', // 法人手机号
-        legalRepBankCard: '' // 法人银行卡号
-    }
-}
-
-// 提交函数示例
-const submitBusinessApplication = async (data: TiktokBusinessSubmitData) => {
-    try {
-        // 验证数据
-        const validatedData = TiktokBusinessSchema.parse(data)
-
-        // 发送到接口
-        const response = await fetch('/api/tiktok-business', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(validatedData)
-        })
-
-        return response.json()
-    } catch (error) {
-        console.error('Submit error:', error)
-        throw error
-    }
-}
-
 export default function Page() {
+    const [productTypeList, setProductTypeList] = useState<
+        { label: string; value: number }[]
+    >([])
+    const [isPending, startTransition] = useTransition()
     const [form] = Form.useForm()
-    const handleSubmit = (values: TiktokBusiness) => {
-        console.log('Form values:', values)
+    const handleSubmit: FormProps['onFinish'] = (values: TiktokBusiness) => {
+        startTransition(async () => {
+            console.log('Success:', values)
+            try {
+                const res = await tiktokApply(values, '123')
+                if (res.code === '0') {
+                    message.success('开户成功')
+                } else {
+                    message.error('开户失败')
+                }
+                // const res = await test(values)
+                console.log('res', res)
+            } catch (error) {
+                console.log('error', error)
+            }
+        })
     }
+    const getDicData = async () => {
+        const res = await getDictionaryItems('BUSINESS', 'productType')
+        const list = res?.items.map((item) => ({
+            label: item.itemName,
+            value: Number(item.itemValue)
+        }))
+        setProductTypeList(list || [])
+    }
+    const [locationId, setLocationId] = useState(0)
     const rule = createSchemaFieldRule(TiktokBusinessSchema)
     const [tiktokAccount, setTiktokAccount] = useState<TiktokBusiness>({
         companyNameEN: '公司1',
         businessLicenseNo: '123123',
         businessLicenseAttachment: '123123',
-        type: 0,
-        timezone: 'Asia/Shanghai',
-        productType: 0,
+        type: 10,
+        timezone: 'Asia/Amman1',
+        productType: 1,
         promotionLink: 'http://localhost:3000/application/apply/tiktok',
         name: '公司1',
         rechargeAmount: '100',
         advertisingCountries: ['CN', 'US'],
-        auths: []
+        auths: [],
+        registrationDetails: {
+            companyNameEN: '1',
+            companyName: '2',
+            locationId: 0,
+            legalRepName: '张三',
+            idType: 0,
+            idNumber: '123123',
+            legalRepPhone: '123123',
+            legalRepBankCard: '123123'
+        }
     })
+    useEffect(() => {
+        getDicData()
+    }, [])
     return (
         <StyleProvider layer>
             <ConfigProvider>
@@ -159,8 +160,9 @@ export default function Page() {
                                 </Row>
                                 <FormItem
                                     label="营业执照"
-                                    name="name"
+                                    name="businessLicenseAttachment"
                                     labelCol={{ span: 6 }}
+                                    rules={[rule]}
                                 >
                                     <Upload
                                         action="https://660d2bd96ddfa2943b33731c.mockapi.io/api/upload"
@@ -175,7 +177,7 @@ export default function Page() {
                                         </Button>
                                     </Upload>
                                     <Text className="text-gray-400">
-                                        如重新上传营业执照，营业执照中的"公司名称"与"营业执照统一社会信用代码"需与下方的信息一致。
+                                        如重新上传营业执照，营业执照中的“公司名称”与“营业执照统一社会信用代码"需与下方的信息一致。
                                         仅支持图片格式：JPG/JPEG/PNG；附件大小上限为10M；香港主体请提供BR
                                     </Text>
                                 </FormItem>
@@ -185,14 +187,15 @@ export default function Page() {
                                         className="mt-[-20px] pr-[52px]"
                                     >
                                         <Text className="text-gray-400">
-                                            如重新上传营业执照，营业执照中的"公司名称"与"营业执照统一社会信用代码"需与下方的信息一致。
+                                            如重新上传营业执照，营业执照中的“公司名称”与“营业执照统一社会信用代码"需与下方的信息一致。
                                             仅支持图片格式：JPG/JPEG/PNG；附件大小上限为10M；香港主体请提供BR
                                         </Text>
                                     </Col> */}
                                 <FormItem
                                     label="开户公司名称（中文）"
-                                    name="name"
+                                    name="registrationDetails.companyName"
                                     labelCol={{ span: 6 }}
+                                    rules={[rule]}
                                 >
                                     <div className="pr-[52px]">
                                         <Input placeholder="请输入开户公司名称（中文）" />
@@ -204,8 +207,9 @@ export default function Page() {
 
                                 <FormItem
                                     label="开户公司名称（英文）"
-                                    name="name"
+                                    name="companyNameEN"
                                     labelCol={{ span: 6 }}
+                                    rules={[rule]}
                                 >
                                     <div className="pr-[52px]">
                                         <Input placeholder="请输入开户公司名称（英文）" />
@@ -213,8 +217,9 @@ export default function Page() {
                                 </FormItem>
                                 <FormItem
                                     label="营业执照统一社会信用代码"
-                                    name="name"
+                                    name="businessLicenseNo"
                                     labelCol={{ span: 6 }}
+                                    rules={[rule]}
                                 >
                                     <div className="pr-[52px]">
                                         <Input placeholder="请输入营业执照统一社会信用代码" />
@@ -225,52 +230,256 @@ export default function Page() {
                                 </FormItem>
                                 <FormItem
                                     label="开户公司所在地"
-                                    name="name"
                                     labelCol={{ span: 6 }}
+                                    // rules={[rule]}
                                 >
                                     <div className="pr-[52px]">
                                         <Select
+                                            onChange={(value) => {
+                                                setLocationId(value)
+                                            }}
                                             placeholder="请选务必选择营业执照公司主体的所在地"
                                             options={[
                                                 {
                                                     label: '中国大陆',
-                                                    value: '1'
+                                                    value: 1
                                                 },
                                                 {
                                                     label: '其他',
-                                                    value: '2'
+                                                    value: 0
                                                 }
                                             ]}
                                         />
                                     </div>
                                 </FormItem>
-                                {/* <Row>
-                                    <Col span={18} offset={6}>
-                                        <Flex gap={20}>
-                                            <FormItem
-                                                className="flex-1"
-                                                label=""
-                                                name="aaa"
-                                                rules={[
+                                {locationId === 1 && (
+                                    <>
+                                        <Row>
+                                            <Col span={12}>
+                                                <FormItem
+                                                    label="开户公司法人姓名"
+                                                    name={[
+                                                        'registrationDetails',
+                                                        'legalRepName'
+                                                    ]}
+                                                    rules={[rule]}
+                                                    // initialValue="USD"
+                                                    labelCol={{ span: 12 }}
+                                                >
+                                                    <Input placeholder="请输入开户公司法人姓名" />
+                                                </FormItem>
+                                            </Col>
+                                            <Col
+                                                span={12}
+                                                className="pr-[52px]"
+                                            >
+                                                <FormItem
+                                                    name={[
+                                                        'registrationDetails',
+                                                        'idType'
+                                                    ]}
+                                                    label="证件类型"
+                                                    rules={[rule]}
+                                                    labelCol={{ span: 10 }}
+                                                >
+                                                    <Select
+                                                        allowClear
+                                                        placeholder="请选择账户时区"
+                                                        onChange={(value) => {
+                                                            form.setFieldsValue(
+                                                                {
+                                                                    timezone:
+                                                                        value
+                                                                }
+                                                            )
+                                                        }}
+                                                        options={[
+                                                            {
+                                                                label: 'Asia/Amman UTC+3',
+                                                                value: 'Asia/Amman'
+                                                            },
+                                                            {
+                                                                label: 'Asia/Amman UTC+4',
+                                                                value: 'Asia/Amman1'
+                                                            }
+                                                        ]}
+                                                    />
+                                                </FormItem>
+                                            </Col>
+                                        </Row>
+                                        <Row>
+                                            <Col span={12}>
+                                                <FormItem
+                                                    label="证件号码"
+                                                    name={[
+                                                        'registrationDetails',
+                                                        'idNumber'
+                                                    ]}
+                                                    rules={[rule]}
+                                                    // initialValue="USD"
+                                                    labelCol={{ span: 12 }}
+                                                >
+                                                    <Input placeholder="请输入证件号码" />
+                                                </FormItem>
+                                            </Col>
+                                            <Col
+                                                span={12}
+                                                className="pr-[52px]"
+                                            >
+                                                <FormItem
+                                                    name={[
+                                                        'registrationDetails',
+                                                        'legalRepBankCard'
+                                                    ]}
+                                                    label="法人银行卡号"
+                                                    rules={[rule]}
+                                                    labelCol={{ span: 10 }}
+                                                >
+                                                    <Input placeholder="请输入法人银行卡号" />
+                                                </FormItem>
+                                            </Col>
+                                        </Row>
+                                        <Row>
+                                            <Col span={12}>
+                                                <FormItem
+                                                    label="法人手机号"
+                                                    name={[
+                                                        'registrationDetails',
+                                                        'legalRepPhone'
+                                                    ]}
+                                                    rules={[rule]}
+                                                    // initialValue="USD"
+                                                    labelCol={{ span: 12 }}
+                                                >
+                                                    <Input placeholder="请输入法人手机号" />
+                                                </FormItem>
+                                            </Col>
+                                        </Row>
+                                    </>
+                                )}
+                            </div>
+                        </Card>
+                        <Card>
+                            <Title level={4} className="m-0">
+                                账户信息
+                            </Title>
+                            <div className="max-w-[1000px] pt-10">
+                                <Row>
+                                    <Col span={12} className="pl-[50px]">
+                                        <FormItem
+                                            label="账户类型"
+                                            name="type"
+                                            labelCol={{ span: 10 }}
+                                            rules={[rule]}
+                                        >
+                                            <Select
+                                                placeholder="请选择账户类型"
+                                                options={[
                                                     {
-                                                        required: true,
-                                                        message:
-                                                            '请输入推广链接'
+                                                        label: '竞价账户',
+                                                        value: 10
+                                                    },
+                                                    {
+                                                        label: '品牌账户',
+                                                        value: 20
                                                     }
                                                 ]}
-                                            >
-                                                <Input />
-                                            </FormItem>
-                                            <Button
-                                                type="text"
-                                                color="danger"
-                                                variant="filled"
-                                                icon={<DeleteOutlined />}
                                             />
-                                        </Flex>
+                                        </FormItem>
                                     </Col>
-                                    <Col span={18} offset={6}>
-                                        <FormItem label="" name="name">
+                                    <Col span={12} className="pr-[52px]">
+                                        <FormItem
+                                            label="行业"
+                                            name="productType"
+                                            labelCol={{ span: 7 }}
+                                            rules={[rule]}
+                                        >
+                                            <Select
+                                                placeholder="请选择行业"
+                                                options={productTypeList}
+                                            />
+                                        </FormItem>
+                                    </Col>
+                                </Row>
+                                <div className="pr-[52px]">
+                                    <FormItem
+                                        label="账户时区"
+                                        name="timezone"
+                                        labelCol={{ span: 6 }}
+                                        rules={[rule]}
+                                    >
+                                        <Select
+                                            placeholder="请选择账户时区"
+                                            options={[
+                                                {
+                                                    label: '非洲/阿克拉 UTC+00:00',
+                                                    value: '非洲/阿克拉'
+                                                },
+                                                {
+                                                    label: '非洲/开罗 UTC+02:00',
+                                                    value: '非洲/开罗'
+                                                }
+                                            ]}
+                                        />
+                                    </FormItem>
+                                </div>
+                                <div className="pr-[52px]">
+                                    <FormItem
+                                        label="投放国家"
+                                        name="advertisingCountries"
+                                        labelCol={{ span: 6 }}
+                                        rules={[rule]}
+                                    >
+                                        <Select
+                                            mode="multiple"
+                                            placeholder="请选择投放国家"
+                                            options={[
+                                                {
+                                                    label: '安道尔',
+                                                    value: 'AD'
+                                                },
+                                                {
+                                                    label: '阿联酋',
+                                                    value: 'AF'
+                                                }
+                                            ]}
+                                        />
+                                    </FormItem>
+                                </div>
+                                <div className="pr-[52px]">
+                                    <FormItem
+                                        label="推荐广告"
+                                        name="promotionLink"
+                                        labelCol={{ span: 6 }}
+                                        rules={[rule]}
+                                    >
+                                        <Input placeholder="请输入推广链接" />
+                                        <Text className="text-gray-400">
+                                            请确认推广链接是可打开而且是可正常跳转的状态，且链接包含https。
+                                        </Text>
+                                    </FormItem>
+                                </div>
+                            </div>
+                        </Card>
+                        <Card>
+                            <Title level={4} className="m-0">
+                                账户命名
+                            </Title>
+                            <div className="max-w-[1000px] pr-[52px] pt-10">
+                                <FormItem
+                                    label="账户"
+                                    name="name"
+                                    labelCol={{ span: 6 }}
+                                    rules={[rule]}
+                                >
+                                    <Input />
+                                </FormItem>
+                                {/* <Row>
+                                    <Col span={18} offset={5}>
+                                        <FormItem
+                                            label={null}
+                                            labelCol={{ span: 6 }}
+                                        >
                                             <Button
                                                 size="small"
                                                 type="primary"
@@ -282,191 +491,25 @@ export default function Page() {
                             </div>
                         </Card>
                         <Card>
-                            <Title level={4} className="m-0">
-                                账户信息
-                            </Title>
-                            <div className="max-w-[1000px] pt-10">
-                                <Row>
-                                    <Col span={12}>
-                                        <FormItem
-                                            label="账户类型"
-                                            name="name"
-                                            labelCol={{ span: 12 }}
-                                        >
-                                            <div className="pr-[52px]">
-                                                <Select
-                                                    placeholder="请选择账户类型"
-                                                    options={[
-                                                        {
-                                                            label: '账户类型1',
-                                                            value: '1'
-                                                        },
-                                                        {
-                                                            label: '账户类型2',
-                                                            value: '2'
-                                                        }
-                                                    ]}
-                                                />
-                                            </div>
-                                        </FormItem>
-                                    </Col>
-                                    <Col span={12}>
-                                        <FormItem
-                                            label="行业"
-                                            name="name"
-                                            labelCol={{ span: 10 }}
-                                        >
-                                            <div className="pr-[52px]">
-                                                <Select
-                                                    placeholder="请选择行业"
-                                                    options={[
-                                                        {
-                                                            label: '行业1',
-                                                            value: '1'
-                                                        },
-                                                        {
-                                                            label: '行业2',
-                                                            value: '2'
-                                                        }
-                                                    ]}
-                                                />
-                                            </div>
-                                        </FormItem>
-                                    </Col>
-                                </Row>
-                                <FormItem
-                                    label="账户时区"
-                                    name="name"
-                                    labelCol={{ span: 6 }}
-                                >
-                                    <div className="w-full pr-[52px]">
-                                        <Select
-                                            placeholder="请选择账户时区"
-                                            options={[
-                                                {
-                                                    label: '时区1',
-                                                    value: '1'
-                                                },
-                                                {
-                                                    label: '时区2',
-                                                    value: '2'
-                                                }
-                                            ]}
-                                        />
-                                    </div>
-                                </FormItem>
-                                <FormItem
-                                    label="推荐广告"
-                                    name="name"
-                                    labelCol={{ span: 6 }}
-                                >
-                                    <div className="pr-[52px]">
-                                        <Input placeholder="请输入推广链接" />
-                                    </div>
-                                    <Text className="text-gray-400">
-                                        请确认推广链接是可打开而且是可正常跳转的状态，且链接包含https。
-                                    </Text>
-                                </FormItem>
-                            </div>
-                        </Card>
-                        <Card>
-                            <Title level={4} className="m-0">
-                                账户命名
-                            </Title>
-                            <div className="max-w-[1000px] pt-10">
-                                <FormItem
-                                    label="账户"
-                                    name="aaa"
-                                    labelCol={{ span: 6 }}
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: '请输入推广链接'
-                                        }
-                                    ]}
-                                >
-                                    <div className="pr-[52px]">
-                                        <Input />
-                                    </div>
-                                </FormItem>
-                                <Flex vertical className="pl-[18px]">
-                                    {/* <Flex gap={20}>
-                                        <FormItem
-                                            className="flex-1"
-                                            label="账户2"
-                                            name="aaa"
-                                            labelCol={{ span: 6 }}
-                                            rules={[
-                                                {
-                                                    required: true,
-                                                    message: '请输入推广链接'
-                                                }
-                                            ]}
-                                        >
-                                            <Input />
-                                        </FormItem>
-                                        <Button
-                                            type="text"
-                                            color="danger"
-                                            variant="filled"
-                                            icon={<DeleteOutlined />}
-                                        />
-                                    </Flex>
-                                    <Flex gap={20}>
-                                        <FormItem
-                                            className="flex-1"
-                                            label="账户3"
-                                            name="aaa"
-                                            labelCol={{ span: 6 }}
-                                            rules={[
-                                                {
-                                                    required: true,
-                                                    message: '请输入推广链接'
-                                                }
-                                            ]}
-                                        >
-                                            <Input />
-                                        </FormItem>
-                                        <Button
-                                            type="text"
-                                            color="danger"
-                                            variant="filled"
-                                            icon={<DeleteOutlined />}
-                                        />
-                                    </Flex> */}
-                                    <Row>
-                                        <Col span={18} offset={5}>
-                                            <FormItem
-                                                label={null}
-                                                name="name"
-                                                labelCol={{ span: 6 }}
-                                            >
-                                                <div className="pl-[25px]">
-                                                    <Button
-                                                        size="small"
-                                                        type="primary"
-                                                        icon={<PlusOutlined />}
-                                                    />
-                                                </div>
-                                            </FormItem>
-                                        </Col>
-                                    </Row>
-                                </Flex>
-
-                                {/* <Row>
-                                    <Col span={18} offset={4}>
-                                        <FormItem label="" name="name">
-                                            <div className="pl-[5px]">
-                                                <Button
-                                                    size="small"
-                                                    type="primary"
-                                                    icon={<PlusOutlined />}
-                                                />
-                                            </div>
-                                        </FormItem>
-                                    </Col>
-                                </Row> */}
-                            </div>
+                            <Flex justify="center">
+                                <Space>
+                                    <Button
+                                        type="default"
+                                        onClick={() => {
+                                            form.resetFields()
+                                        }}
+                                    >
+                                        重置
+                                    </Button>
+                                    <Button
+                                        type="primary"
+                                        htmlType="submit"
+                                        loading={isPending}
+                                    >
+                                        提交
+                                    </Button>
+                                </Space>
+                            </Flex>
                         </Card>
                     </Flex>
                 </Form>

@@ -11,53 +11,42 @@ export const ExternalApiRequestSchema = z.object({
     body: z.any().optional()
 })
 // 定义响应类型
-export interface ApiResponse<T> {
+interface ApiResponse<T = any> {
     code: string
-    message: string
-    data: T
+    success: boolean
+    message?: string
+    data: T | null // 明确指定可能为 null
 }
 
-export async function callExternalApi<T>(
-    request: z.infer<typeof ExternalApiRequestSchema>
-): Promise<ApiResponse<T>> {
-    console.log('request', request)
+export async function callExternalApi<T>(params: {
+    url: string
+    headers?: Record<string, string>
+    body?: Record<string, any>
+}): Promise<ApiResponse<T>> {
+    console.log('request', params)
     try {
-        // 验证请求参数
-        const validatedRequest = ExternalApiRequestSchema.parse(request)
-        console.log('validatedRequest', validatedRequest)
-        // console.log('accessToken', accessToken)
-        // console.log('headers', validatedRequest.headers)
-        // 发起请求
-        // console.log('JSON', JSON.stringify(validatedRequest.body))
-        const response = await fetch(validatedRequest.url, {
+        // 验证不通过会抛出 ZodError
+        ExternalApiRequestSchema.parse(params)
+
+        const response = await fetch(params.url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json;charset=UTF-8',
                 'Access-Token': accessToken || '',
-                ...validatedRequest.headers
+                ...params.headers
             },
-            body: validatedRequest.body
-                ? JSON.stringify(validatedRequest.body)
-                : undefined
+            body: params.body ? JSON.stringify(params.body) : undefined
         })
-        // if (!response.ok) {
-        //     throw new Error(`HTTP error! status: ${response.status}`)
-        // }
 
-        const data = await response.json()
-        return data
+        const data: ApiResponse<T> = await response.json()
+        return {
+            ...data,
+            data: data.data || null
+        }
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return {
-                code: '400',
-                message: '请求参数验证失败',
-                data: null as T
-            }
+            throw new Error(`请求参数验证失败: ${error.message}`)
         }
-        return {
-            code: '500',
-            message: error instanceof Error ? error.message : '请求失败',
-            data: null as T
-        }
+        throw error // 其他错误直接抛出
     }
 }
