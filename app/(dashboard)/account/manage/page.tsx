@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { message } from 'antd'
+import { message, Badge } from 'antd'
 import {
     Select,
     Input,
@@ -11,47 +11,37 @@ import {
     Space,
     Form,
     Card,
-    Radio,
-    InputNumber,
-    Row,
-    Col,
-    Flex
+    Flex,
+    Tag
 } from 'antd'
 import type { TableColumnsType } from 'antd'
 import { StyleProvider } from '@ant-design/cssinjs'
 import { ConfigProvider } from 'antd'
-import { Breadcrumb, Typography } from 'antd'
-import Link from 'next/link'
-import { queryMediaAccounts } from '@/app/actions/business'
-import { MediaAccountsearch } from '@/schemas'
-import { MediaAccountResponseType } from '@/schemas/third-party-type'
-const { Title } = Typography
-// 定义账户数据接口
-interface AccountData {
-    mediaAccountId: string
-    mediaAccountName: string
-    companyName: string
-    mediaPlatform: number
-    status: number
-}
+import { Typography } from 'antd'
+import { queryMediaAccounts } from '@/app/actions/workorder'
+import {
+    MediaAccount,
+    MediaAccountResponse,
+    MediaAccountSearch
+} from '@/schemas/mediaAccount'
 
-// 定义筛选条件接口
-interface FilterParams {
-    accountType: 'name' | 'id'
-    accountValue: string
-    company: string
-    platform: string
-    status: string
-    dateRange: [string, string]
-    spendCondition: string
+const { Title } = Typography
+const { RangePicker } = DatePicker
+
+// 自定义表单类型，包含前端特有的日期范围字段
+type AccountSearchForm = {
+    mediaAccountId?: string
+    mediaAccountName?: string
+    mediaPlatform?: number
+    companyName?: string
+    status?: number
+    createTimeRange?: any[]
     pageNumber?: number
     pageSize?: number
 }
 
-type MediaAccount = MediaAccountResponseType['mediaAccounts'][number]
-
 export default function AccountManagePage() {
-    const [form] = Form.useForm<MediaAccountsearch>()
+    const [form] = Form.useForm<AccountSearchForm>()
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState<MediaAccount[]>([])
     const [selectedRows, setSelectedRows] = useState<MediaAccount[]>([])
@@ -64,15 +54,22 @@ export default function AccountManagePage() {
             key: 'account',
             render: (_, record) => (
                 <Space direction="vertical" size="small">
-                    <span>{record.mediaAccountName}</span>
-                    <span>{record.mediaAccountId}</span>
+                    <span style={{ fontWeight: 'bold' }}>
+                        {record.mediaAccountName}
+                    </span>
+                    <span style={{ color: '#666' }}>
+                        {record.mediaAccountId}
+                    </span>
                 </Space>
-            )
+            ),
+            sorter: (a, b) =>
+                a.mediaAccountName.localeCompare(b.mediaAccountName)
         },
         {
             title: '公司主体',
             dataIndex: 'companyName',
-            key: 'companyName'
+            key: 'companyName',
+            sorter: (a, b) => a.companyName.localeCompare(b.companyName)
         },
         {
             title: '媒体平台',
@@ -80,16 +77,26 @@ export default function AccountManagePage() {
             key: 'mediaPlatform',
             render: (platform) => {
                 const platformMap = {
-                    1: 'Facebook',
-                    2: 'Google',
-                    3: 'Meta',
-                    5: 'TikTok'
+                    1: { name: 'Facebook', color: '#1877F2' },
+                    2: { name: 'Google', color: '#4285F4' },
+                    3: { name: 'Meta', color: '#0081FB' },
+                    5: { name: 'TikTok', color: '#000000' }
                 }
-                return (
-                    platformMap[platform as keyof typeof platformMap] ||
+                const platformInfo =
+                    platformMap[platform as keyof typeof platformMap]
+                return platformInfo ? (
+                    <Tag color={platformInfo.color}>{platformInfo.name}</Tag>
+                ) : (
                     platform
                 )
-            }
+            },
+            filters: [
+                { text: 'Facebook', value: 1 },
+                { text: 'Google', value: 2 },
+                { text: 'Meta', value: 3 },
+                { text: 'TikTok', value: 5 }
+            ],
+            onFilter: (value, record) => record.mediaPlatform === value
         },
         {
             title: '状态',
@@ -97,13 +104,28 @@ export default function AccountManagePage() {
             key: 'status',
             render: (status) => {
                 const statusMap = {
-                    1: '审核中',
-                    2: '生效中',
-                    3: '封户',
-                    4: '失效'
+                    1: { text: '审核中', color: 'processing' },
+                    2: { text: '生效中', color: 'success' },
+                    3: { text: '封户', color: 'error' },
+                    4: { text: '失效', color: 'default' }
                 }
-                return statusMap[status as keyof typeof statusMap] || status
-            }
+                const statusInfo = statusMap[status as keyof typeof statusMap]
+                return statusInfo ? (
+                    <Badge
+                        status={statusInfo.color as any}
+                        text={statusInfo.text}
+                    />
+                ) : (
+                    status
+                )
+            },
+            filters: [
+                { text: '审核中', value: 1 },
+                { text: '生效中', value: 2 },
+                { text: '封户', value: 3 },
+                { text: '失效', value: 4 }
+            ],
+            onFilter: (value, record) => record.status === value
         },
         {
             title: '币种',
@@ -134,82 +156,120 @@ export default function AccountManagePage() {
             title: '转化率',
             dataIndex: 'conversionRate',
             key: 'conversionRate'
-        },
-
-        {
-            title: '操作',
-            key: 'action',
-            width: 100,
-            render: (_, record) => (
-                <Space size="small">
-                    <Button type="link" size="small">
-                        账户充值
-                    </Button>
-                    <Button type="link" size="small">
-                        减款转账
-                    </Button>
-                    <Button type="link" size="small">
-                        绑定/解绑
-                    </Button>
-                </Space>
-            )
         }
     ]
 
     // 处理查询
-    const handleSearch = async (values: MediaAccountsearch) => {
+    const handleSearch = async (values: AccountSearchForm) => {
         setLoading(true)
         try {
-            const response = await queryMediaAccounts(values)
-            console.log(response)
+            // 处理查询参数
+            const queryParams: MediaAccountSearch = {
+                mediaAccountId: values.mediaAccountId,
+                mediaAccountName: values.mediaAccountName,
+                mediaPlatform: values.mediaPlatform,
+                companyName: values.companyName,
+                status: values.status || 2, // 默认查询"生效中"的记录
+                pageNumber: values.pageNumber || 1,
+                pageSize: values.pageSize || 10,
+                createTimeRange: values.createTimeRange
+            }
+
+            // 处理日期范围
+            if (values.createTimeRange?.length === 2) {
+                queryParams.startTime =
+                    values.createTimeRange[0]?.format('YYYY-MM-DD')
+                queryParams.endTime =
+                    values.createTimeRange[1]?.format('YYYY-MM-DD')
+            }
+
+            const response = await queryMediaAccounts(queryParams)
+
             if (response.success && response.data) {
-                const formattedData = response.data.mediaAccounts || []
-                setData(formattedData)
-                setTotal(response.data?.total || 0) // 注意：这里应该用 total 而不是 pageSize
+                // 确保 data 是 MediaAccountSearchResult 类型
+                if ('mediaAccounts' in response.data) {
+                    const formattedData = response.data.mediaAccounts || []
+
+                    // 对数据进行格式化处理
+                    const processedData = formattedData.map(
+                        (account: MediaAccount) => ({
+                            ...account,
+                            // 确保数值字段为数字类型
+                            balance: parseFloat(
+                                account.balance?.toString() || '0'
+                            ),
+                            grantBalance: parseFloat(
+                                account.grantBalance?.toString() || '0'
+                            ),
+                            consumeAmount: parseFloat(
+                                account.consumeAmount?.toString() || '0'
+                            ),
+                            conversionAmount: parseFloat(
+                                account.conversionAmount?.toString() || '0'
+                            ),
+                            conversionRate: account.conversionRate
+                                ? parseFloat(account.conversionRate.toString())
+                                : 0
+                        })
+                    )
+
+                    setData(processedData)
+                    setTotal('total' in response.data ? response.data.total : 0)
+                } else {
+                    setData([])
+                    setTotal(0)
+                }
             } else {
                 message.error(response.message || '查询失败')
+                setData([])
+                setTotal(0)
             }
         } catch (error) {
-            message.error('查询出错')
-            console.error(error)
+            console.error('查询出错:', error)
+            message.error('查询出错，请稍后重试')
+            setData([])
+            setTotal(0)
         } finally {
             setLoading(false)
         }
     }
 
+    // 添加筛选条件变更时自动查询
+    const handleFilterChange = (
+        changedValues: any,
+        allValues: AccountSearchForm
+    ) => {
+        // 当筛选条件变更时，重置到第一页
+        handleSearch({
+            ...allValues,
+            pageNumber: 1,
+            pageSize: 10
+        })
+    }
+
     // 处理重置
     const handleReset = () => {
         form.resetFields()
-        setData([])
+        // 重置后，默认查询生效中的记录
+        handleSearch({ status: 2, pageNumber: 1, pageSize: 10 })
     }
 
     useEffect(() => {
-        handleSearch(form.getFieldsValue())
+        // 初始加载时，默认查询生效中的账户
+        handleSearch({ status: 2, pageNumber: 1, pageSize: 10 })
     }, [])
+
     return (
         <StyleProvider layer>
             <ConfigProvider>
-                {/* <Breadcrumb
-                    className="mb-4"
-                    items={[
-                        { title: '开户管理' },
-                        {
-                            title: (
-                                <Link href="/application/apply">开户申请</Link>
-                            )
-                        },
-                        {
-                            title: 'Google Ads'
-                        }
-                    ]}
-                /> */}
                 <Title level={3} className="m-0 mb-4">
                     账户管理
                 </Title>
                 <Card>
-                    <Form<MediaAccountsearch>
+                    <Form<AccountSearchForm>
                         form={form}
                         onFinish={handleSearch}
+                        onValuesChange={handleFilterChange}
                         layout="horizontal"
                     >
                         <Flex gap={16} wrap>
@@ -218,28 +278,34 @@ export default function AccountManagePage() {
                                 name="mediaAccountName"
                                 style={{ marginBottom: 0 }}
                             >
-                                <Input placeholder="请输入账户名称" />
+                                <Input
+                                    placeholder="请输入账户名称"
+                                    allowClear
+                                />
                             </Form.Item>
                             <Form.Item
                                 label="账户ID"
                                 name="mediaAccountId"
                                 style={{ marginBottom: 0 }}
                             >
-                                <Input placeholder="请输入账户ID" />
+                                <Input placeholder="请输入账户ID" allowClear />
                             </Form.Item>
                             <Form.Item
                                 label="公司主体"
                                 name="companyName"
                                 style={{ marginBottom: 0 }}
                             >
-                                <Input placeholder="请输入公司主体" />
+                                <Input
+                                    placeholder="请输入公司主体"
+                                    allowClear
+                                />
                             </Form.Item>
                             <Form.Item
                                 label="媒体平台"
                                 name="mediaPlatform"
                                 style={{ marginBottom: 0 }}
                             >
-                                <Select placeholder="请选择媒体平台">
+                                <Select placeholder="请选择媒体平台" allowClear>
                                     <Select.Option value={1}>
                                         Facebook
                                     </Select.Option>
@@ -249,7 +315,7 @@ export default function AccountManagePage() {
                                     <Select.Option value={3}>
                                         Meta
                                     </Select.Option>
-                                    <Select.Option value={4}>
+                                    <Select.Option value={5}>
                                         TikTok
                                     </Select.Option>
                                 </Select>
@@ -258,8 +324,9 @@ export default function AccountManagePage() {
                                 label="状态"
                                 name="status"
                                 style={{ marginBottom: 0 }}
+                                initialValue={2} // 默认选择"生效中"
                             >
-                                <Select placeholder="请选择状态">
+                                <Select placeholder="请选择状态" allowClear>
                                     <Select.Option value={1}>
                                         审核中
                                     </Select.Option>
@@ -273,6 +340,13 @@ export default function AccountManagePage() {
                                         失效
                                     </Select.Option>
                                 </Select>
+                            </Form.Item>
+                            <Form.Item
+                                label="创建时间"
+                                name="createTimeRange"
+                                style={{ marginBottom: 0 }}
+                            >
+                                <RangePicker allowClear />
                             </Form.Item>
                             <Form.Item style={{ marginBottom: 0 }}>
                                 <Space>
@@ -290,20 +364,6 @@ export default function AccountManagePage() {
                     </Form>
                 </Card>
 
-                {/* 操作按钮区 */}
-                <div className="my-4 flex justify-between">
-                    <Space>
-                        <Button type="primary">批量充值</Button>
-                        <Button>批量清零</Button>
-                        <Button>批量绑定/解绑</Button>
-                        <Button>批量刷新</Button>
-                    </Space>
-                    <Space>
-                        <Button type="link">申请记录</Button>
-                        <Button type="link">导出</Button>
-                    </Space>
-                </div>
-
                 {/* 数据表格 */}
                 <Table
                     loading={loading}
@@ -312,10 +372,20 @@ export default function AccountManagePage() {
                     rowSelection={{
                         type: 'checkbox',
                         onChange: (_, selectedRows) =>
-                            setSelectedRows(selectedRows)
+                            setSelectedRows(selectedRows),
+                        getCheckboxProps: (record) => ({
+                            // 禁用非生效中状态的行选择
+                            disabled: record.status !== 2
+                        })
                     }}
                     rowKey="mediaAccountId"
                     pagination={{
+                        total: total,
+                        showSizeChanger: true,
+                        showQuickJumper: true,
+                        showTotal: (total) => `共 ${total} 条记录`,
+                        pageSize: 10,
+                        pageSizeOptions: ['10', '20', '50', '100'],
                         onChange: (page, pageSize) => {
                             const values = form.getFieldsValue()
                             handleSearch({
@@ -324,6 +394,52 @@ export default function AccountManagePage() {
                                 pageSize
                             })
                         }
+                    }}
+                    rowClassName={(record) => {
+                        if (record.status === 3) return 'bg-red-50' // 封户状态标红
+                        if (record.status === 4) return 'bg-gray-50' // 失效状态标灰
+                        return ''
+                    }}
+                    summary={(pageData) => {
+                        if (pageData.length === 0) return null
+
+                        const totalBalance = pageData.reduce(
+                            (sum, item) => sum + (Number(item.balance) || 0),
+                            0
+                        )
+
+                        const totalConsume = pageData.reduce(
+                            (sum, item) =>
+                                sum + (Number(item.consumeAmount) || 0),
+                            0
+                        )
+
+                        return (
+                            <Table.Summary fixed>
+                                <Table.Summary.Row>
+                                    <Table.Summary.Cell index={0} colSpan={5}>
+                                        <strong>账户总余额</strong>
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={1}>
+                                        <strong>
+                                            {totalBalance.toFixed(2)}
+                                        </strong>
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={2}>
+                                        <strong>总消耗</strong>
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={3}>
+                                        <strong>
+                                            {totalConsume.toFixed(2)}
+                                        </strong>
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell
+                                        index={4}
+                                        colSpan={3}
+                                    ></Table.Summary.Cell>
+                                </Table.Summary.Row>
+                            </Table.Summary>
+                        )
                     }}
                 />
             </ConfigProvider>

@@ -79,6 +79,7 @@ model tecdo_media_accounts {
   tecdo_withdrawal_business_data tecdo_withdrawal_business_data[]
   tecdo_transfer_business_data   tecdo_transfer_business_data[]
   tecdo_zeroing_business_data    tecdo_zeroing_business_data[]
+  tecdo_account_binding_data     tecdo_account_binding_data[]
 
   @@index([mediaPlatform, platformId])
   @@index([userId])
@@ -303,6 +304,7 @@ model tecdo_work_orders {
   tecdo_zeroing_business_data             tecdo_zeroing_business_data?
   tecdo_company_info                      tecdo_company_info?                      @relation(fields: [companyInfoId], references: [id])
   tecdo_workorder_company_info            tecdo_workorder_company_info?
+  tecdo_account_binding_data              tecdo_account_binding_data?
 
   @@index([companyInfoId])
   @@index([mediaAccountId])
@@ -564,4 +566,24 @@ model DictionaryItem {
 
   @@unique([dictionaryId, itemCode])
   @@map("tecdo_dictionary_items")
+}
+
+// 账户绑定业务数据
+model tecdo_account_binding_data {
+  id                   String                @id @default(uuid())
+  workOrderId          String                @unique
+  mediaAccountId       String
+  mediaPlatform        String
+  bindingValue         String
+  bindingRole          String
+  bindingStatus        String
+  bindingTime          DateTime
+  failureReason        String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  isDeleted            Boolean               @default(false)
+  tecdo_media_accounts tecdo_media_accounts? @relation(fields: [mediaAccountId], references: [id])
+  tecdo_work_orders    tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+
+  @@index([mediaAccountId])
 }

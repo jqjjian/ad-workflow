@@ -32,39 +32,40 @@ export {
     type CreateDictionaryItemDto
 } from './dictionary/types'
 
-// 导出工单查询相关类型
+// 导出账户管理相关Schema
 export {
-    QueryApplyRecordSchema,
+    DepositSchema,
+    WithdrawalSchema,
+    TransferSchema,
+    AccountBindSchema,
+    PixelBindSchema,
+    EmailBindSchema,
+    type Deposit,
+    type Withdrawal,
+    type Transfer,
+    type AccountBind,
+    type PixelBind,
+    type EmailBind
+} from './account-management'
+
+// 从 mediaAccount.ts 导出媒体账户相关类型
+export {
+    MediaAccountSearchSchema,
+    MediaAccountSchema,
     MediaAccountInfoSchema,
-    type QueryApplyRecordDto,
+    QueryApplyRecordSchema,
+    type MediaAccountSearch,
+    type MediaAccount,
     type MediaAccountInfo,
+    type MediaAccountSearchResult,
+    type MediaAccountResponse,
+    type QueryApplyRecordDto,
     type ApplicationRecord,
     type ApplyRecordData,
     type ApplyRecordResponse
-} from './workorder/query'
+} from './mediaAccount'
 
-// 导出TikTok相关类型
-export { TiktokBusinessSchema, type TiktokBusiness } from './account/tiktok'
-
-// 导出Google相关类型
-export {
-    GoogleAccountSchema,
-    type GoogleAccount,
-    type AuthItem as GoogleAuthItem
-} from './account/google'
-
-// 导出认证相关类型
-export {
-    LoginSchema,
-    RegisterSchema,
-    type LoginDto,
-    type RegisterDto
-} from './auth'
-
-// 导出媒体账户搜索相关类型
-export {
-    MediaAccountsearchFormSchema,
-    type MediaAccountsearch
-} from './account/search'
+// 从 workorder.ts 导出工单相关类型
+export { WorkOrderQuerySchema, type WorkOrderQuery } from './workorder'
 
 // 此文件现在只用于集中导出，不再直接定义类型

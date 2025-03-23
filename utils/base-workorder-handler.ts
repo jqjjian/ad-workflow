@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { db } from '@/lib/db'
 import { ApiResponse } from '@/types/api'
 import { ApiResponseBuilder } from '@/utils/api-response'
 import {
@@ -37,7 +37,7 @@ export abstract class BaseWorkOrderHandler {
             const validatedInput = await this.validateInput(input)
 
             // 执行事务
-            const result = await prisma.$transaction(async (tx) => {
+            const result = await db.$transaction(async (tx) => {
                 // 调用第三方API
                 const thirdPartyResponse =
                     await this.callThirdPartyApi(validatedInput)

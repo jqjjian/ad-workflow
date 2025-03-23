@@ -5611,3 +5611,1281 @@ error: 2025-03-23 16:03:32: 	undefined
 error: 2025-03-23 16:03:32: 	undefined
 error: 2025-03-23 16:03:32: 	undefined
 error: 2025-03-23 16:03:32: 	undefined
+info: 2025-03-23 23:27:27: 		开始查询媒体账户: {"status":2,"pageNumber":1,"pageSize":10}
+info: 2025-03-23 23:27:27: 		开始查询媒体账户: {"status":2,"pageNumber":1,"pageSize":10}
+info: 2025-03-23 23:27:27: 		当前用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:27:27: 		当前用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:27:27: 		用户的工单数量: 11
+info: 2025-03-23 23:27:27: 		接收查询参数: {
+  "taskIds": "AAT-20250323-CC653D021B,AAG-20250322-FD033D600F,AAG-20250322-4E842C054E,33599966074152,33599101687336,AAG-20250322-3FDA952D4D,33599916125224,AAF-20250323-E3B5388D3F,33593921974824,AAG-20250322-8567F80844,33599930925480",
+  "includeFailedRecords": true
+}
+info: 2025-03-23 23:27:27: 		用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:27:27: 		用户的工单数量: 11
+info: 2025-03-23 23:27:27: 		接收查询参数: {
+  "taskIds": "AAT-20250323-CC653D021B,AAG-20250322-FD033D600F,AAG-20250322-4E842C054E,33599966074152,33599101687336,AAG-20250322-3FDA952D4D,33599916125224,AAF-20250323-E3B5388D3F,33593921974824,AAG-20250322-8567F80844,33599930925480",
+  "includeFailedRecords": true
+}
+info: 2025-03-23 23:27:27: 		用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:27:27: 		本地工单taskIds: ["AAF-20250323-E3B5388D3F","AAT-20250323-CC653D021B","33599966074152","33599930925480","33599916125224","AAG-20250322-3FDA952D4D","33599101687336","33593921974824","AAG-20250322-8567F80844","AAG-20250322-4E842C054E"]
+info: 2025-03-23 23:27:27: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-03-23 23:27:27: 		请求参数: {
+  "taskIds": [
+    "AAF-20250323-E3B5388D3F",
+    "AAT-20250323-CC653D021B",
+    "33599966074152",
+    "33599930925480",
+    "33599916125224",
+    "AAG-20250322-3FDA952D4D",
+    "33599101687336",
+    "33593921974824",
+    "AAG-20250322-8567F80844",
+    "AAG-20250322-4E842C054E"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-03-23 23:27:27: 		本地工单taskIds: ["AAF-20250323-E3B5388D3F","AAT-20250323-CC653D021B","33599966074152","33599930925480","33599916125224","AAG-20250322-3FDA952D4D","33599101687336","33593921974824","AAG-20250322-8567F80844","AAG-20250322-4E842C054E"]
+info: 2025-03-23 23:27:27: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-03-23 23:27:27: 		请求参数: {
+  "taskIds": [
+    "AAF-20250323-E3B5388D3F",
+    "AAT-20250323-CC653D021B",
+    "33599966074152",
+    "33599930925480",
+    "33599916125224",
+    "AAG-20250322-3FDA952D4D",
+    "33599101687336",
+    "33593921974824",
+    "AAG-20250322-8567F80844",
+    "AAG-20250322-4E842C054E"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-03-23 23:27:28: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 5,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250322-45C973009F",
+        "taskId": "33599966074152",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742666200,
+        "company": null,
+        "updatedTimestamp": 1742666200,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.brand.com/landing"
+            ],
+            "name": "广告服务",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-9C6A8BD726",
+        "taskId": "33599930925480",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665926,
+        "company": null,
+        "updatedTimestamp": 1742665926,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/product"
+            ],
+            "name": "销售中心",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "contact@business.org",
+                "role": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-EDE3317339",
+        "taskId": "33599916125224",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665810,
+        "company": null,
+        "updatedTimestamp": 1742665810,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/about"
+            ],
+            "name": "广告平台",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "media@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-75F7A95BF3",
+        "taskId": "33599101687336",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742659447,
+        "company": null,
+        "updatedTimestamp": 1742659447,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com"
+            ],
+            "name": "测试账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "test@example.com",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-E28C511A3F",
+        "taskId": "33593921974824",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742618981,
+        "company": null,
+        "updatedTimestamp": 1742618981,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 2,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com/promo-7910"
+            ],
+            "name": "测试账户-7910",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": null
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-03-23 23:27:28: 		第三方API响应状态码: 0
+info: 2025-03-23 23:27:28: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":5,"mediaAccountApplications":[{"taskNumber":"AAG-20250322-45C973009F","taskId":"33599966074152","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742666200,"company":null,"updatedTimestamp":1742666200,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.brand.com/landing"],"name":"广告服务","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-9C6A8BD726","taskId":"33599930925480","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665926,"company":null,"updatedTimestamp":1742665926,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/product"],"name":"销售中心","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"contact@business.org","role":2}]}]},{"taskNumber":"AAG-20250322-EDE3317339","taskId":"33599916125224","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665810,"company":null,"updatedTimestamp":1742665810,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/about"],"name":"广告平台","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"media@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-75F7A95BF3","taskId":"33599101687336","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742659447,"company":null,"updatedTimestamp":1742659447,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com"],"name":"测试账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"test@example.com","role":1}]}]},{"taskNumber":"AAG-20250322-E28C511A3F","taskId":"33593921974824","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742618981,"company":null,"updatedTimestamp":1742618981,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":2,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com/promo-7910"],"name":"测试账户-7910","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":null}]}],"pages":1,"pageNumber":1}}
+info: 2025-03-23 23:27:28: 		从标准路径获取到应用数据，数量: 5
+info: 2025-03-23 23:27:28: 		已通过审核的申请数量: 0
+info: 2025-03-23 23:27:28: 		将查询的账户ID: []
+info: 2025-03-23 23:27:28: 		用户账户名称列表: []
+info: 2025-03-23 23:27:28: 		用户公司名称列表: ["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007","未来互联网有限公司"]
+info: 2025-03-23 23:27:28: 		第三方API请求参数: {"pageNumber":1,"pageSize":10,"companyNames":["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007"],"statuses":[2]}
+info: 2025-03-23 23:27:29: 		第三方API响应: {"data":{"mediaAccounts":[],"pageSize":10,"total":0,"pages":0,"pageNumber":1},"code":"0","message":null}
+info: 2025-03-23 23:27:29: 		未找到媒体账户数据
+info: 2025-03-23 23:27:29: 		开始查询媒体账户: {"status":2,"pageNumber":1,"pageSize":10}
+info: 2025-03-23 23:27:29: 		当前用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:27:29: 		用户的工单数量: 11
+info: 2025-03-23 23:27:29: 		接收查询参数: {
+  "taskIds": "AAT-20250323-CC653D021B,AAG-20250322-FD033D600F,AAG-20250322-4E842C054E,33599966074152,33599101687336,AAG-20250322-3FDA952D4D,33599916125224,AAF-20250323-E3B5388D3F,33593921974824,AAG-20250322-8567F80844,33599930925480",
+  "includeFailedRecords": true
+}
+info: 2025-03-23 23:27:29: 		用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:27:29: 		本地工单taskIds: ["AAF-20250323-E3B5388D3F","AAT-20250323-CC653D021B","33599966074152","33599930925480","33599916125224","AAG-20250322-3FDA952D4D","33599101687336","33593921974824","AAG-20250322-8567F80844","AAG-20250322-4E842C054E"]
+info: 2025-03-23 23:27:29: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-03-23 23:27:29: 		请求参数: {
+  "taskIds": [
+    "AAF-20250323-E3B5388D3F",
+    "AAT-20250323-CC653D021B",
+    "33599966074152",
+    "33599930925480",
+    "33599916125224",
+    "AAG-20250322-3FDA952D4D",
+    "33599101687336",
+    "33593921974824",
+    "AAG-20250322-8567F80844",
+    "AAG-20250322-4E842C054E"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-03-23 23:27:29: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 5,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250322-45C973009F",
+        "taskId": "33599966074152",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742666200,
+        "company": null,
+        "updatedTimestamp": 1742666200,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.brand.com/landing"
+            ],
+            "name": "广告服务",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-9C6A8BD726",
+        "taskId": "33599930925480",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665926,
+        "company": null,
+        "updatedTimestamp": 1742665926,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/product"
+            ],
+            "name": "销售中心",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "contact@business.org",
+                "role": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-EDE3317339",
+        "taskId": "33599916125224",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665810,
+        "company": null,
+        "updatedTimestamp": 1742665810,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/about"
+            ],
+            "name": "广告平台",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "media@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-75F7A95BF3",
+        "taskId": "33599101687336",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742659447,
+        "company": null,
+        "updatedTimestamp": 1742659447,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com"
+            ],
+            "name": "测试账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "test@example.com",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-E28C511A3F",
+        "taskId": "33593921974824",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742618981,
+        "company": null,
+        "updatedTimestamp": 1742618981,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 2,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com/promo-7910"
+            ],
+            "name": "测试账户-7910",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": null
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-03-23 23:27:29: 		第三方API响应状态码: 0
+info: 2025-03-23 23:27:29: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":5,"mediaAccountApplications":[{"taskNumber":"AAG-20250322-45C973009F","taskId":"33599966074152","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742666200,"company":null,"updatedTimestamp":1742666200,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.brand.com/landing"],"name":"广告服务","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-9C6A8BD726","taskId":"33599930925480","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665926,"company":null,"updatedTimestamp":1742665926,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/product"],"name":"销售中心","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"contact@business.org","role":2}]}]},{"taskNumber":"AAG-20250322-EDE3317339","taskId":"33599916125224","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665810,"company":null,"updatedTimestamp":1742665810,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/about"],"name":"广告平台","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"media@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-75F7A95BF3","taskId":"33599101687336","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742659447,"company":null,"updatedTimestamp":1742659447,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com"],"name":"测试账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"test@example.com","role":1}]}]},{"taskNumber":"AAG-20250322-E28C511A3F","taskId":"33593921974824","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742618981,"company":null,"updatedTimestamp":1742618981,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":2,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com/promo-7910"],"name":"测试账户-7910","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":null}]}],"pages":1,"pageNumber":1}}
+info: 2025-03-23 23:27:29: 		从标准路径获取到应用数据，数量: 5
+info: 2025-03-23 23:27:29: 		已通过审核的申请数量: 0
+info: 2025-03-23 23:27:29: 		将查询的账户ID: []
+info: 2025-03-23 23:27:29: 		用户账户名称列表: []
+info: 2025-03-23 23:27:29: 		用户公司名称列表: ["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007","未来互联网有限公司"]
+info: 2025-03-23 23:27:29: 		第三方API请求参数: {"pageNumber":1,"pageSize":10,"companyNames":["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007"],"statuses":[2]}
+info: 2025-03-23 23:27:29: 		第三方API响应: {"data":{"mediaAccounts":[],"pageSize":10,"total":0,"pages":0,"pageNumber":1},"code":"0","message":null}
+info: 2025-03-23 23:27:29: 		未找到媒体账户数据
+info: 2025-03-23 23:27:29: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 5,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250322-45C973009F",
+        "taskId": "33599966074152",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742666200,
+        "company": null,
+        "updatedTimestamp": 1742666200,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.brand.com/landing"
+            ],
+            "name": "广告服务",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-9C6A8BD726",
+        "taskId": "33599930925480",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665926,
+        "company": null,
+        "updatedTimestamp": 1742665926,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/product"
+            ],
+            "name": "销售中心",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "contact@business.org",
+                "role": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-EDE3317339",
+        "taskId": "33599916125224",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665810,
+        "company": null,
+        "updatedTimestamp": 1742665810,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/about"
+            ],
+            "name": "广告平台",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "media@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-75F7A95BF3",
+        "taskId": "33599101687336",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742659447,
+        "company": null,
+        "updatedTimestamp": 1742659447,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com"
+            ],
+            "name": "测试账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "test@example.com",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-E28C511A3F",
+        "taskId": "33593921974824",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742618981,
+        "company": null,
+        "updatedTimestamp": 1742618981,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 2,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com/promo-7910"
+            ],
+            "name": "测试账户-7910",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": null
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-03-23 23:27:29: 		第三方API响应状态码: 0
+info: 2025-03-23 23:27:29: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":5,"mediaAccountApplications":[{"taskNumber":"AAG-20250322-45C973009F","taskId":"33599966074152","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742666200,"company":null,"updatedTimestamp":1742666200,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.brand.com/landing"],"name":"广告服务","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-9C6A8BD726","taskId":"33599930925480","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665926,"company":null,"updatedTimestamp":1742665926,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/product"],"name":"销售中心","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"contact@business.org","role":2}]}]},{"taskNumber":"AAG-20250322-EDE3317339","taskId":"33599916125224","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665810,"company":null,"updatedTimestamp":1742665810,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/about"],"name":"广告平台","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"media@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-75F7A95BF3","taskId":"33599101687336","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742659447,"company":null,"updatedTimestamp":1742659447,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com"],"name":"测试账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"test@example.com","role":1}]}]},{"taskNumber":"AAG-20250322-E28C511A3F","taskId":"33593921974824","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742618981,"company":null,"updatedTimestamp":1742618981,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":2,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com/promo-7910"],"name":"测试账户-7910","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":null}]}],"pages":1,"pageNumber":1}}
+info: 2025-03-23 23:27:29: 		从标准路径获取到应用数据，数量: 5
+info: 2025-03-23 23:27:29: 		已通过审核的申请数量: 0
+info: 2025-03-23 23:27:29: 		将查询的账户ID: []
+info: 2025-03-23 23:27:29: 		用户账户名称列表: []
+info: 2025-03-23 23:27:29: 		用户公司名称列表: ["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007","未来互联网有限公司"]
+info: 2025-03-23 23:27:29: 		第三方API请求参数: {"pageNumber":1,"pageSize":10,"companyNames":["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007"],"statuses":[2]}
+info: 2025-03-23 23:27:30: 		第三方API响应: {"data":{"mediaAccounts":[],"pageSize":10,"total":0,"pages":0,"pageNumber":1},"code":"0","message":null}
+info: 2025-03-23 23:27:30: 		未找到媒体账户数据
+info: 2025-03-23 23:27:30: 		开始查询媒体账户: {"status":2,"pageNumber":1,"pageSize":10}
+info: 2025-03-23 23:27:30: 		当前用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:27:30: 		用户的工单数量: 11
+info: 2025-03-23 23:27:30: 		接收查询参数: {
+  "taskIds": "AAT-20250323-CC653D021B,AAG-20250322-FD033D600F,AAG-20250322-4E842C054E,33599966074152,33599101687336,AAG-20250322-3FDA952D4D,33599916125224,AAF-20250323-E3B5388D3F,33593921974824,AAG-20250322-8567F80844,33599930925480",
+  "includeFailedRecords": true
+}
+info: 2025-03-23 23:27:30: 		用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:27:30: 		本地工单taskIds: ["AAF-20250323-E3B5388D3F","AAT-20250323-CC653D021B","33599966074152","33599930925480","33599916125224","AAG-20250322-3FDA952D4D","33599101687336","33593921974824","AAG-20250322-8567F80844","AAG-20250322-4E842C054E"]
+info: 2025-03-23 23:27:30: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-03-23 23:27:30: 		请求参数: {
+  "taskIds": [
+    "AAF-20250323-E3B5388D3F",
+    "AAT-20250323-CC653D021B",
+    "33599966074152",
+    "33599930925480",
+    "33599916125224",
+    "AAG-20250322-3FDA952D4D",
+    "33599101687336",
+    "33593921974824",
+    "AAG-20250322-8567F80844",
+    "AAG-20250322-4E842C054E"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-03-23 23:27:31: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 5,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250322-45C973009F",
+        "taskId": "33599966074152",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742666200,
+        "company": null,
+        "updatedTimestamp": 1742666200,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.brand.com/landing"
+            ],
+            "name": "广告服务",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-9C6A8BD726",
+        "taskId": "33599930925480",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665926,
+        "company": null,
+        "updatedTimestamp": 1742665926,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/product"
+            ],
+            "name": "销售中心",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "contact@business.org",
+                "role": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-EDE3317339",
+        "taskId": "33599916125224",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665810,
+        "company": null,
+        "updatedTimestamp": 1742665810,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/about"
+            ],
+            "name": "广告平台",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "media@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-75F7A95BF3",
+        "taskId": "33599101687336",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742659447,
+        "company": null,
+        "updatedTimestamp": 1742659447,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com"
+            ],
+            "name": "测试账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "test@example.com",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-E28C511A3F",
+        "taskId": "33593921974824",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742618981,
+        "company": null,
+        "updatedTimestamp": 1742618981,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 2,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com/promo-7910"
+            ],
+            "name": "测试账户-7910",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": null
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-03-23 23:27:31: 		第三方API响应状态码: 0
+info: 2025-03-23 23:27:31: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":5,"mediaAccountApplications":[{"taskNumber":"AAG-20250322-45C973009F","taskId":"33599966074152","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742666200,"company":null,"updatedTimestamp":1742666200,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.brand.com/landing"],"name":"广告服务","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-9C6A8BD726","taskId":"33599930925480","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665926,"company":null,"updatedTimestamp":1742665926,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/product"],"name":"销售中心","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"contact@business.org","role":2}]}]},{"taskNumber":"AAG-20250322-EDE3317339","taskId":"33599916125224","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665810,"company":null,"updatedTimestamp":1742665810,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/about"],"name":"广告平台","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"media@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-75F7A95BF3","taskId":"33599101687336","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742659447,"company":null,"updatedTimestamp":1742659447,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com"],"name":"测试账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"test@example.com","role":1}]}]},{"taskNumber":"AAG-20250322-E28C511A3F","taskId":"33593921974824","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742618981,"company":null,"updatedTimestamp":1742618981,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":2,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com/promo-7910"],"name":"测试账户-7910","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":null}]}],"pages":1,"pageNumber":1}}
+info: 2025-03-23 23:27:31: 		从标准路径获取到应用数据，数量: 5
+info: 2025-03-23 23:27:31: 		已通过审核的申请数量: 0
+info: 2025-03-23 23:27:31: 		将查询的账户ID: []
+info: 2025-03-23 23:27:31: 		用户账户名称列表: []
+info: 2025-03-23 23:27:31: 		用户公司名称列表: ["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007","未来互联网有限公司"]
+info: 2025-03-23 23:27:31: 		第三方API请求参数: {"pageNumber":1,"pageSize":10,"companyNames":["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007"],"statuses":[2]}
+info: 2025-03-23 23:27:32: 		第三方API响应: {"data":{"mediaAccounts":[],"pageSize":10,"total":0,"pages":0,"pageNumber":1},"code":"0","message":null}
+info: 2025-03-23 23:27:32: 		未找到媒体账户数据
+info: 2025-03-23 23:30:52: 		开始查询媒体账户: {"status":2,"pageNumber":1,"pageSize":10}
+info: 2025-03-23 23:30:52: 		当前用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:30:52: 		用户的工单数量: 11
+info: 2025-03-23 23:30:52: 		接收查询参数: {
+  "taskIds": "AAT-20250323-CC653D021B,AAG-20250322-FD033D600F,AAG-20250322-4E842C054E,33599966074152,33599101687336,AAG-20250322-3FDA952D4D,33599916125224,AAF-20250323-E3B5388D3F,33593921974824,AAG-20250322-8567F80844,33599930925480",
+  "includeFailedRecords": true
+}
+info: 2025-03-23 23:30:52: 		用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:30:52: 		本地工单taskIds: ["AAF-20250323-E3B5388D3F","AAT-20250323-CC653D021B","33599966074152","33599930925480","33599916125224","AAG-20250322-3FDA952D4D","33599101687336","33593921974824","AAG-20250322-8567F80844","AAG-20250322-4E842C054E"]
+info: 2025-03-23 23:30:52: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-03-23 23:30:52: 		请求参数: {
+  "taskIds": [
+    "AAF-20250323-E3B5388D3F",
+    "AAT-20250323-CC653D021B",
+    "33599966074152",
+    "33599930925480",
+    "33599916125224",
+    "AAG-20250322-3FDA952D4D",
+    "33599101687336",
+    "33593921974824",
+    "AAG-20250322-8567F80844",
+    "AAG-20250322-4E842C054E"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-03-23 23:30:54: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 5,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250322-45C973009F",
+        "taskId": "33599966074152",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742666200,
+        "company": null,
+        "updatedTimestamp": 1742666200,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.brand.com/landing"
+            ],
+            "name": "广告服务",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-9C6A8BD726",
+        "taskId": "33599930925480",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665926,
+        "company": null,
+        "updatedTimestamp": 1742665926,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/product"
+            ],
+            "name": "销售中心",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "contact@business.org",
+                "role": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-EDE3317339",
+        "taskId": "33599916125224",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665810,
+        "company": null,
+        "updatedTimestamp": 1742665810,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/about"
+            ],
+            "name": "广告平台",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "media@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-75F7A95BF3",
+        "taskId": "33599101687336",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742659447,
+        "company": null,
+        "updatedTimestamp": 1742659447,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com"
+            ],
+            "name": "测试账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "test@example.com",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-E28C511A3F",
+        "taskId": "33593921974824",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742618981,
+        "company": null,
+        "updatedTimestamp": 1742618981,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 2,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com/promo-7910"
+            ],
+            "name": "测试账户-7910",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": null
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-03-23 23:30:54: 		第三方API响应状态码: 0
+info: 2025-03-23 23:30:54: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":5,"mediaAccountApplications":[{"taskNumber":"AAG-20250322-45C973009F","taskId":"33599966074152","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742666200,"company":null,"updatedTimestamp":1742666200,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.brand.com/landing"],"name":"广告服务","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-9C6A8BD726","taskId":"33599930925480","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665926,"company":null,"updatedTimestamp":1742665926,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/product"],"name":"销售中心","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"contact@business.org","role":2}]}]},{"taskNumber":"AAG-20250322-EDE3317339","taskId":"33599916125224","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665810,"company":null,"updatedTimestamp":1742665810,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/about"],"name":"广告平台","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"media@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-75F7A95BF3","taskId":"33599101687336","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742659447,"company":null,"updatedTimestamp":1742659447,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com"],"name":"测试账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"test@example.com","role":1}]}]},{"taskNumber":"AAG-20250322-E28C511A3F","taskId":"33593921974824","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742618981,"company":null,"updatedTimestamp":1742618981,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":2,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com/promo-7910"],"name":"测试账户-7910","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":null}]}],"pages":1,"pageNumber":1}}
+info: 2025-03-23 23:30:54: 		从标准路径获取到应用数据，数量: 5
+info: 2025-03-23 23:30:54: 		已通过审核的申请数量: 0
+info: 2025-03-23 23:30:54: 		将查询的账户ID: []
+info: 2025-03-23 23:30:54: 		用户账户名称列表: []
+info: 2025-03-23 23:30:54: 		用户公司名称列表: ["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007","未来互联网有限公司"]
+info: 2025-03-23 23:30:54: 		第三方API请求参数: {"pageNumber":1,"pageSize":10,"companyNames":["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007"],"statuses":[2]}
+info: 2025-03-23 23:30:54: 		第三方API响应: {"data":{"mediaAccounts":[],"pageSize":10,"total":0,"pages":0,"pageNumber":1},"code":"0","message":null}
+info: 2025-03-23 23:30:54: 		未找到媒体账户数据
+info: 2025-03-23 23:30:54: 		开始查询媒体账户: {"status":2,"pageNumber":1,"pageSize":10}
+info: 2025-03-23 23:30:54: 		当前用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:30:54: 		用户的工单数量: 11
+info: 2025-03-23 23:30:54: 		接收查询参数: {
+  "taskIds": "AAT-20250323-CC653D021B,AAG-20250322-FD033D600F,AAG-20250322-4E842C054E,33599966074152,33599101687336,AAG-20250322-3FDA952D4D,33599916125224,AAF-20250323-E3B5388D3F,33593921974824,AAG-20250322-8567F80844,33599930925480",
+  "includeFailedRecords": true
+}
+info: 2025-03-23 23:30:54: 		用户ID: a8b5ab9d-8a39-4801-ad8c-a90d4e349e26
+info: 2025-03-23 23:30:54: 		本地工单taskIds: ["AAF-20250323-E3B5388D3F","AAT-20250323-CC653D021B","33599966074152","33599930925480","33599916125224","AAG-20250322-3FDA952D4D","33599101687336","33593921974824","AAG-20250322-8567F80844","AAG-20250322-4E842C054E"]
+info: 2025-03-23 23:30:54: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-03-23 23:30:54: 		请求参数: {
+  "taskIds": [
+    "AAF-20250323-E3B5388D3F",
+    "AAT-20250323-CC653D021B",
+    "33599966074152",
+    "33599930925480",
+    "33599916125224",
+    "AAG-20250322-3FDA952D4D",
+    "33599101687336",
+    "33593921974824",
+    "AAG-20250322-8567F80844",
+    "AAG-20250322-4E842C054E"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-03-23 23:30:55: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 5,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250322-45C973009F",
+        "taskId": "33599966074152",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742666200,
+        "company": null,
+        "updatedTimestamp": 1742666200,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.brand.com/landing"
+            ],
+            "name": "广告服务",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-9C6A8BD726",
+        "taskId": "33599930925480",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665926,
+        "company": null,
+        "updatedTimestamp": 1742665926,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/product"
+            ],
+            "name": "销售中心",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "contact@business.org",
+                "role": 2
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-EDE3317339",
+        "taskId": "33599916125224",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742665810,
+        "company": null,
+        "updatedTimestamp": 1742665810,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/about"
+            ],
+            "name": "广告平台",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "media@example.com",
+                "role": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-75F7A95BF3",
+        "taskId": "33599101687336",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742659447,
+        "company": null,
+        "updatedTimestamp": 1742659447,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 0,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com"
+            ],
+            "name": "测试账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "test@example.com",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "taskNumber": "AAG-20250322-E28C511A3F",
+        "taskId": "33593921974824",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1742618981,
+        "company": null,
+        "updatedTimestamp": 1742618981,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 2,
+            "timezone": "Asia/Shanghai",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://example.com/promo-7910"
+            ],
+            "name": "测试账户-7910",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": null
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-03-23 23:30:55: 		第三方API响应状态码: 0
+info: 2025-03-23 23:30:55: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":5,"mediaAccountApplications":[{"taskNumber":"AAG-20250322-45C973009F","taskId":"33599966074152","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742666200,"company":null,"updatedTimestamp":1742666200,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.brand.com/landing"],"name":"广告服务","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-9C6A8BD726","taskId":"33599930925480","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665926,"company":null,"updatedTimestamp":1742665926,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/product"],"name":"销售中心","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"contact@business.org","role":2}]}]},{"taskNumber":"AAG-20250322-EDE3317339","taskId":"33599916125224","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742665810,"company":null,"updatedTimestamp":1742665810,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/about"],"name":"广告平台","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"media@example.com","role":3}]}]},{"taskNumber":"AAG-20250322-75F7A95BF3","taskId":"33599101687336","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742659447,"company":null,"updatedTimestamp":1742659447,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":0,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com"],"name":"测试账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"test@example.com","role":1}]}]},{"taskNumber":"AAG-20250322-E28C511A3F","taskId":"33593921974824","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1742618981,"company":null,"updatedTimestamp":1742618981,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":2,"timezone":"Asia/Shanghai","currencyCode":"USD","promotionLinks":["https://example.com/promo-7910"],"name":"测试账户-7910","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":null}]}],"pages":1,"pageNumber":1}}
+info: 2025-03-23 23:30:55: 		从标准路径获取到应用数据，数量: 5
+info: 2025-03-23 23:30:55: 		已通过审核的申请数量: 0
+info: 2025-03-23 23:30:55: 		将查询的账户ID: []
+info: 2025-03-23 23:30:55: 		用户账户名称列表: []
+info: 2025-03-23 23:30:55: 		用户公司名称列表: ["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007","未来互联网有限公司"]
+info: 2025-03-23 23:30:55: 		第三方API请求参数: {"pageNumber":1,"pageSize":10,"companyNames":["科技信息有限公司","测试公司中文名称-5241","测试公司中文名称-6574","智能科学有限公司","测试公司有限公司","云互联网有限公司","科技数据有限公司","光年数据有限公司","测试公司中文名称-7910","测试公司中文名称-9007"],"statuses":[2]}
+info: 2025-03-23 23:30:55: 		第三方API响应: {"data":{"mediaAccounts":[],"pageSize":10,"total":0,"pages":0,"pageNumber":1},"code":"0","message":null}
+info: 2025-03-23 23:30:55: 		未找到媒体账户数据
