@@ -101,13 +101,13 @@ async function createLocalTask({
 
     return await db.$transaction(async (tx) => {
         // 检查用户是否存在
-        const user = await tx.user.findUnique({ where: { id: userId } })
+        const user = await tx.tecdo_users.findUnique({ where: { id: userId } })
         if (!user) {
             throw new Error('用户不存在')
         }
 
         // 创建任务记录，使用 taskNumber 作为初始 taskId
-        const task = await tx.thirdPartyTask.create({
+        const task = await tx.tecdo_third_party_tasks.create({
             data: {
                 taskNumber,
                 taskId: taskNumber, // 使用 taskNumber 作为初始 taskId
@@ -133,7 +133,7 @@ async function createLocalTask({
         )
 
         // 关联第一个推广链接
-        return await tx.thirdPartyTask.update({
+        return await tx.tecdo_third_party_tasks.update({
             where: { id: task.id },
             data: {
                 promotionLinkId: createdLinks[0]?.id
@@ -184,7 +184,7 @@ function handleApiError(
     errorMessage: string
 ) {
     const failureReason = error instanceof Error ? error.message : '未知错误'
-    return db.thirdPartyTask.update({
+    return db.tecdo_third_party_tasks.update({
         where: { id: task.id },
         data: {
             status: 'FAILED',
@@ -252,7 +252,7 @@ export async function googleApply(
                     !response.data?.taskId
                 ) {
                     // 3a. 如果第三方接口调用失败，将状态更新为FAILED
-                    await db.thirdPartyTask.update({
+                    await db.tecdo_third_party_tasks.update({
                         where: { id: localTask.id },
                         data: {
                             status: 'FAILED',
@@ -269,7 +269,7 @@ export async function googleApply(
                 }
 
                 // 3b. 如果成功，更新状态为SUCCESS
-                const updatedTask = await db.thirdPartyTask.update({
+                const updatedTask = await db.tecdo_third_party_tasks.update({
                     where: { id: localTask.id },
                     data: {
                         taskId: String(response.data.taskId),
@@ -293,7 +293,7 @@ export async function googleApply(
                 }
             } catch (apiError) {
                 // 3c. 如果发生异常，更新状态为FAILED
-                await db.thirdPartyTask.update({
+                await db.tecdo_third_party_tasks.update({
                     where: { id: localTask.id },
                     data: {
                         status: 'FAILED',
@@ -341,7 +341,7 @@ export async function updateGoogleApply(
             | null = null
 
         try {
-            existingTask = await db.thirdPartyTask.findFirst({
+            existingTask = await db.tecdo_third_party_tasks.findFirst({
                 where: { taskId: originalTaskId, userId },
                 include: { promotionLink: true }
             })
@@ -382,7 +382,7 @@ export async function updateGoogleApply(
             ])) as ApiResponse<{ taskId: string }>
             console.log('response', response)
             if (response.code !== '0') {
-                await db.thirdPartyTask.update({
+                await db.tecdo_third_party_tasks.update({
                     where: { id: existingTask.id },
                     data: {
                         status: 'FAILED',
@@ -414,7 +414,7 @@ export async function updateGoogleApply(
                         })
                     }
 
-                    await tx.thirdPartyTask.update({
+                    await tx.tecdo_third_party_tasks.update({
                         where: { id: currentTaskId },
                         data: {
                             rawData: JSON.stringify(data),
@@ -426,7 +426,7 @@ export async function updateGoogleApply(
                     })
                 } catch (txError) {
                     // 记录事务失败
-                    await tx.thirdPartyTask.update({
+                    await tx.tecdo_third_party_tasks.update({
                         where: { id: currentTaskId },
                         data: {
                             status: 'FAILED',
@@ -445,7 +445,7 @@ export async function updateGoogleApply(
             }
         } catch (error) {
             if (existingTask) {
-                await db.thirdPartyTask.update({
+                await db.tecdo_third_party_tasks.update({
                     where: { id: existingTask.id },
                     data: {
                         status: 'FAILED',
@@ -516,7 +516,7 @@ export async function tiktokApply(
 
                 if (response.code !== '0' || !response?.data?.taskId) {
                     // 更新本地任务状态为失败
-                    await db.thirdPartyTask.update({
+                    await db.tecdo_third_party_tasks.update({
                         where: { id: localTask.id },
                         data: {
                             status: 'FAILED',
@@ -533,7 +533,7 @@ export async function tiktokApply(
                 }
 
                 // 更新本地任务的 taskId 和状态
-                const updatedTask = await db.thirdPartyTask.update({
+                const updatedTask = await db.tecdo_third_party_tasks.update({
                     where: { id: localTask.id },
                     data: {
                         taskId: String(response.data.taskId),
@@ -556,7 +556,7 @@ export async function tiktokApply(
                 }
             } catch (apiError) {
                 // 如果API调用失败，更新任务状态
-                await db.thirdPartyTask.update({
+                await db.tecdo_third_party_tasks.update({
                     where: { id: localTask.id },
                     data: {
                         status: 'FAILED',
@@ -607,7 +607,7 @@ export async function updateTiktokApply(
             | null = null
 
         try {
-            existingTask = await db.thirdPartyTask.findFirst({
+            existingTask = await db.tecdo_third_party_tasks.findFirst({
                 where: { taskId: originalTaskId, userId },
                 include: { promotionLink: true }
             })
@@ -641,7 +641,7 @@ export async function updateTiktokApply(
             ])) as ApiResponse<{ taskId: string }>
 
             if (response.code !== '0') {
-                await db.thirdPartyTask.update({
+                await db.tecdo_third_party_tasks.update({
                     where: { id: existingTask.id },
                     data: {
                         status: 'FAILED',
@@ -669,7 +669,7 @@ export async function updateTiktokApply(
                         })
                     }
 
-                    await tx.thirdPartyTask.update({
+                    await tx.tecdo_third_party_tasks.update({
                         where: { id: currentTaskId },
                         data: {
                             rawData: JSON.stringify(data),
@@ -681,7 +681,7 @@ export async function updateTiktokApply(
                     })
                 } catch (txError) {
                     // 记录事务失败
-                    await tx.thirdPartyTask.update({
+                    await tx.tecdo_third_party_tasks.update({
                         where: { id: currentTaskId },
                         data: {
                             status: 'FAILED',
@@ -703,7 +703,7 @@ export async function updateTiktokApply(
             }
         } catch (error) {
             if (existingTask) {
-                await db.thirdPartyTask.update({
+                await db.tecdo_third_party_tasks.update({
                     where: { id: existingTask.id },
                     data: {
                         status: 'FAILED',
@@ -817,7 +817,7 @@ export async function cleanupStaleInitTasks(
             const staleTimeout = 1 * 60 * 60 * 1000 // 1小时，可根据需求调整
 
             try {
-                const staleTasks = await db.thirdPartyTask.findMany({
+                const staleTasks = await db.tecdo_third_party_tasks.findMany({
                     where: {
                         status: 'INIT',
                         createdAt: {
@@ -837,7 +837,7 @@ export async function cleanupStaleInitTasks(
                         }
 
                         // 将任务状态更新为CANCELLED
-                        await tx.thirdPartyTask.update({
+                        await tx.tecdo_third_party_tasks.update({
                             where: { id: task.id },
                             data: {
                                 status: 'CANCELLED',

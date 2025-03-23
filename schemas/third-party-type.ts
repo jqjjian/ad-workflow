@@ -1,11 +1,20 @@
 import * as z from 'zod'
 
+// 基础API响应泛型
 export type ApiResponse<T = unknown> = {
     code: string
     success: boolean
     message?: string
     data?: T | null
 }
+
+// 基础API请求泛型
+export interface ApiRequest<T = unknown> {
+    url: string
+    body: T
+    headers?: Record<string, string>
+}
+
 // 基础分页响应格式
 const BasePaginationSchema = z.object({
     total: z.number().int(),
@@ -24,117 +33,172 @@ export const createPaginationResponseSchema = <T extends z.ZodTypeAny>(
     })
 }
 
-// 第三方API的基础响应格式
-export const ThirdPartyResponseSchema = z.object({
+// 通用第三方API请求体基础结构
+export const ThirdPartyBaseRequestSchema = z.object({
+    taskNumber: z.string()
+})
+
+// 通用第三方API响应基础结构
+export const ThirdPartyBaseResponseSchema = z.object({
     code: z.string(),
     message: z.string().optional(),
-    data: z.unknown()
+    data: z.unknown().optional()
 })
 
-// 第三方API的查询参数
-export const ThirdPartyQuerySchema = z.object({
-    taskId: z.string().optional(),
-    startDate: z.string().optional(),
-    endDate: z.string().optional(),
-    status: z.number().optional(),
-    page: z.number().optional(),
-    pageSize: z.number().optional()
-})
-
-// 第三方API的业务数据结构
-export const ThirdPartyBusinessDataSchema = z.object({
-    taskId: z.string(),
-    status: z.number(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
-    businessData: z.object({
-        accountId: z.string(),
-        accountName: z.string(),
-        amount: z.number().optional(),
-        currency: z.string().optional()
+// 创建特定业务的请求Schema生成器
+export function createBusinessRequestSchema<T extends z.ZodTypeAny>(
+    businessDataSchema: T,
+    businessField: string = 'businessData'
+) {
+    return ThirdPartyBaseRequestSchema.extend({
+        [businessField]: businessDataSchema
     })
-})
+}
 
-// 导出类型
-export type ThirdPartyResponse = z.infer<typeof ThirdPartyResponseSchema>
-export type ThirdPartyQuery = z.infer<typeof ThirdPartyQuerySchema>
-export type ThirdPartyBusinessData = z.infer<
-    typeof ThirdPartyBusinessDataSchema
+// 创建特定业务的响应Schema生成器
+export function createBusinessResponseSchema<T extends z.ZodTypeAny>(
+    businessDataSchema: T
+) {
+    return ThirdPartyBaseResponseSchema.extend({
+        data: businessDataSchema.optional().nullable()
+    })
+}
+
+// 导出现有类型
+export type ThirdPartyBaseRequest = z.infer<typeof ThirdPartyBaseRequestSchema>
+export type ThirdPartyBaseResponse = z.infer<
+    typeof ThirdPartyBaseResponseSchema
 >
 
-const mediaPlatform = z.number().int().optional()
-const mediaAccountId = z.string().optional()
-const mediaAccountName = z.string().optional()
-const companyName = z.string().optional()
-const status = z.number().int().optional()
-const pageNumber = z.number().int().optional()
-const pageSize = z.number().int().optional()
-// const MediaAccounts = z.array(
-//     z.object({
-//         mediaPlatform: mediaPlatform,
-//         mediaAccountId: mediaAccountId,
-//         mediaAccountName: mediaAccountName,
-//         companyName: companyName,
-//         status: status
-//     })
-// )
-const MediaAccountsearchFormSchema = z.object({
-    mediaPlatforms: z.array(mediaPlatform).optional().default([]),
-    mediaAccountIds: z.array(mediaAccountId).optional().default([]),
-    mediaAccountNames: z.array(mediaAccountName).optional().default([]),
-    companyNames: z.array(companyName).optional().default([]),
-    statuses: z.array(status).optional().default([]),
-    pageNumber: pageNumber.optional().default(1),
-    pageSize: pageSize.optional().default(50)
-})
+// ==== 以下是针对不同业务的具体类型 ====
 
-export type MediaAccountsearch = z.infer<typeof MediaAccountsearchFormSchema>
+// === Google账户应用相关类型 ===
 
-// export const MediaAccountnResponseSchema = createPaginationResponseSchema(
-//     MediaAccounts,
-//     'mediaAccounts' // 自定义数据字段名
-// )
-// export type MediaAccountResponseType = z.infer<
-//     typeof MediaAccountnResponseSchema
-// >
-
-// 创建媒体账号响应的schema
-export const MediaAccountResponseSchema = z.object({
-    total: z.number().int().optional().default(0),
-    pageNumber: z.number().int().optional().default(1),
-    pageSize: z.number().int().optional().default(10),
-    pages: z.number().int().optional().default(0),
-    mediaAccounts: z
+// Google账户媒体信息Schema
+export const GoogleMediaAccountInfoSchema = z.object({
+    name: z.string().max(64, '账户名称不能超过64个字符'),
+    currencyCode: z.string(),
+    timezone: z.string(),
+    productType: z.number().int(),
+    rechargeAmount: z.string().optional(),
+    promotionLinks: z.array(z.string().url('请输入有效的链接')),
+    auths: z
         .array(
             z.object({
-                mediaAccountId: z.string().nullable(),
-                mediaAccountName: z.string().nullable(),
-                companyName: z.string().nullable(),
-                mediaPlatform: z.number().nullable(),
-                status: z.number().nullable(),
-                balance: z.string().nullable(),
-                currency: z.string().nullable(),
-                deductibleAmount: z.string().nullable(),
-                disableReason: z.string().nullable(),
-                grantBalance: z.string().nullable(),
-                minDailyBudget: z.string().nullable(),
-                validGrantBalance: z.string().nullable()
+                role: z.number().int().default(1),
+                value: z.string().email('请输入有效的邮箱').default('')
             })
         )
         .optional()
         .default([])
 })
 
-export type MediaAccountResponseType = z.infer<
-    typeof MediaAccountResponseSchema
->
-
-export const RechargeCreateSchema = z.object({
+// Google账户创建请求Schema
+export const GoogleAccountCreateRequestSchema = z.object({
     taskNumber: z.string(),
-    mediaAccountId: z.string(),
-    mediaPlatform: z.number().int(),
-    amount: z.string(),
-    dailyBudget: z.number().int()
+    mediaAccountInfos: z
+        .array(GoogleMediaAccountInfoSchema)
+        .min(1, '至少需要一个账户信息')
 })
 
-export type RechargeCreateType = z.infer<typeof RechargeCreateSchema>
+// Google账户创建响应Schema
+export const GoogleAccountCreateResponseSchema = createBusinessResponseSchema(
+    z.object({
+        taskId: z.union([z.number(), z.string()])
+    })
+)
+
+// === Meta(Facebook)账户应用相关类型 ===
+
+// Meta账户媒体信息Schema
+export const MetaMediaAccountInfoSchema = z.object({
+    name: z.string().max(64, '账户名称不能超过64个字符'),
+    currencyCode: z.string(),
+    timezone: z.string(),
+    businessType: z.number().int().optional(),
+    initialBalance: z
+        .string()
+        .regex(/^\d+(\.\d{1,2})?$/, '请输入有效的金额格式'),
+    businessUrls: z.array(z.string().url('请输入有效的链接')),
+    permissions: z
+        .array(
+            z
+                .object({
+                    permissionLevel: z.number().int().optional(),
+                    userEmail: z.string().email('请输入有效的邮箱').optional()
+                })
+                .nullable()
+        )
+        .optional()
+})
+
+// Meta账户创建请求Schema
+export const MetaAccountCreateRequestSchema = z.object({
+    taskNumber: z.string(),
+    mediaAccountInfos: z
+        .array(MetaMediaAccountInfoSchema)
+        .min(1, '至少需要一个账户信息')
+})
+
+// Meta账户创建响应Schema
+export const MetaAccountCreateResponseSchema = createBusinessResponseSchema(
+    z.object({
+        taskId: z.union([z.number(), z.string()])
+    })
+)
+
+// === 导出业务相关类型 ===
+
+export type GoogleMediaAccountInfo = z.infer<
+    typeof GoogleMediaAccountInfoSchema
+>
+export type GoogleAccountCreateRequest = z.infer<
+    typeof GoogleAccountCreateRequestSchema
+>
+export type GoogleAccountCreateResponse = z.infer<
+    typeof GoogleAccountCreateResponseSchema
+>
+
+export type MetaMediaAccountInfo = z.infer<typeof MetaMediaAccountInfoSchema>
+export type MetaAccountCreateRequest = z.infer<
+    typeof MetaAccountCreateRequestSchema
+>
+export type MetaAccountCreateResponse = z.infer<
+    typeof MetaAccountCreateResponseSchema
+>
+
+// === 工具函数 ===
+
+// 创建Google账户请求数据
+export function buildGoogleAccountCreateRequest(
+    taskNumber: string,
+    mediaAccountInfo: GoogleMediaAccountInfo | GoogleMediaAccountInfo[]
+): GoogleAccountCreateRequest {
+    return {
+        taskNumber,
+        mediaAccountInfos: Array.isArray(mediaAccountInfo)
+            ? mediaAccountInfo
+            : [mediaAccountInfo]
+    }
+}
+
+// 创建Meta账户请求数据
+export function buildMetaAccountCreateRequest(
+    taskNumber: string,
+    mediaAccountInfo: MetaMediaAccountInfo | MetaMediaAccountInfo[]
+): MetaAccountCreateRequest {
+    return {
+        taskNumber,
+        mediaAccountInfos: Array.isArray(mediaAccountInfo)
+            ? mediaAccountInfo
+            : [mediaAccountInfo]
+    }
+}
+
+// 验证类型的通用函数
+export function validateSchema<T extends z.ZodType>(
+    schema: T,
+    data: unknown
+): z.infer<T> {
+    return schema.parse(data)
+}

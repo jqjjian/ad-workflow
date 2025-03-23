@@ -1,0 +1,861 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model BusinessStatistics {
+  id                String       @id
+  userId            String?
+  mediaPlatform     String?
+  businessType      String
+  periodStart       DateTime
+  periodEnd         DateTime
+  totalCount        Int
+  successCount      Int
+  failedCount       Int
+  totalAmount       Decimal?     @db.Decimal(15, 2)
+  currency          String?
+  avgProcessingTime Int?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime
+  tecdo_users       tecdo_users? @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "BusinessStatistics_userId_fkey")
+}
+
+model CompanyAttachment {
+  id                      String                  @id
+  userCompanyInfoId       String
+  fileName                String
+  fileType                String
+  fileSize                Int
+  filePath                String
+  ossObjectKey            String
+  fileUrl                 String
+  description             String?
+  uploadStatus            String
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime
+  companyInfoId           String?
+  tecdo_company_info      tecdo_company_info?     @relation(fields: [companyInfoId], references: [id])
+  tecdo_user_company_info tecdo_user_company_info @relation(fields: [userCompanyInfoId], references: [id], onDelete: Cascade)
+
+  @@index([companyInfoId], map: "CompanyAttachment_companyInfoId_fkey")
+  @@index([userCompanyInfoId], map: "CompanyAttachment_userCompanyInfoId_fkey")
+}
+
+model ErrorLog {
+  id           String    @id
+  entityType   String
+  entityId     String
+  errorCode    String?
+  errorMessage String    @db.Text
+  stackTrace   String?   @db.Text
+  severity     String
+  resolved     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+}
+
+model StatusSyncLog {
+  id                String            @id
+  workOrderId       String
+  thirdPartyTaskId  String?
+  previousStatus    String
+  newStatus         String
+  syncTimestamp     DateTime          @default(now())
+  syncDirection     String
+  syncResult        String
+  failureReason     String?           @db.Text
+  tecdo_work_orders tecdo_work_orders @relation(fields: [workOrderId], references: [id])
+
+  @@index([workOrderId], map: "StatusSyncLog_workOrderId_fkey")
+}
+
+model tecdo_account_application_business_data {
+  id                String            @id
+  workOrderId       String            @unique
+  mediaPlatform     String
+  accountName       String
+  currency          String
+  timezone          String
+  productType       Int
+  rechargeAmount    String?
+  promotionLinks    String            @db.Text
+  authorizations    String?           @db.Text
+  applicationStatus String
+  failureReason     String?
+  metadata          String?           @db.Text
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  tecdo_work_orders tecdo_work_orders @relation(fields: [workOrderId], references: [id])
+}
+
+model tecdo_account_binding_data {
+  id                   String               @id
+  workOrderId          String               @unique
+  mediaPlatform        String
+  mediaAccountId       String
+  bindingValue         String
+  bindingRole          Int
+  bindingStatus        String
+  bindingTime          DateTime?
+  completedTime        DateTime?
+  failureReason        String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime
+  isDeleted            Boolean              @default(false)
+  tecdo_media_accounts tecdo_media_accounts @relation(fields: [mediaAccountId], references: [id])
+  tecdo_work_orders    tecdo_work_orders    @relation(fields: [workOrderId], references: [id])
+
+  @@index([mediaAccountId], map: "tecdo_account_binding_data_mediaAccountId_fkey")
+}
+
+model tecdo_account_management_business_data {
+  id                String            @id
+  workOrderId       String            @unique
+  accountId         String
+  operationType     String
+  oldValue          String?
+  newValue          String?
+  operationStatus   String
+  operationTime     DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  isDeleted         Boolean           @default(false)
+  tecdo_work_orders tecdo_work_orders @relation(fields: [workOrderId], references: [id])
+}
+
+model tecdo_account_management_details {
+  id                      Int                     @id @default(autoincrement())
+  taskId                  String                  @unique
+  mediaAccountId          String?
+  mediaAccountName        String?
+  mediaPlatform           String?
+  amount                  Decimal?                @db.Decimal(15, 2)
+  currency                String?
+  exchangeRate            Decimal?                @db.Decimal(10, 6)
+  bindType                String?
+  bindValue               String?
+  bindTarget              String?
+  actionDetail            String?                 @db.Text
+  extraData               String?                 @db.Text
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime
+  tecdo_third_party_tasks tecdo_third_party_tasks @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+}
+
+model tecdo_account_unbinding_data {
+  id                   String               @id
+  workOrderId          String               @unique
+  mediaPlatform        String
+  mediaAccountId       String
+  unbindingValue       String
+  unbindingStatus      String
+  unbindingTime        DateTime?
+  completedTime        DateTime?
+  failureReason        String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime
+  isDeleted            Boolean              @default(false)
+  tecdo_media_accounts tecdo_media_accounts @relation(fields: [mediaAccountId], references: [id])
+  tecdo_work_orders    tecdo_work_orders    @relation(fields: [workOrderId], references: [id])
+
+  @@index([mediaAccountId], map: "tecdo_account_unbinding_data_mediaAccountId_fkey")
+}
+
+model tecdo_accounts {
+  id                       String      @id
+  user_id                  String
+  type                     String
+  provider                 String
+  provider_account_id      String
+  refresh_token            String?     @db.Text
+  access_token             String?     @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?     @db.Text
+  session_state            String?
+  refresh_token_expires_in Int?
+  tecdo_users              tecdo_users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_account_id])
+  @@index([user_id], map: "tecdo_accounts_user_id_fkey")
+}
+
+model tecdo_attachment_business_data {
+  id                String            @id
+  workOrderId       String            @unique
+  fileName          String
+  fileType          String
+  fileSize          Int
+  fileUrl           String
+  uploadStatus      String
+  uploadTime        DateTime?
+  expirationTime    DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  isDeleted         Boolean           @default(false)
+  tecdo_work_orders tecdo_work_orders @relation(fields: [workOrderId], references: [id])
+}
+
+model tecdo_attachment_records {
+  id                      Int                     @id @default(autoincrement())
+  taskId                  String
+  userId                  String
+  fileName                String
+  fileType                String
+  fileSize                Int
+  filePath                String
+  ossObjectKey            String
+  fileUrl                 String
+  description             String?
+  uploadStatus            String
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime
+  tecdo_third_party_tasks tecdo_third_party_tasks @relation(fields: [taskId], references: [taskId])
+
+  @@index([taskId], map: "tecdo_attachment_records_taskId_fkey")
+}
+
+model tecdo_audit_logs {
+  id                String             @id
+  userId            String
+  workOrderId       String?
+  action            String
+  entityType        String
+  entityId          String
+  oldValue          Json?
+  newValue          Json?
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime           @default(now())
+  tecdo_users       tecdo_users        @relation(fields: [userId], references: [id])
+  tecdo_work_orders tecdo_work_orders? @relation(fields: [workOrderId], references: [id])
+
+  @@index([userId], map: "tecdo_audit_logs_userId_fkey")
+  @@index([workOrderId], map: "tecdo_audit_logs_workOrderId_fkey")
+}
+
+model tecdo_company_info {
+  id                String              @id
+  userId            String
+  companyNameCN     String
+  companyNameEN     String
+  businessLicenseNo String
+  location          Int                 @default(1)
+  legalRepName      String
+  idType            Int
+  idNumber          String
+  legalRepPhone     String
+  legalRepBankCard  String?
+  isDefault         Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  CompanyAttachment CompanyAttachment[]
+  tecdo_users       tecdo_users         @relation(fields: [userId], references: [id])
+  tecdo_work_orders tecdo_work_orders[]
+
+  @@index([userId], map: "tecdo_company_info_userId_fkey")
+}
+
+model tecdo_company_registration_details {
+  id                             Int                     @id @default(autoincrement())
+  taskId                         String                  @unique
+  company_location_id            Int                     @default(1)
+  legal_representative_name      String
+  id_type                        Int
+  id_number                      String
+  legal_representative_phone     String
+  legal_representative_bank_card String
+  createdAt                      DateTime                @default(now())
+  updatedAt                      DateTime
+  company_name                   String
+  company_name_en                String
+  tecdo_third_party_tasks        tecdo_third_party_tasks @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+}
+
+model tecdo_deposit_business_data {
+  id                   String               @id
+  workOrderId          String               @unique
+  mediaAccountId       String
+  mediaPlatform        String
+  amount               String
+  currency             String
+  dailyBudget          Int
+  externalTaskNumber   String?
+  depositStatus        String
+  depositTime          DateTime?
+  completedTime        DateTime?
+  failureReason        String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime
+  isDeleted            Boolean              @default(false)
+  tecdo_media_accounts tecdo_media_accounts @relation(fields: [mediaAccountId], references: [id])
+  tecdo_work_orders    tecdo_work_orders    @relation(fields: [workOrderId], references: [id])
+
+  @@index([mediaAccountId], map: "tecdo_deposit_business_data_mediaAccountId_fkey")
+}
+
+model tecdo_dictionaries {
+  id                     Int                         @id @default(autoincrement())
+  dictType               tecdo_dictionaries_dictType
+  dictCode               String                      @db.VarChar(50)
+  dictName               String                      @db.VarChar(100)
+  description            String?                     @db.Text
+  status                 Boolean                     @default(true)
+  sort                   Int                         @default(0)
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime
+  tecdo_dictionary_items tecdo_dictionary_items[]
+
+  @@unique([dictType, dictCode])
+}
+
+model tecdo_dictionary_items {
+  id                 Int                @id @default(autoincrement())
+  dictionaryId       Int
+  itemCode           String             @db.VarChar(50)
+  itemName           String             @db.VarChar(100)
+  itemValue          String             @db.VarChar(255)
+  description        String?            @db.Text
+  status             Boolean            @default(true)
+  sort               Int                @default(0)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime
+  tecdo_dictionaries tecdo_dictionaries @relation(fields: [dictionaryId], references: [id], onDelete: Cascade)
+
+  @@unique([dictionaryId, itemCode])
+}
+
+model tecdo_email_binding_data {
+  id                   String               @id
+  workOrderId          String               @unique
+  mediaPlatform        String
+  mediaAccountId       String
+  email                String
+  bindingRole          Int
+  bindingStatus        String
+  bindingTime          DateTime?
+  completedTime        DateTime?
+  failureReason        String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime
+  isDeleted            Boolean              @default(false)
+  tecdo_media_accounts tecdo_media_accounts @relation(fields: [mediaAccountId], references: [id])
+  tecdo_work_orders    tecdo_work_orders    @relation(fields: [workOrderId], references: [id])
+
+  @@index([mediaAccountId], map: "tecdo_email_binding_data_mediaAccountId_fkey")
+}
+
+model tecdo_media_account_sync_logs {
+  id                   String               @id
+  mediaAccountId       String
+  syncType             String
+  syncStatus           String
+  beforeData           Json?
+  afterData            Json?
+  errorMessage         String?
+  createdAt            DateTime             @default(now())
+  tecdo_media_accounts tecdo_media_accounts @relation(fields: [mediaAccountId], references: [id])
+
+  @@index([mediaAccountId, syncType])
+}
+
+model tecdo_media_accounts {
+  id                             String                             @id
+  userId                         String
+  platformId                     String
+  mediaPlatform                  tecdo_media_accounts_mediaPlatform
+  accountName                    String
+  accountStatus                  tecdo_media_accounts_accountStatus
+  currency                       String
+  timezone                       String
+  balance                        Decimal
+  dailyBudget                    Decimal?
+  totalSpent                     Decimal
+  metadata                       Json?
+  lastSyncTime                   DateTime
+  createdAt                      DateTime                           @default(now())
+  updatedAt                      DateTime
+  isDeleted                      Boolean                            @default(false)
+  tecdo_account_binding_data     tecdo_account_binding_data[]
+  tecdo_account_unbinding_data   tecdo_account_unbinding_data[]
+  tecdo_deposit_business_data    tecdo_deposit_business_data[]
+  tecdo_email_binding_data       tecdo_email_binding_data[]
+  tecdo_media_account_sync_logs  tecdo_media_account_sync_logs[]
+  tecdo_users                    tecdo_users                        @relation(fields: [userId], references: [id])
+  tecdo_pixel_binding_data       tecdo_pixel_binding_data[]
+  tecdo_transfer_business_data   tecdo_transfer_business_data[]
+  tecdo_withdrawal_business_data tecdo_withdrawal_business_data[]
+  tecdo_work_orders              tecdo_work_orders[]
+  tecdo_zeroing_business_data    tecdo_zeroing_business_data[]
+
+  @@index([mediaPlatform, platformId])
+  @@index([userId])
+}
+
+model tecdo_payment_records {
+  id                      Int                                 @id @default(autoincrement())
+  taskId                  String                              @unique
+  userId                  String
+  paymentNo               String                              @unique
+  amount                  Decimal                             @db.Decimal(15, 2)
+  currency                String
+  paymentMethod           String
+  paymentChannel          String
+  paymentStatus           tecdo_payment_records_paymentStatus
+  thirdPartyTradeNo       String?
+  thirdPartyBuyerId       String?
+  paymentTime             DateTime?
+  paymentDetail           String?                             @db.Text
+  failureReason           String?                             @db.Text
+  refundStatus            String?
+  createdAt               DateTime                            @default(now())
+  updatedAt               DateTime
+  tecdo_third_party_tasks tecdo_third_party_tasks             @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+}
+
+model tecdo_pixel_binding_data {
+  id                   String                @id
+  workOrderId          String                @unique
+  pixelId              String
+  bindingType          Int
+  mediaPlatform        Int
+  bindingValue         String
+  bindingRole          Int
+  bindingStatus        String
+  bindingTime          DateTime?
+  completedTime        DateTime?
+  failureReason        String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime
+  isDeleted            Boolean               @default(false)
+  mediaAccountId       String?
+  tecdo_media_accounts tecdo_media_accounts? @relation(fields: [mediaAccountId], references: [id])
+  tecdo_work_orders    tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+
+  @@index([mediaAccountId], map: "tecdo_pixel_binding_data_mediaAccountId_fkey")
+}
+
+model tecdo_promotion_links {
+  id                      Int                       @id @default(autoincrement())
+  link                    String                    @db.Text
+  userId                  String
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime
+  tecdo_users             tecdo_users               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tecdo_third_party_tasks tecdo_third_party_tasks[]
+
+  @@index([userId], map: "tecdo_promotion_links_userId_fkey")
+}
+
+model tecdo_raw_data {
+  id                     String                  @id
+  workOrderId            String                  @unique
+  requestData            String                  @db.Text
+  responseData           String?                 @db.Text
+  syncStatus             String                  @default("PENDING")
+  syncAttempts           Int                     @default(0)
+  lastSyncTime           DateTime?
+  syncError              String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime
+  tecdo_work_orders      tecdo_work_orders       @relation(fields: [workOrderId], references: [id])
+  tecdo_raw_request_data tecdo_raw_request_data?
+}
+
+model tecdo_raw_request_data {
+  id             String         @id
+  rawDataId      String         @unique
+  taskNumber     String?
+  productType    Int?
+  currencyCode   String?
+  timezone       String?
+  name           String?
+  rechargeAmount String?
+  rawJson        String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime
+  tecdo_raw_data tecdo_raw_data @relation(fields: [rawDataId], references: [id])
+}
+
+model tecdo_third_party_tasks {
+  id                                 Int                                      @id @default(autoincrement())
+  taskId                             String                                   @unique
+  status                             String
+  userId                             String
+  createdAt                          DateTime                                 @default(now())
+  updatedAt                          DateTime
+  typeId                             Int
+  promotionLinkId                    Int?
+  taskNumber                         String                                   @unique
+  rawData                            String?                                  @db.Text
+  rawResponse                        String?                                  @db.Text
+  failureReason                      String?                                  @db.Text
+  workOrderSubtype                   tecdo_third_party_tasks_workOrderSubtype
+  workOrderType                      tecdo_third_party_tasks_workOrderType
+  tecdo_account_management_details   tecdo_account_management_details?
+  tecdo_attachment_records           tecdo_attachment_records[]
+  tecdo_company_registration_details tecdo_company_registration_details?
+  tecdo_payment_records              tecdo_payment_records?
+  tecdo_promotion_links              tecdo_promotion_links?                   @relation(fields: [promotionLinkId], references: [id])
+  tecdo_users                        tecdo_users                              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tecdo_work_orders                  tecdo_work_orders[]
+
+  @@index([promotionLinkId], map: "tecdo_third_party_tasks_promotionLinkId_fkey")
+  @@index([userId], map: "tecdo_third_party_tasks_userId_fkey")
+}
+
+model tecdo_transfer_business_data {
+  id                   String                @id
+  workOrderId          String                @unique
+  mediaPlatform        String
+  sourceAccountId      String
+  targetAccountId      String
+  amount               String?
+  currency             String
+  isMoveAllBalance     Boolean
+  transferStatus       String
+  transferTime         DateTime?
+  completedTime        DateTime
+  failureReason        String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime
+  isDeleted            Boolean               @default(false)
+  mediaAccountId       String?
+  tecdo_media_accounts tecdo_media_accounts? @relation(fields: [mediaAccountId], references: [id])
+  tecdo_work_orders    tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+
+  @@index([mediaAccountId], map: "tecdo_transfer_business_data_mediaAccountId_fkey")
+}
+
+model tecdo_user_company_attachments {
+  id                      String                  @id
+  userCompanyInfoId       String
+  fileName                String
+  fileType                String
+  fileSize                Int
+  filePath                String
+  ossObjectKey            String
+  fileUrl                 String
+  description             String?
+  uploadStatus            String
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime
+  tecdo_user_company_info tecdo_user_company_info @relation(fields: [userCompanyInfoId], references: [id], onDelete: Cascade)
+
+  @@index([userCompanyInfoId], map: "tecdo_user_company_attachments_userCompanyInfoId_fkey")
+}
+
+model tecdo_user_company_info {
+  id                             String                           @id
+  userId                         String
+  companyNameCN                  String
+  companyNameEN                  String
+  businessLicenseNo              String
+  location                       Int                              @default(1)
+  legalRepName                   String
+  idType                         Int
+  idNumber                       String
+  legalRepPhone                  String
+  legalRepBankCard               String?
+  isDefault                      Boolean                          @default(false)
+  createdAt                      DateTime                         @default(now())
+  updatedAt                      DateTime
+  CompanyAttachment              CompanyAttachment[]
+  tecdo_user_company_attachments tecdo_user_company_attachments[]
+  tecdo_users                    tecdo_users                      @relation(fields: [userId], references: [id])
+  tecdo_workorder_company_info   tecdo_workorder_company_info[]
+
+  @@index([userId], map: "tecdo_user_company_info_userId_fkey")
+}
+
+model tecdo_user_statistics {
+  id                  String      @id
+  userId              String      @unique
+  totalWorkOrders     Int         @default(0)
+  totalDeposits       Decimal     @default(0.000000000000000000000000000000)
+  totalWithdrawals    Decimal     @default(0.000000000000000000000000000000)
+  totalTransfers      Int         @default(0)
+  totalZeroings       Int         @default(0)
+  accountApplications Int         @default(0)
+  lastActivityAt      DateTime    @default(now())
+  updatedAt           DateTime
+  tecdo_users         tecdo_users @relation(fields: [userId], references: [id])
+}
+
+model tecdo_users {
+  id                      String                    @id
+  username                String?                   @unique
+  name                    String?
+  password                String?
+  email                   String?                   @unique
+  email_verified          DateTime?
+  image                   String?
+  role                    tecdo_users_role          @default(USER)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime
+  companyName             String?
+  phoneNumber             String?
+  areaCode                String?
+  lastLoginAt             DateTime?
+  loginCount              Int                       @default(0)
+  status                  String                    @default("ACTIVE")
+  BusinessStatistics      BusinessStatistics[]
+  tecdo_accounts          tecdo_accounts[]
+  tecdo_audit_logs        tecdo_audit_logs[]
+  tecdo_company_info      tecdo_company_info[]
+  tecdo_media_accounts    tecdo_media_accounts[]
+  tecdo_promotion_links   tecdo_promotion_links[]
+  tecdo_third_party_tasks tecdo_third_party_tasks[]
+  tecdo_user_company_info tecdo_user_company_info[]
+  tecdo_user_statistics   tecdo_user_statistics?
+  tecdo_work_orders       tecdo_work_orders[]
+}
+
+model tecdo_verification_tokens {
+  id      String   @id
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model tecdo_withdrawal_business_data {
+  id                   String               @id
+  workOrderId          String               @unique
+  mediaAccountId       String
+  mediaPlatform        String
+  amount               String
+  currency             String
+  withdrawalStatus     String
+  withdrawalTime       DateTime?
+  completedTime        DateTime?
+  failureReason        String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime
+  isDeleted            Boolean              @default(false)
+  tecdo_media_accounts tecdo_media_accounts @relation(fields: [mediaAccountId], references: [id])
+  tecdo_work_orders    tecdo_work_orders    @relation(fields: [workOrderId], references: [id])
+
+  @@index([mediaAccountId], map: "tecdo_withdrawal_business_data_mediaAccountId_fkey")
+}
+
+model WorkOrder {
+  id                     String                          @id @default(uuid())
+  taskId                 String
+  taskNumber             String                          @unique
+  userId                 String
+  workOrderType          WorkOrderType
+  workOrderSubtype       WorkOrderSubtype
+  status                 WorkOrderStatus
+  priority               Int                             @default(0)
+  rawDataId              String                          @unique
+  businessDataId         String?                         @unique
+  metadata               Json?
+  remark                 String?
+  processingTime         DateTime?
+  completedTime          DateTime?
+  createdAt              DateTime                        @default(now())
+  updatedAt              DateTime                        @updatedAt
+  isDeleted              Boolean                         @default(false)
+  mediaAccountId         String?
+  companyInfoId          String?
+  thirdPartyTaskId       String?
+  accountAppData         AccountApplicationBusinessData?
+  AccountBinding         AccountBindingData?
+  accountMgmtData        AccountManagementBusinessData?
+  accountUnbinding       AccountUnbindingData?
+  attachmentData         AttachmentBusinessData?
+  AuditLog               AuditLog[]
+  depositData            DepositBusinessData?
+  EmailBinding           EmailBindingData?
+  PixelBinding           PixelBindingData?
+  rawData                RawData?
+  TransferBusinessData   TransferBusinessData?
+  WithdrawalBusinessData WithdrawalBusinessData?
+  CompanyInfo            CompanyInfo?                    @relation(fields: [companyInfoId], references: [id])
+  MediaAccount           MediaAccount?                   @relation(fields: [mediaAccountId], references: [id])
+  thirdPartyTask         ThirdPartyTask?                 @relation(fields: [thirdPartyTaskId], references: [taskId])
+  User                   User                            @relation(fields: [userId], references: [id])
+  workOrderCompanyInfo   WorkOrderCompanyInfo?
+  ZeroingBusinessData    ZeroingBusinessData?
+  StatusSyncLog          StatusSyncLog[]
+
+  @@index([companyInfoId], map: "tecdo_work_orders_companyInfoId_fkey")
+  @@index([mediaAccountId], map: "tecdo_work_orders_mediaAccountId_fkey")
+  @@index([thirdPartyTaskId])
+  @@index([userId], map: "tecdo_work_orders_userId_fkey")
+  @@map("tecdo_work_orders")
+}
+
+model tecdo_workorder_company_attachments {
+  id                           String                       @id
+  workOrderCompanyInfoId       String
+  fileName                     String
+  fileType                     String
+  fileSize                     Int
+  filePath                     String
+  ossObjectKey                 String
+  fileUrl                      String
+  description                  String?
+  createdAt                    DateTime                     @default(now())
+  updatedAt                    DateTime
+  tecdo_workorder_company_info tecdo_workorder_company_info @relation(fields: [workOrderCompanyInfoId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderCompanyInfoId], map: "tecdo_workorder_company_attachments_workOrderCompanyInfoId_fkey")
+}
+
+model tecdo_workorder_company_info {
+  id                                  String                                @id
+  workOrderId                         String                                @unique
+  userCompanyInfoId                   String?
+  companyNameCN                       String
+  companyNameEN                       String
+  businessLicenseNo                   String
+  location                            Int
+  legalRepName                        String
+  idType                              Int
+  idNumber                            String
+  legalRepPhone                       String
+  legalRepBankCard                    String?
+  createdAt                           DateTime                              @default(now())
+  updatedAt                           DateTime
+  tecdo_workorder_company_attachments tecdo_workorder_company_attachments[]
+  tecdo_user_company_info             tecdo_user_company_info?              @relation(fields: [userCompanyInfoId], references: [id])
+  tecdo_work_orders                   tecdo_work_orders                     @relation(fields: [workOrderId], references: [id])
+
+  @@index([userCompanyInfoId], map: "tecdo_workorder_company_info_userCompanyInfoId_fkey")
+}
+
+model tecdo_zeroing_business_data {
+  id                   String                @id
+  workOrderId          String                @unique
+  mediaAccountId       String?
+  mediaPlatform        String
+  zeroingStatus        String
+  zeroingTime          DateTime?
+  completedTime        DateTime?
+  failureReason        String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime
+  isDeleted            Boolean               @default(false)
+  tecdo_media_accounts tecdo_media_accounts? @relation(fields: [mediaAccountId], references: [id])
+  tecdo_work_orders    tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+
+  @@index([mediaAccountId], map: "tecdo_zeroing_business_data_mediaAccountId_fkey")
+}
+
+enum tecdo_dictionaries_dictType {
+  SYSTEM
+  BUSINESS
+  USER
+  OTHER
+  PROMOTION_LINK
+}
+
+enum tecdo_media_accounts_mediaPlatform {
+  FACEBOOK
+  GOOGLE
+  MICROSOFT_ADVERTISING
+  TIKTOK
+}
+
+enum tecdo_work_orders_workOrderType {
+  ACCOUNT_APPLICATION
+  ACCOUNT_MANAGEMENT
+  ATTACHMENT_MANAGEMENT
+  PAYMENT
+}
+
+enum tecdo_media_accounts_accountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DISABLED
+  EXPIRED
+}
+
+enum tecdo_work_orders_workOrderSubtype {
+  GOOGLE_ACCOUNT
+  TIKTOK_ACCOUNT
+  FACEBOOK_ACCOUNT
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  ZEROING
+  BIND_ACCOUNT
+  UNBIND_ACCOUNT
+  BIND_PIXEL
+  UNBIND_PIXEL
+  BIND_EMAIL
+  UNBIND_EMAIL
+  GENERAL_MANAGEMENT
+  DOCUMENT_UPLOAD
+  IMAGE_UPLOAD
+  OTHER_ATTACHMENT
+  PAYMENT_PROCESSING
+  PAYMENT_COMPLETED
+  PAYMENT_FAILED
+}
+
+enum tecdo_work_orders_status {
+  INIT
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum tecdo_users_role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+enum tecdo_payment_records_paymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum tecdo_third_party_tasks_workOrderSubtype {
+  GOOGLE_ACCOUNT
+  TIKTOK_ACCOUNT
+  FACEBOOK_ACCOUNT
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  ZEROING
+  BIND_ACCOUNT
+  UNBIND_ACCOUNT
+  BIND_PIXEL
+  UNBIND_PIXEL
+  BIND_EMAIL
+  UNBIND_EMAIL
+  GENERAL_MANAGEMENT
+  DOCUMENT_UPLOAD
+  IMAGE_UPLOAD
+  OTHER_ATTACHMENT
+  PAYMENT_PROCESSING
+  PAYMENT_COMPLETED
+  PAYMENT_FAILED
+}
+
+enum tecdo_third_party_tasks_workOrderType {
+  ACCOUNT_APPLICATION
+  ACCOUNT_MANAGEMENT
+  ATTACHMENT_MANAGEMENT
+  PAYMENT
+}

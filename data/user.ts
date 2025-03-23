@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 
 export const getUserbyEmail = async (email: string) => {
     try {
-        const user = await db.user.findUnique({
+        const user = await db.tecdo_users.findUnique({
             where: {
                 email
             }
@@ -15,7 +15,7 @@ export const getUserbyEmail = async (email: string) => {
 
 export const getUserbyUsername = async (username: string) => {
     try {
-        const user = await db.user.findUnique({
+        const user = await db.tecdo_users.findUnique({
             where: {
                 username
             }
@@ -28,7 +28,7 @@ export const getUserbyUsername = async (username: string) => {
 
 export const getUserbyId = async (id: string) => {
     try {
-        const user = await db.user.findUnique({
+        const user = await db.tecdo_users.findUnique({
             where: {
                 id
             }

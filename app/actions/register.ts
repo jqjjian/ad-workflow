@@ -30,7 +30,7 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
             error: '用户名已使用'
         }
     }
-    const user = await db.user.create({
+    const user = await db.tecdo_users.create({
         data: {
             username,
             companyName,
