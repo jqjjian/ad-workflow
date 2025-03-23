@@ -143,84 +143,72 @@ export async function getWorkOrderDetail(
 /**
  * 查询所有工单列表（支持多条件筛选）
  */
-export async function getWorkOrders(params: {
-    page?: number
-    pageSize?: number
-    userId?: string
-    workOrderType?: WorkOrderType
-    workOrderSubtype?: WorkOrderSubtype
-    status?: string
-    dateRange?: { start: Date; end: Date }
-    taskNumber?: string
-    taskId?: string
-}): Promise<ApiResponse<{ total: number; items: any[] }>> {
-    return withAuth(async () => {
-        try {
-            const {
-                page = 1,
-                pageSize = 10,
-                userId,
-                workOrderType,
-                workOrderSubtype,
-                status,
-                dateRange,
-                taskNumber,
-                taskId
-            } = params
+export async function getWorkOrders(
+    params: any
+): Promise<ApiResponse<{ total: number; items: any[] }>> {
+    const {
+        page = 1,
+        pageSize = 10,
+        workOrderType,
+        status,
+        dateRange,
+        mediaAccountId,
+        taskNumber
+    } = params
 
-            // 构建查询条件
-            const where: any = {
-                ...(userId && { userId }),
-                ...(workOrderType && { workOrderType }),
-                ...(workOrderSubtype && { workOrderSubtype }),
-                ...(status && { status }),
-                ...(dateRange && {
-                    createdAt: {
-                        gte: dateRange.start,
-                        lte: dateRange.end
-                    }
-                }),
-                ...(taskNumber && { taskNumber: { contains: taskNumber } }),
-                ...(taskId && { taskId: { contains: taskId } })
-            }
+    // 构建查询条件
+    const whereClause: any = { isDeleted: false }
 
-            // 查询总数
-            const total = await db.tecdo_third_party_tasks.count({ where })
-
-            // 查询数据
-            const items = await db.tecdo_third_party_tasks.findMany({
-                where,
-                skip: (page - 1) * pageSize,
-                take: pageSize,
-                include: {
-                    promotionLink: true,
-                    registrationDetail:
-                        workOrderType === WorkOrderType.ACCOUNT_APPLICATION,
-                    accountManagementDetail:
-                        workOrderType === WorkOrderType.ACCOUNT_MANAGEMENT,
-                    attachmentRecords:
-                        workOrderType === WorkOrderType.ATTACHMENT_MANAGEMENT,
-                    paymentRecord: true
-                } as any,
-                orderBy: { createdAt: 'desc' }
-            })
-
-            return {
-                code: '0',
-                success: true,
-                data: { total, items }
-            }
-        } catch (error) {
-            const errorObj =
-                error instanceof Error ? error : new Error(String(error))
-            Logger.error(errorObj)
-            return {
-                code: '1',
-                success: false,
-                message: error instanceof Error ? error.message : '未知错误'
-            }
+    // 处理工单类型 - 这里需要映射到正确的枚举值
+    if (workOrderType) {
+        // 对于 DEPOSIT 类型的查询，映射到 ACCOUNT_MANAGEMENT 类型和 DEPOSIT 子类型
+        if (workOrderType === 'DEPOSIT') {
+            whereClause.workOrderType = 'ACCOUNT_MANAGEMENT'
+            whereClause.workOrderSubtype = 'DEPOSIT'
         }
+        // 处理其他类型的映射
+        else if (workOrderType === 'DEDUCTION') {
+            whereClause.workOrderType = 'ACCOUNT_MANAGEMENT'
+            whereClause.workOrderSubtype = 'DEDUCTION'
+        } else if (workOrderType === 'TRANSFER') {
+            whereClause.workOrderType = 'ACCOUNT_MANAGEMENT'
+            whereClause.workOrderSubtype = 'TRANSFER'
+        } else if (workOrderType === 'BIND') {
+            whereClause.workOrderType = 'ACCOUNT_MANAGEMENT'
+            whereClause.workOrderSubtype = 'BIND'
+        } else {
+            // 直接使用提供的值（如果是其他枚举类型）
+            whereClause.workOrderType = workOrderType
+        }
+    }
+
+    // 处理其他查询条件
+    if (status) {
+        whereClause.status = status
+    }
+
+    // 查询总数
+    const total = await db.tecdo_work_orders.count({
+        where: whereClause
     })
+
+    // 查询结果
+    const workOrders = await db.tecdo_work_orders.findMany({
+        where: whereClause,
+        include: {
+            // 包含需要的关联数据
+            tecdo_deposit_business_data: true
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize
+    })
+
+    return {
+        code: '0',
+        success: true,
+        data: { total, items: workOrders }
+    }
 }
 
 /**

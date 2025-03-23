@@ -16,7 +16,9 @@ import {
 import {
     WorkOrder,
     MediaAccountApplication,
-    MediaAccountApiResponse
+    MediaAccountApiResponse,
+    WorkOrderStatus,
+    WorkOrderType
 } from './types'
 
 /**
@@ -62,15 +64,22 @@ export async function queryMediaAccounts(input: unknown) {
         // 转换为我们需要的自定义WorkOrder结构
         const userWorkOrders: WorkOrder[] = workOrdersData.map((order) => ({
             id: order.id,
-            mediaAccountId: order.mediaAccountId,
+            mediaAccountId: order.mediaAccountId || '',
             // 从关联数据中提取需要的属性，如果不存在则为undefined
-            mediaAccountName: order.tecdo_media_accounts?.accountName,
-            companyName: order.tecdo_workorder_company_info?.companyNameCN,
-            mediaPlatform: order.tecdo_media_accounts
-                ?.mediaPlatform as unknown as number,
-            createTime: order.createdAt,
-            status: order.status,
-            taskId: order.taskId || ''
+            mediaAccountName: order.tecdo_media_accounts?.accountName || '',
+            companyName:
+                order.tecdo_workorder_company_info?.companyNameCN || '',
+            mediaPlatform:
+                (order.tecdo_media_accounts
+                    ?.mediaPlatform as unknown as number) || 0,
+            status: order.status as unknown as WorkOrderStatus,
+            taskId: order.taskId || '',
+            // 添加缺少的必要属性
+            type: WorkOrderType.DEPOSIT, // 默认值，根据实际情况调整
+            createdAt: order.createdAt.toISOString(),
+            updatedAt: order.updatedAt.toISOString(),
+            createdBy: order.userId || '',
+            updatedBy: order.userId || ''
         }))
 
         Logger.info(`用户的工单数量: ${userWorkOrders.length}`)
@@ -368,7 +377,7 @@ export async function queryMediaAccounts(input: unknown) {
                     ...account,
                     workOrderId: matchedOrder.id,
                     userId: userId,
-                    applyTime: matchedOrder.createTime,
+                    applyTime: matchedOrder.createdAt,
                     internalStatus: matchedOrder.status,
                     // 格式化数值字段
                     balance:

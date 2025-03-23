@@ -95,7 +95,7 @@ async function callThirdPartyUpdateUnbindingAPI(
 ): Promise<ThirdPartyUnbindingResponse> {
     try {
         const response = await fetch(
-            'openApi/v1/mediaAccount/unBindIdApplication/update',
+            '/openApi/v1/mediaAccount/unBindIdApplication/update',
             {
                 method: 'POST',
                 headers: {

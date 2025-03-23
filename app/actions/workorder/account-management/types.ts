@@ -1,6 +1,6 @@
 import * as z from 'zod'
 import { MediaAccount } from '@/schemas/mediaAccount'
-import { WorkOrderType, WorkOrderSubtype } from '@prisma/client'
+import { WorkOrderSubtype } from '@prisma/client'
 
 // 充值Schema定义
 export const DepositSchema = z.object({
@@ -76,23 +76,85 @@ export type EmailBind = z.infer<typeof EmailBindSchema>
 
 // 定义工单状态枚举
 export enum WorkOrderStatus {
-    PENDING = 'PENDING',
-    PROCESSING = 'PROCESSING',
-    COMPLETED = 'COMPLETED',
-    FAILED = 'FAILED',
-    CANCELED = 'CANCELED'
+    PENDING = 'PENDING', // 待处理
+    APPROVED = 'APPROVED', // 已审核通过
+    REJECTED = 'REJECTED', // 已拒绝
+    PROCESSING = 'PROCESSING', // 处理中
+    COMPLETED = 'COMPLETED', // 已完成
+    FAILED = 'FAILED', // 失败
+    CANCELED = 'CANCELED' // 已取消
+}
+
+// 工单类型枚举
+export enum WorkOrderType {
+    DEPOSIT = 'DEPOSIT', // 充值
+    DEDUCTION = 'DEDUCTION', // 减款
+    TRANSFER = 'TRANSFER', // 转账
+    BIND = 'BIND' // 绑定
 }
 
 // 工单接口定义
 export interface WorkOrder {
     id: string
-    mediaAccountId?: string | null
-    mediaAccountName?: string
-    companyName?: string
-    mediaPlatform?: number
-    createTime?: Date
-    status: string
+    type: WorkOrderType // 工单类型
+    status: WorkOrderStatus // 工单状态
+    mediaAccountId: string
+    mediaAccountName: string
+    companyName: string
+    mediaPlatform: number
+    createdAt: string
+    updatedAt: string
+    createdBy: string
+    updatedBy: string
+    amount?: number
+    dailyBudget?: number
+    currency?: string
+    remarks?: string
     taskId?: string
+    reason?: string
+    thirdPartyResponse?: string
+}
+
+// 充值工单参数
+export interface DepositWorkOrderParams {
+    mediaAccountId: string
+    mediaAccountName: string
+    mediaPlatform: number
+    companyName: string
+    amount: number | string // 支持字符串或数字类型
+    dailyBudget?: number
+    remarks?: string
+}
+
+// 充值工单更新参数
+export interface UpdateDepositWorkOrderParams {
+    workOrderId: string
+    amount: number | string // 支持字符串或数字类型
+    dailyBudget: number
+}
+
+// 工单审批参数
+export interface ApproveWorkOrderParams {
+    workOrderId: string
+    approvedBy: string
+    remarks?: string
+}
+
+// 工单拒绝参数
+export interface RejectWorkOrderParams {
+    workOrderId: string
+    rejectedBy: string
+    reason: string
+}
+
+// 第三方充值API响应
+export interface ThirdPartyApiResponse {
+    code: string
+    message: string
+    data?: {
+        taskId?: string
+        [key: string]: any
+    }
 }
 
 // 媒体账户申请记录类型

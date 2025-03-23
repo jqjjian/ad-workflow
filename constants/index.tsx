@@ -47,6 +47,19 @@ export const menuItems = [
         ]
     },
     {
+        key: 'admin',
+        label: '管理',
+        icon: <UserOutlined />,
+        children: [
+            {
+                key: 'workorders',
+                label: '工单管理',
+                icon: <FileOutlined />
+            }
+        ]
+    },
+
+    {
         key: 'system',
         label: '系统设置',
         icon: <FileOutlined />,

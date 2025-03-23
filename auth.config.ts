@@ -4,7 +4,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import { db } from '@/lib/db'
 import { UserRole } from '@prisma/client'
 import { getUserbyId, getUserbyUsername } from '@/data/user'
-import { LoginSchema } from '@/schemas'
+import { LoginSchema } from '@/schemas/auth'
 import bcryptjs from 'bcryptjs'
 // import GithubProvider from 'next-auth/providers/github'
 // import GoogleProvider from 'next-auth/providers/google'
@@ -55,10 +55,10 @@ const authConfig = {
     },
     events: {
         async linkAccount({ user }) {
-            await db.user.update({
+            await db.tecdo_users.update({
                 where: { id: user.id },
                 data: {
-                    emailVerified: new Date()
+                    email_verified: new Date()
                 }
             })
         }
@@ -72,7 +72,7 @@ const authConfig = {
                 return true
             }
             const existingUser = await getUserbyId(user.id as string)
-            if (!existingUser || !existingUser.emailVerified) return false
+            if (!existingUser || !existingUser.email_verified) return false
 
             return true
         },

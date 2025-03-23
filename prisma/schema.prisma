@@ -74,12 +74,12 @@ model tecdo_media_accounts {
   updatedAt                      DateTime                         @updatedAt
   isDeleted                      Boolean                          @default(false)
   tecdo_users                    tecdo_users                      @relation(fields: [userId], references: [id])
-  tecdo_work_orders              tecdo_work_orders[]
-  tecdo_deposit_business_data    tecdo_deposit_business_data[]
   tecdo_withdrawal_business_data tecdo_withdrawal_business_data[]
   tecdo_transfer_business_data   tecdo_transfer_business_data[]
   tecdo_zeroing_business_data    tecdo_zeroing_business_data[]
   tecdo_account_binding_data     tecdo_account_binding_data[]
+  tecdo_work_orders              tecdo_work_orders[]
+  tecdo_deposit_business_data    tecdo_deposit_business_data[]
 
   @@index([mediaPlatform, platformId])
   @@index([userId])
@@ -107,23 +107,24 @@ model tecdo_account_application_business_data {
 
 // 存款业务数据
 model tecdo_deposit_business_data {
-  id                   String               @id @default(uuid())
-  workOrderId          String               @unique
-  mediaAccountId       String
-  mediaPlatform        String
-  amount               String
-  currency             String
-  dailyBudget          Int
-  externalTaskNumber   String?
-  depositStatus        String
-  depositTime          DateTime?
-  completedTime        DateTime?
-  failureReason        String?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  isDeleted            Boolean              @default(false)
-  tecdo_media_accounts tecdo_media_accounts @relation(fields: [mediaAccountId], references: [id])
-  tecdo_work_orders    tecdo_work_orders    @relation(fields: [workOrderId], references: [id])
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaAccountId         String
+  mediaPlatform          String
+  amount                 String
+  currency               String
+  dailyBudget            Int
+  externalTaskNumber     String?
+  depositStatus          String
+  depositTime            DateTime?
+  completedTime          DateTime?
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
 
   @@index([mediaAccountId])
 }
@@ -295,7 +296,6 @@ model tecdo_work_orders {
   tecdo_status_sync_log                   tecdo_status_sync_log[]
   tecdo_account_application_business_data tecdo_account_application_business_data?
   tecdo_deposit_business_data             tecdo_deposit_business_data?
-  tecdo_media_accounts                    tecdo_media_accounts?                    @relation(fields: [mediaAccountId], references: [id])
   tecdo_raw_data                          tecdo_raw_data?
   tecdo_third_party_tasks                 tecdo_third_party_tasks?                 @relation(fields: [thirdPartyTaskId], references: [taskId])
   tecdo_transfer_business_data            tecdo_transfer_business_data?
@@ -305,6 +305,8 @@ model tecdo_work_orders {
   tecdo_company_info                      tecdo_company_info?                      @relation(fields: [companyInfoId], references: [id])
   tecdo_workorder_company_info            tecdo_workorder_company_info?
   tecdo_account_binding_data              tecdo_account_binding_data?
+  tecdo_media_accounts                    tecdo_media_accounts?                    @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId                  String?
 
   @@index([companyInfoId])
   @@index([mediaAccountId])

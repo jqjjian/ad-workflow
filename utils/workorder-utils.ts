@@ -1,5 +1,3 @@
-'use server'
-
 import { WorkOrderType, WorkOrderSubtype } from '@prisma/client'
 
 // 生成工单编号

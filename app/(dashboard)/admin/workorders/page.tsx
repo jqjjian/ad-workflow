@@ -17,40 +17,38 @@ import {
     Typography,
     Tag,
     Flex,
-    InputNumber
+    Tabs
 } from 'antd'
 import type { TableColumnsType } from 'antd'
 import { StyleProvider } from '@ant-design/cssinjs'
 import { ConfigProvider } from 'antd'
+import { submitRechargeToThirdParty } from '@/app/actions/workorder/account-management/deposit'
+import {
+    approveDepositWorkOrder,
+    rejectDepositWorkOrder
+} from '@/app/actions/workorder/account-management/deposit'
+import {
+    approveWithdrawalWorkOrder,
+    rejectWithdrawalWorkOrder
+} from '@/app/actions/workorder/account-management/withdrawal'
+import {
+    approveTransferWorkOrder,
+    rejectTransferWorkOrder
+} from '@/app/actions/workorder/account-management/transfer'
+import {
+    approveAccountBindingWorkOrder,
+    rejectAccountBindingWorkOrder
+} from '@/app/actions/workorder/account-management/account-binding'
+import { getWorkOrders } from '@/app/actions/workorder/common'
 import {
     WorkOrderStatus,
     WorkOrderType
 } from '@/app/actions/workorder/account-management/types'
-import { updateDepositWorkOrder } from '@/app/actions/workorder/account-management/deposit'
-import { updateWithdrawalWorkOrder } from '@/app/actions/workorder/account-management/withdrawal'
-import { getWorkOrders } from '@/app/actions/workorder/common'
+import { WorkOrderSubtype } from '@prisma/client'
+import type { WorkOrder } from '@/app/actions/workorder/account-management/types'
 
 const { Title } = Typography
 const { RangePicker } = DatePicker
-
-// 申请记录
-interface Application {
-    id: string // 申请ID
-    type: WorkOrderType // 申请类型
-    mediaAccountId: string // 账户ID
-    mediaAccountName: string // 账户名称
-    mediaPlatform: number // 媒体平台
-    amount?: string // 金额（充值、减款、转账时有）
-    dailyBudget?: number // 每日预算（充值时有）
-    currency?: string // 币种
-    status: WorkOrderStatus // 状态
-    remarks?: string // 备注
-    createdAt: string // 创建时间
-    updatedAt: string // 更新时间
-    taskId?: string // 任务ID（第三方返回）
-    reason?: string // 原因（拒绝时有）
-    companyName?: string // 公司主体
-}
 
 // 搜索表单
 interface SearchForm {
@@ -61,28 +59,52 @@ interface SearchForm {
     type?: WorkOrderType
     dateRange?: any[]
     mediaPlatform?: number
+    createdBy?: string
 }
 
-export default function ApplicationsPage() {
+export default function AdminWorkOrdersPage() {
     const [form] = Form.useForm<SearchForm>()
     const [loading, setLoading] = useState(false)
-    const [data, setData] = useState<Application[]>([])
+    const [data, setData] = useState<WorkOrder[]>([])
     const [total, setTotal] = useState(0)
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
     const [detailVisible, setDetailVisible] = useState(false)
-    const [currentApplication, setCurrentApplication] =
-        useState<Application | null>(null)
-    const [editVisible, setEditVisible] = useState(false)
-    const [editForm] = Form.useForm()
+    const [currentWorkOrder, setCurrentWorkOrder] = useState<WorkOrder | null>(
+        null
+    )
+    const [actionLoading, setActionLoading] = useState(false)
+    const [activeTab, setActiveTab] = useState('all')
+    const [pendingCount, setPendingCount] = useState(0)
+
+    // 获取待处理工单数量
+    const fetchPendingCount = async () => {
+        try {
+            const response = await getWorkOrders({
+                status: WorkOrderStatus.PENDING,
+                page: 1,
+                pageSize: 1
+            })
+            if (response.success && response.data) {
+                setPendingCount(response.data.total)
+            }
+        } catch (error) {
+            console.error('获取待处理工单数量失败:', error)
+        }
+    }
+
+    // 初始化时获取待处理数量
+    useEffect(() => {
+        fetchPendingCount()
+    }, [])
 
     // 表格列定义
-    const columns: TableColumnsType<Application> = [
+    const columns: TableColumnsType<WorkOrder> = [
         {
             title: '工单ID',
             dataIndex: 'id',
             key: 'id',
-            width: 200
+            width: 180
         },
         {
             title: '类型',
@@ -90,24 +112,14 @@ export default function ApplicationsPage() {
             key: 'type',
             width: 100,
             render: (type) => {
-                console.log('渲染类型:', type)
                 const typeMap = {
                     [WorkOrderType.DEPOSIT]: { text: '充值', color: 'blue' },
                     [WorkOrderType.DEDUCTION]: { text: '减款', color: 'red' },
-                    [WorkOrderType.TRANSFER]: {
-                        text: '转账',
-                        color: 'green'
-                    },
-                    [WorkOrderType.BIND]: { text: '绑定', color: 'purple' },
-                    // 添加对ACCOUNT_MANAGEMENT类型的支持
-                    ACCOUNT_MANAGEMENT: { text: '充值', color: 'blue' }
+                    [WorkOrderType.TRANSFER]: { text: '转账', color: 'green' },
+                    [WorkOrderType.BIND]: { text: '绑定', color: 'purple' }
                 }
                 const typeInfo = typeMap[type as WorkOrderType]
-                return typeInfo ? (
-                    <Tag color={typeInfo.color}>{typeInfo.text}</Tag>
-                ) : (
-                    <Tag color="default">{type || '未知类型'}</Tag>
-                )
+                return <Tag color={typeInfo.color}>{typeInfo.text}</Tag>
             },
             filters: [
                 { text: '充值', value: WorkOrderType.DEPOSIT },
@@ -121,13 +133,7 @@ export default function ApplicationsPage() {
             title: '账户名称',
             dataIndex: 'mediaAccountName',
             key: 'mediaAccountName',
-            width: 150
-        },
-        {
-            title: '账户ID',
-            dataIndex: 'mediaAccountId',
-            key: 'mediaAccountId',
-            width: 200
+            width: 140
         },
         {
             title: '媒体平台',
@@ -135,28 +141,25 @@ export default function ApplicationsPage() {
             key: 'mediaPlatform',
             width: 100,
             render: (platform) => {
-                console.log('渲染平台:', platform, typeof platform)
                 const platformMap = {
                     1: { name: 'Facebook', color: '#1877F2' },
                     2: { name: 'Google', color: '#4285F4' },
                     3: { name: 'Meta', color: '#0081FB' },
                     5: { name: 'TikTok', color: '#000000' }
                 }
-                // 确保平台值为数字
-                const platformValue = Number(platform)
                 const platformInfo =
-                    platformMap[platformValue as keyof typeof platformMap]
+                    platformMap[platform as keyof typeof platformMap]
                 return platformInfo ? (
                     <Tag color={platformInfo.color}>{platformInfo.name}</Tag>
                 ) : (
-                    <span>{platform || '未知'}</span>
+                    platform
                 )
             }
         },
         {
             title: '金额',
             key: 'amount',
-            width: 150,
+            width: 120,
             render: (_, record) =>
                 record.amount ? `${record.amount} ${record.currency}` : '-'
         },
@@ -187,7 +190,10 @@ export default function ApplicationsPage() {
                         text: '已完成',
                         color: 'success'
                     },
-                    [WorkOrderStatus.FAILED]: { text: '失败', color: 'error' },
+                    [WorkOrderStatus.FAILED]: {
+                        text: '失败',
+                        color: 'error'
+                    },
                     [WorkOrderStatus.CANCELED]: {
                         text: '已取消',
                         color: 'default'
@@ -203,29 +209,25 @@ export default function ApplicationsPage() {
                         text={statusInfo.text}
                     />
                 )
-            },
-            filters: [
-                { text: '待处理', value: WorkOrderStatus.PENDING },
-                { text: '处理中', value: WorkOrderStatus.PROCESSING },
-                { text: '已通过', value: WorkOrderStatus.APPROVED },
-                { text: '已拒绝', value: WorkOrderStatus.REJECTED },
-                { text: '已完成', value: WorkOrderStatus.COMPLETED },
-                { text: '失败', value: WorkOrderStatus.FAILED },
-                { text: '已取消', value: WorkOrderStatus.CANCELED }
-            ],
-            onFilter: (value, record) => record.status === value
+            }
         },
         {
-            title: '申请时间',
+            title: '申请人',
+            dataIndex: 'createdBy',
+            key: 'createdBy',
+            width: 100
+        },
+        {
+            title: '创建时间',
             dataIndex: 'createdAt',
             key: 'createdAt',
-            width: 180
+            width: 160
         },
         {
             title: '操作',
             key: 'action',
             fixed: 'right',
-            width: 150,
+            width: 200,
             render: (_, record) => (
                 <Space size="small">
                     <Button
@@ -234,22 +236,55 @@ export default function ApplicationsPage() {
                     >
                         查看
                     </Button>
-                    {record.status === WorkOrderStatus.PENDING &&
-                        (record.type === WorkOrderType.DEPOSIT ||
-                            record.type === WorkOrderType.DEDUCTION) && (
+                    {record.status === WorkOrderStatus.PENDING && (
+                        <>
                             <Button
                                 size="small"
                                 type="primary"
-                                onClick={() => handleEdit(record)}
+                                onClick={() => handleApprove(record)}
                             >
-                                编辑
+                                通过
                             </Button>
-                        )}
+                            <Button
+                                size="small"
+                                danger
+                                onClick={() => handleReject(record)}
+                            >
+                                拒绝
+                            </Button>
+                        </>
+                    )}
                 </Space>
             )
         }
     ]
 
+    // Define tab items for the modern Tabs API
+    const tabItems = [
+        {
+            key: 'all',
+            label: '全部工单'
+        },
+        {
+            key: 'pending',
+            label: (
+                <span>
+                    待处理
+                    <Badge count={pendingCount} />
+                </span>
+            )
+        },
+        {
+            key: 'processing',
+            label: '处理中'
+        },
+        {
+            key: 'completed',
+            label: '已完成'
+        }
+    ]
+
+    // 处理查询
     const handleSearch = async (values: SearchForm) => {
         setLoading(true)
 
@@ -260,7 +295,37 @@ export default function ApplicationsPage() {
                 pageSize: pageSize
             }
 
-            // 工单类型映射
+            // 根据当前标签页过滤状态
+            if (activeTab === 'pending') {
+                queryParams.status = WorkOrderStatus.PENDING
+            } else if (activeTab === 'processing') {
+                queryParams.status = WorkOrderStatus.PROCESSING
+            } else if (activeTab === 'completed') {
+                queryParams.status = [
+                    WorkOrderStatus.COMPLETED,
+                    WorkOrderStatus.REJECTED,
+                    WorkOrderStatus.FAILED
+                ]
+            }
+
+            // 添加其他查询条件
+            if (values.id) {
+                queryParams.taskNumber = values.id
+            }
+
+            if (values.mediaAccountName) {
+                queryParams.mediaAccountName = values.mediaAccountName
+            }
+
+            if (values.mediaAccountId) {
+                queryParams.mediaAccountId = values.mediaAccountId
+            }
+
+            if (values.status) {
+                queryParams.status = values.status
+            }
+
+            // 添加工单类型映射
             if (values.type) {
                 // 前端使用的WorkOrderType需要映射到后端的workOrderType和workOrderSubtype
                 queryParams.workOrderType = 'ACCOUNT_MANAGEMENT'
@@ -289,17 +354,12 @@ export default function ApplicationsPage() {
                 }
             }
 
-            // 添加其他查询条件
-            if (values.id) {
-                queryParams.taskNumber = values.id
+            if (values.mediaPlatform) {
+                queryParams.mediaPlatform = values.mediaPlatform
             }
 
-            if (values.mediaAccountId) {
-                queryParams.mediaAccountId = values.mediaAccountId
-            }
-
-            if (values.status) {
-                queryParams.status = values.status
+            if (values.createdBy) {
+                queryParams.createdBy = values.createdBy
             }
 
             if (values.dateRange && values.dateRange.length === 2) {
@@ -311,7 +371,8 @@ export default function ApplicationsPage() {
 
             // 调用服务端查询函数
             const response = await getWorkOrders(queryParams)
-            console.log(response)
+            console.log('查询结果:', response)
+
             if (response.success && response.data) {
                 // 辅助函数解析metadata
                 const parseMeta = (item: any): Record<string, any> => {
@@ -332,10 +393,10 @@ export default function ApplicationsPage() {
                     return metadata
                 }
 
-                // 转换数据结构以匹配Application接口
-                const applications: Application[] = response.data.items.map(
+                // 转换数据结构以匹配WorkOrder接口
+                const workOrders: WorkOrder[] = response.data.items.map(
                     (item: any) => {
-                        // 从metadata中提取mediaPlatform，如果存在的话
+                        // 从metadata中提取信息
                         const metadata = parseMeta(item)
                         console.log('工单ID:', item.id, '元数据:', metadata)
 
@@ -367,14 +428,14 @@ export default function ApplicationsPage() {
                             item.mediaAccountName ||
                             ''
 
-                        console.log('处理申请记录:', {
+                        console.log('处理工单:', {
                             id: item.id,
                             mediaPlatform,
                             mediaAccountName
                         })
 
                         return {
-                            id: item.taskId || item.id,
+                            id: item.id,
                             type: (() => {
                                 // 根据workOrderType和workOrderSubtype映射到前端枚举
                                 if (
@@ -400,40 +461,45 @@ export default function ApplicationsPage() {
                                     return item.workOrderType as any
                                 }
                             })(),
-                            mediaAccountId: item.mediaAccountId || '',
-                            mediaAccountName: mediaAccountName,
-                            mediaPlatform: Number(mediaPlatform),
-                            amount: item.amount
-                                ? String(item.amount)
-                                : metadata.amount
-                                  ? String(metadata.amount)
-                                  : undefined,
-                            dailyBudget:
-                                item.dailyBudget || metadata.dailyBudget,
-                            currency:
-                                item.currency || metadata.currency || 'USD',
                             status: item.status as WorkOrderStatus,
-                            remarks: item.remarks || metadata.remarks || '',
                             createdAt: new Date(
                                 item.createdAt
                             ).toLocaleString(),
                             updatedAt: new Date(
                                 item.updatedAt
                             ).toLocaleString(),
-                            taskId: item.taskId,
-                            reason: item.failureReason,
+                            createdBy: item.createdBy || '未知',
+                            updatedBy: item.updatedBy || '未知',
+                            mediaAccountId: item.mediaAccountId || '',
+                            mediaAccountName: mediaAccountName,
+                            mediaPlatform: Number(mediaPlatform),
                             companyName:
-                                metadata.companyName || item.companyName
+                                metadata.companyName || item.companyName || '',
+                            amount: metadata.amount,
+                            dailyBudget: metadata.dailyBudget,
+                            currency: metadata.currency || 'USD',
+                            remarks: item.remark || '',
+                            taskId: item.taskId || item.thirdPartyTaskId,
+                            reason: item.failureReason,
+                            thirdPartyResponse: item.thirdPartyResponse
                         }
                     }
                 )
 
-                setData(applications)
+                setData(workOrders)
                 setTotal(response.data.total)
             } else {
                 message.error(response.message || '查询失败')
                 setData([])
                 setTotal(0)
+            }
+
+            // 如果不是查询待处理标签，更新待处理数量
+            if (activeTab !== 'pending') {
+                fetchPendingCount()
+            } else {
+                // 如果是查询待处理标签，直接使用总数
+                setPendingCount(response.data?.total || 0)
             }
         } catch (error) {
             console.error('查询工单失败:', error)
@@ -446,9 +512,210 @@ export default function ApplicationsPage() {
     }
 
     // 查看详情
-    const handleViewDetail = (record: Application) => {
-        setCurrentApplication(record)
+    const handleViewDetail = (record: WorkOrder) => {
+        setCurrentWorkOrder(record)
         setDetailVisible(true)
+    }
+
+    // 批准工单
+    const handleApprove = (record: WorkOrder) => {
+        Modal.confirm({
+            title: '确认审批',
+            content: '确定要通过此工单吗？',
+            onOk: async () => {
+                setActionLoading(true)
+
+                try {
+                    let result
+
+                    // 根据工单类型使用相应的API进行审批
+                    switch (record.type) {
+                        case WorkOrderType.DEPOSIT:
+                            result = await approveDepositWorkOrder({
+                                workOrderId: record.id,
+                                approvedBy: '管理员'
+                            })
+                            break
+                        case WorkOrderType.DEDUCTION: // 对应WITHDRAWAL
+                            result = await approveWithdrawalWorkOrder({
+                                workOrderId: record.id,
+                                approvedBy: '管理员'
+                            })
+                            break
+                        case WorkOrderType.TRANSFER:
+                            result = await approveTransferWorkOrder({
+                                workOrderId: record.id,
+                                approvedBy: '管理员'
+                            })
+                            break
+                        case WorkOrderType.BIND: // 对应BIND_ACCOUNT
+                            result = await approveAccountBindingWorkOrder({
+                                workOrderId: record.id,
+                                approvedBy: '管理员'
+                            })
+                            break
+                        default:
+                            throw new Error(`不支持的工单类型: ${record.type}`)
+                    }
+
+                    if (result && result.success) {
+                        // 更新本地数据
+                        const newData = data.map((item) => {
+                            if (item.id === record.id) {
+                                return {
+                                    ...item,
+                                    status: WorkOrderStatus.APPROVED,
+                                    updatedAt: new Date()
+                                        .toISOString()
+                                        .replace('T', ' ')
+                                        .substring(0, 19),
+                                    updatedBy: '管理员'
+                                }
+                            }
+                            return item
+                        })
+                        setData(newData)
+
+                        // 如果当前工单是正在查看详情的工单，也更新它
+                        if (
+                            currentWorkOrder &&
+                            currentWorkOrder.id === record.id
+                        ) {
+                            setCurrentWorkOrder({
+                                ...currentWorkOrder,
+                                status: WorkOrderStatus.APPROVED,
+                                updatedAt: new Date()
+                                    .toISOString()
+                                    .replace('T', ' ')
+                                    .substring(0, 19),
+                                updatedBy: '管理员'
+                            })
+                        }
+
+                        message.success(result.message || '工单已通过')
+                        // 刷新待处理工单数量
+                        fetchPendingCount()
+                    } else {
+                        message.error(result?.message || '审批工单失败')
+                    }
+                } catch (error) {
+                    console.error('工单审批失败:', error)
+                    message.error(
+                        error instanceof Error
+                            ? error.message
+                            : '审批过程中发生错误'
+                    )
+                } finally {
+                    setActionLoading(false)
+                }
+            }
+        })
+    }
+
+    // 拒绝工单
+    const handleReject = (record: WorkOrder) => {
+        Modal.confirm({
+            title: '确认拒绝',
+            content: (
+                <div>
+                    <p>确定要拒绝此工单吗？</p>
+                    <p>请输入拒绝原因：</p>
+                    <Input.TextArea id="rejectReason" rows={3} />
+                </div>
+            ),
+            onOk: async () => {
+                const reason =
+                    (
+                        document.getElementById(
+                            'rejectReason'
+                        ) as HTMLTextAreaElement
+                    )?.value || '未提供原因'
+
+                setActionLoading(true)
+
+                try {
+                    let result
+
+                    // 根据工单类型使用相应的API进行拒绝
+                    switch (record.type) {
+                        case WorkOrderType.DEPOSIT:
+                            result = await rejectDepositWorkOrder({
+                                workOrderId: record.id,
+                                reason: reason,
+                                rejectedBy: '管理员'
+                            })
+                            break
+                        case WorkOrderType.DEDUCTION: // 对应WITHDRAWAL
+                            result = await rejectWithdrawalWorkOrder({
+                                workOrderId: record.id,
+                                reason: reason,
+                                rejectedBy: '管理员'
+                            })
+                            break
+                        case WorkOrderType.TRANSFER:
+                            result = await rejectTransferWorkOrder({
+                                workOrderId: record.id,
+                                reason: reason,
+                                rejectedBy: '管理员'
+                            })
+                            break
+                        case WorkOrderType.BIND: // 对应BIND_ACCOUNT
+                            result = await rejectAccountBindingWorkOrder({
+                                workOrderId: record.id,
+                                reason: reason,
+                                rejectedBy: '管理员'
+                            })
+                            break
+                        default:
+                            throw new Error(`不支持的工单类型: ${record.type}`)
+                    }
+
+                    if (result && result.success) {
+                        // 更新本地数据
+                        const newData = data.map((item) => {
+                            if (item.id === record.id) {
+                                return {
+                                    ...item,
+                                    status: WorkOrderStatus.REJECTED,
+                                    reason: reason,
+                                    updatedAt: new Date().toLocaleString(),
+                                    updatedBy: '管理员'
+                                }
+                            }
+                            return item
+                        })
+                        setData(newData)
+
+                        // 更新当前查看的工单
+                        if (
+                            currentWorkOrder &&
+                            currentWorkOrder.id === record.id
+                        ) {
+                            setCurrentWorkOrder({
+                                ...currentWorkOrder,
+                                status: WorkOrderStatus.REJECTED,
+                                reason: reason,
+                                updatedAt: new Date().toLocaleString(),
+                                updatedBy: '管理员'
+                            })
+                        }
+
+                        message.success(result.message || '工单已拒绝')
+                        // 刷新待处理工单数量
+                        fetchPendingCount()
+                    } else {
+                        message.error(result?.message || '拒绝工单失败')
+                    }
+                } catch (error) {
+                    console.error('拒绝工单失败:', error)
+                    message.error(
+                        error instanceof Error ? error.message : '拒绝工单失败'
+                    )
+                } finally {
+                    setActionLoading(false)
+                }
+            }
+        })
     }
 
     // 处理分页变化
@@ -458,85 +725,18 @@ export default function ApplicationsPage() {
         handleSearch(form.getFieldsValue())
     }
 
+    // 处理标签页切换
+    const handleTabChange = (activeKey: string) => {
+        setActiveTab(activeKey)
+        setCurrentPage(1)
+        handleSearch(form.getFieldsValue())
+    }
+
     // 处理重置
     const handleReset = () => {
         form.resetFields()
         setCurrentPage(1)
         handleSearch({})
-    }
-
-    // 处理编辑
-    const handleEdit = (record: Application) => {
-        setCurrentApplication(record)
-        editForm.setFieldsValue({
-            amount: record.amount,
-            dailyBudget: record.dailyBudget,
-            remarks: record.remarks
-        })
-        setEditVisible(true)
-    }
-
-    // 保存编辑
-    const handleSaveEdit = async () => {
-        try {
-            const values = await editForm.validateFields()
-            let success = false
-            let responseMsg = ''
-
-            // 根据工单类型调用不同的API
-            if (currentApplication?.type === WorkOrderType.DEPOSIT) {
-                // 充值工单
-                const response = await updateDepositWorkOrder({
-                    workOrderId: currentApplication!.id,
-                    amount: values.amount,
-                    dailyBudget: values.dailyBudget
-                })
-                success = response.success
-                responseMsg = response.message || ''
-            } else if (currentApplication?.type === WorkOrderType.DEDUCTION) {
-                // 减款工单
-                const response = await updateWithdrawalWorkOrder({
-                    workOrderId: currentApplication!.id,
-                    amount: values.amount,
-                    remarks: values.remarks
-                })
-                // 减款API可能使用code字段而不是success
-                success = response.code === 'SUCCESS'
-                responseMsg = response.message || ''
-            } else {
-                throw new Error('不支持的工单类型')
-            }
-
-            if (success) {
-                // 更新本地数据
-                const newData = data.map((item) => {
-                    if (item.id === currentApplication?.id) {
-                        return {
-                            ...item,
-                            amount: values.amount,
-                            dailyBudget:
-                                currentApplication?.type ===
-                                WorkOrderType.DEPOSIT
-                                    ? values.dailyBudget
-                                    : undefined,
-                            updatedAt: new Date()
-                                .toISOString()
-                                .replace('T', ' ')
-                                .substring(0, 19)
-                        }
-                    }
-                    return item
-                })
-
-                setData(newData)
-                setEditVisible(false)
-                message.success(responseMsg || '修改成功')
-            } else {
-                message.error(responseMsg || '修改失败')
-            }
-        } catch (error) {
-            console.error('表单验证失败:', error)
-        }
     }
 
     // 初始化
@@ -548,8 +748,16 @@ export default function ApplicationsPage() {
         <StyleProvider layer>
             <ConfigProvider>
                 <Title level={3} className="m-0 mb-4">
-                    申请记录
+                    工单管理
                 </Title>
+
+                {/* 标签页 - Updated to use items prop */}
+                <Tabs
+                    activeKey={activeTab}
+                    onChange={handleTabChange}
+                    style={{ marginBottom: 16 }}
+                    items={tabItems}
+                />
 
                 {/* 搜索表单 */}
                 <Card style={{ marginBottom: 16 }}>
@@ -564,7 +772,10 @@ export default function ApplicationsPage() {
                                 name="id"
                                 style={{ marginBottom: 0 }}
                             >
-                                <Input placeholder="请输入申请ID" allowClear />
+                                <Input
+                                    placeholder="请输入工单编号"
+                                    allowClear
+                                />
                             </Form.Item>
                             <Form.Item
                                 label="账户名称"
@@ -577,11 +788,11 @@ export default function ApplicationsPage() {
                                 />
                             </Form.Item>
                             <Form.Item
-                                label="账户ID"
-                                name="mediaAccountId"
+                                label="申请人"
+                                name="createdBy"
                                 style={{ marginBottom: 0 }}
                             >
-                                <Input placeholder="请输入账户ID" allowClear />
+                                <Input placeholder="请输入申请人" allowClear />
                             </Form.Item>
                             <Form.Item
                                 label="媒体平台"
@@ -680,7 +891,7 @@ export default function ApplicationsPage() {
                                 </Select>
                             </Form.Item>
                             <Form.Item
-                                label="申请时间"
+                                label="创建时间"
                                 name="dateRange"
                                 style={{ marginBottom: 0 }}
                             >
@@ -706,7 +917,7 @@ export default function ApplicationsPage() {
                 <Table
                     columns={columns}
                     dataSource={data}
-                    rowKey={(record) => `${record.id}_${record.createdAt}`}
+                    rowKey="id"
                     loading={loading}
                     pagination={{
                         current: currentPage,
@@ -722,7 +933,7 @@ export default function ApplicationsPage() {
 
                 {/* 详情弹窗 */}
                 <Modal
-                    title="申请详情"
+                    title="工单详情"
                     open={detailVisible}
                     onCancel={() => setDetailVisible(false)}
                     footer={[
@@ -731,30 +942,53 @@ export default function ApplicationsPage() {
                             onClick={() => setDetailVisible(false)}
                         >
                             关闭
-                        </Button>
+                        </Button>,
+                        currentWorkOrder?.status ===
+                            WorkOrderStatus.PENDING && (
+                            <>
+                                <Button
+                                    key="reject"
+                                    danger
+                                    loading={actionLoading}
+                                    onClick={() => {
+                                        if (currentWorkOrder) {
+                                            handleReject(currentWorkOrder)
+                                        }
+                                    }}
+                                >
+                                    拒绝
+                                </Button>
+                                <Button
+                                    key="approve"
+                                    type="primary"
+                                    loading={actionLoading}
+                                    onClick={() => {
+                                        if (currentWorkOrder) {
+                                            handleApprove(currentWorkOrder)
+                                        }
+                                    }}
+                                >
+                                    通过
+                                </Button>
+                            </>
+                        )
                     ]}
                     width={700}
                 >
-                    {currentApplication && (
+                    {currentWorkOrder && (
                         <Descriptions bordered column={2}>
-                            <Descriptions.Item label="工单ID" span={2}>
-                                {currentApplication.id}
+                            <Descriptions.Item label="工单编号" span={2}>
+                                {currentWorkOrder.id}
                             </Descriptions.Item>
-                            <Descriptions.Item label="申请类型">
+                            <Descriptions.Item label="工单类型">
                                 {(() => {
-                                    const typeMap: Record<string, string> = {
+                                    const typeMap = {
                                         [WorkOrderType.DEPOSIT]: '充值',
                                         [WorkOrderType.DEDUCTION]: '减款',
                                         [WorkOrderType.TRANSFER]: '转账',
                                         [WorkOrderType.BIND]: '绑定'
                                     }
-                                    return (
-                                        typeMap[
-                                            currentApplication.type as string
-                                        ] ||
-                                        currentApplication.type ||
-                                        '未知'
-                                    )
+                                    return typeMap[currentWorkOrder.type]
                                 })()}
                             </Descriptions.Item>
                             <Descriptions.Item label="状态">
@@ -769,154 +1003,93 @@ export default function ApplicationsPage() {
                                         [WorkOrderStatus.CANCELED]: '已取消'
                                     }
                                     return (
-                                        statusMap[currentApplication.status] ||
+                                        statusMap[currentWorkOrder.status] ||
                                         '未知'
                                     )
                                 })()}
                             </Descriptions.Item>
                             <Descriptions.Item label="账户名称">
-                                {currentApplication.mediaAccountName}
+                                {currentWorkOrder.mediaAccountName}
                             </Descriptions.Item>
                             <Descriptions.Item label="账户ID">
-                                {currentApplication.mediaAccountId}
+                                {currentWorkOrder.mediaAccountId}
                             </Descriptions.Item>
                             <Descriptions.Item label="媒体平台">
                                 {(() => {
-                                    console.log(
-                                        '详情平台:',
-                                        currentApplication.mediaPlatform
-                                    )
                                     const platformMap = {
                                         1: 'Facebook',
                                         2: 'Google',
                                         3: 'Meta',
                                         5: 'TikTok'
                                     }
-                                    const platformValue = Number(
-                                        currentApplication.mediaPlatform
-                                    )
                                     return (
                                         platformMap[
-                                            platformValue as keyof typeof platformMap
+                                            currentWorkOrder.mediaPlatform as keyof typeof platformMap
                                         ] || '未知'
                                     )
                                 })()}
                             </Descriptions.Item>
                             <Descriptions.Item label="公司主体">
-                                {currentApplication.companyName || '-'}
+                                {currentWorkOrder.companyName}
                             </Descriptions.Item>
-                            {currentApplication.amount !== undefined && (
+                            {currentWorkOrder.amount !== undefined && (
                                 <Descriptions.Item label="金额">
-                                    {`${currentApplication.amount} ${currentApplication.currency}`}
+                                    {`${currentWorkOrder.amount} ${currentWorkOrder.currency}`}
                                 </Descriptions.Item>
                             )}
-                            {currentApplication.dailyBudget !== undefined && (
+                            {currentWorkOrder.dailyBudget !== undefined && (
                                 <Descriptions.Item label="每日预算">
-                                    {`${currentApplication.dailyBudget} ${currentApplication.currency}`}
+                                    {`${currentWorkOrder.dailyBudget} ${currentWorkOrder.currency}`}
                                 </Descriptions.Item>
                             )}
-                            <Descriptions.Item label="申请时间">
-                                {currentApplication.createdAt}
+                            <Descriptions.Item label="申请人">
+                                {currentWorkOrder.createdBy}
                             </Descriptions.Item>
-                            <Descriptions.Item label="最后更新时间">
-                                {currentApplication.updatedAt}
+                            <Descriptions.Item label="处理人">
+                                {currentWorkOrder.updatedBy}
                             </Descriptions.Item>
-                            {currentApplication.taskId && (
+                            <Descriptions.Item label="创建时间">
+                                {currentWorkOrder.createdAt}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="更新时间">
+                                {currentWorkOrder.updatedAt}
+                            </Descriptions.Item>
+                            {currentWorkOrder.taskId && (
                                 <Descriptions.Item label="任务ID" span={2}>
-                                    {currentApplication.taskId}
+                                    {currentWorkOrder.taskId}
                                 </Descriptions.Item>
                             )}
-                            {currentApplication.reason && (
+                            {currentWorkOrder.reason && (
                                 <Descriptions.Item label="原因/结果" span={2}>
-                                    {currentApplication.reason}
+                                    {currentWorkOrder.reason}
                                 </Descriptions.Item>
                             )}
-                            {currentApplication.remarks && (
+                            {currentWorkOrder.remarks && (
                                 <Descriptions.Item label="备注" span={2}>
-                                    {currentApplication.remarks}
+                                    {currentWorkOrder.remarks}
+                                </Descriptions.Item>
+                            )}
+                            {currentWorkOrder.thirdPartyResponse && (
+                                <Descriptions.Item label="第三方响应" span={2}>
+                                    <pre
+                                        style={{
+                                            whiteSpace: 'pre-wrap',
+                                            maxHeight: '200px',
+                                            overflowY: 'auto'
+                                        }}
+                                    >
+                                        {JSON.stringify(
+                                            JSON.parse(
+                                                currentWorkOrder.thirdPartyResponse
+                                            ),
+                                            null,
+                                            2
+                                        )}
+                                    </pre>
                                 </Descriptions.Item>
                             )}
                         </Descriptions>
                     )}
-                </Modal>
-
-                {/* 编辑弹窗 */}
-                <Modal
-                    title={
-                        currentApplication?.type === WorkOrderType.DEPOSIT
-                            ? '编辑充值申请'
-                            : '编辑减款申请'
-                    }
-                    open={editVisible}
-                    onCancel={() => setEditVisible(false)}
-                    onOk={handleSaveEdit}
-                    okText="保存"
-                    cancelText="取消"
-                >
-                    <Form
-                        form={editForm}
-                        layout="vertical"
-                        initialValues={
-                            currentApplication
-                                ? {
-                                      amount: currentApplication.amount,
-                                      dailyBudget:
-                                          currentApplication.dailyBudget,
-                                      remarks: currentApplication.remarks
-                                  }
-                                : {}
-                        }
-                    >
-                        <Form.Item
-                            label={
-                                currentApplication?.type ===
-                                WorkOrderType.DEPOSIT
-                                    ? '充值金额'
-                                    : '减款金额'
-                            }
-                            name="amount"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: `请输入${currentApplication?.type === WorkOrderType.DEPOSIT ? '充值' : '减款'}金额`
-                                }
-                            ]}
-                        >
-                            <InputNumber
-                                style={{ width: '100%' }}
-                                min={0}
-                                precision={2}
-                                placeholder={`请输入${currentApplication?.type === WorkOrderType.DEPOSIT ? '充值' : '减款'}金额`}
-                            />
-                        </Form.Item>
-
-                        {currentApplication?.type === WorkOrderType.DEPOSIT && (
-                            <Form.Item
-                                label="每日预算"
-                                name="dailyBudget"
-                                rules={[
-                                    {
-                                        required: true,
-                                        message: '请输入每日预算'
-                                    }
-                                ]}
-                            >
-                                <InputNumber
-                                    style={{ width: '100%' }}
-                                    min={0}
-                                    precision={2}
-                                    placeholder="请输入每日预算"
-                                />
-                            </Form.Item>
-                        )}
-
-                        <Form.Item label="备注" name="remarks">
-                            <Input.TextArea
-                                rows={4}
-                                placeholder={`请输入${currentApplication?.type === WorkOrderType.DEPOSIT ? '充值' : '减款'}原因或备注信息`}
-                            />
-                        </Form.Item>
-                    </Form>
                 </Modal>
             </ConfigProvider>
         </StyleProvider>

@@ -50,6 +50,7 @@ export async function callExternalApi<T>(params: {
         })
 
         const data: ApiResponse<T> = await response.json()
+        // console.log('data', data)
         return {
             ...data,
             data: data.data || null

@@ -77,7 +77,7 @@ async function callThirdPartyUpdateEmailBindingAPI(
 ): Promise<ThirdPartyEmailBindingResponse> {
     try {
         const response = await fetch(
-            'openApi/v1/mediaAccount/bindEmailApplication/update',
+            '/openApi/v1/mediaAccount/bindEmailApplication/update',
             {
                 method: 'POST',
                 headers: {

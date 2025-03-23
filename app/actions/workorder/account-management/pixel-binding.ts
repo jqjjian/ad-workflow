@@ -49,14 +49,17 @@ async function callThirdPartyPixelBindingAPI(
     traceId: string
 ): Promise<ThirdPartyPixelBindingResponse> {
     try {
-        const response = await fetch('openApi/v1/bindPixelApplication/create', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Trace-Id': traceId
-            },
-            body: JSON.stringify(request)
-        })
+        const response = await fetch(
+            '/openApi/v1/bindPixelApplication/create',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Trace-Id': traceId
+                },
+                body: JSON.stringify(request)
+            }
+        )
 
         const data = await response.json()
         return ThirdPartyPixelBindingResponseSchema.parse(data)

@@ -1,13 +1,15 @@
 'use server'
 
-import OSS from 'ali-oss'
-import { Logger } from '@/lib/logger'
+import { Logger } from '../../lib/logger'
+
+// 导入ali-oss，使用require方式避免类型问题
+const OSS = require('ali-oss')
 
 // OSS客户端单例
-let ossClient: OSS | null = null
+let ossClient: any = null
 
 // 初始化OSS客户端
-export function getOssClient(): OSS {
+export function getOssClient(): any {
     if (ossClient) {
         return ossClient
     }
@@ -32,7 +34,9 @@ export function getOssClient(): OSS {
         return ossClient
     } catch (error) {
         Logger.error(
-            `初始化OSS客户端失败: ${error instanceof Error ? error.message : String(error)}`
+            new Error(
+                `初始化OSS客户端失败: ${error instanceof Error ? error.message : String(error)}`
+            )
         )
         throw new Error('初始化OSS客户端失败')
     }
@@ -82,7 +86,9 @@ export async function generateUploadCredentials(
         }
     } catch (error) {
         Logger.error(
-            `生成上传凭证失败: ${error instanceof Error ? error.message : String(error)}`
+            new Error(
+                `生成上传凭证失败: ${error instanceof Error ? error.message : String(error)}`
+            )
         )
         throw new Error('生成上传凭证失败')
     }
@@ -101,7 +107,9 @@ export async function generateFileUrl(
         return url
     } catch (error) {
         Logger.error(
-            `生成文件访问URL失败: ${error instanceof Error ? error.message : String(error)}`
+            new Error(
+                `生成文件访问URL失败: ${error instanceof Error ? error.message : String(error)}`
+            )
         )
         throw new Error('生成文件访问URL失败')
     }
@@ -116,11 +124,13 @@ export async function checkFileExists(objectKey: string): Promise<boolean> {
         await client.head(objectKey)
         return true
     } catch (error) {
-        if ((error as OSS.RequestError).status === 404) {
+        if (error && (error as any).status === 404) {
             return false
         }
         Logger.error(
-            `检查文件是否存在失败: ${error instanceof Error ? error.message : String(error)}`
+            new Error(
+                `检查文件是否存在失败: ${error instanceof Error ? error.message : String(error)}`
+            )
         )
         throw error
     }
@@ -136,7 +146,9 @@ export async function deleteFile(objectKey: string): Promise<boolean> {
         return true
     } catch (error) {
         Logger.error(
-            `删除文件失败: ${error instanceof Error ? error.message : String(error)}`
+            new Error(
+                `删除文件失败: ${error instanceof Error ? error.message : String(error)}`
+            )
         )
         return false
     }

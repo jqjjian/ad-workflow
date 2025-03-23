@@ -11,7 +11,7 @@ import {
     PixelBindSchema,
     EmailBindSchema
 } from '@/schemas'
-import { generateWorkOrderNumber } from '../utils/workorder-utils'
+import { generateTaskNumber } from '@/lib/utils'
 import { callExternalApi, API_BASE_URL } from '@/lib/request'
 import { Logger } from '@/lib/logger'
 import { ApiResponse } from '@/schemas/third-party-type'
@@ -564,7 +564,7 @@ export async function createDepositOrder(
             const validatedData = DepositSchema.parse(data)
 
             // 2. 生成工单编号
-            const taskNumber = generateWorkOrderNumber(
+            const taskNumber = generateTaskNumber(
                 WorkOrderType.ACCOUNT_MANAGEMENT,
                 WorkOrderSubtype.DEPOSIT
             )

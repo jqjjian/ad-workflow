@@ -6,6 +6,9 @@ import { z } from 'zod'
 import { auth } from '@/auth'
 import { ValidationError, ThirdPartyError } from '@/utils/business-error'
 import { generateTaskNumber, generateTraceId } from '@/lib/utils'
+import { v4 as uuidv4 } from 'uuid'
+import { UserRole, WorkOrderSubtype } from '@prisma/client'
+import { ApproveWorkOrderParams, RejectWorkOrderParams } from './types'
 
 // 创建转账请求的Schema
 const TransferRequestSchema = z.object({
@@ -55,7 +58,7 @@ async function callThirdPartyTransferAPI(
     traceId: string
 ) {
     try {
-        const response = await fetch('openApi/v1/mediaAccount/transfer', {
+        const response = await fetch('/openApi/v1/mediaAccount/transfer', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -89,120 +92,238 @@ export async function createTransferWorkOrder(input: unknown) {
     let workOrder: any = null
 
     try {
+        // 获取当前用户会话
+        const session = await auth()
+        if (!session || !session.user) {
+            return {
+                success: false,
+                message: '未登录或会话已过期'
+            }
+        }
+
+        // 安全地提取用户信息
+        const userId = session.user.id
+        const username = session.user.name || '系统用户'
+
+        // 检查用户是否存在
+        const userExists = await db.tecdo_users.findUnique({
+            where: { id: userId }
+        })
+
+        // 如果用户不存在，使用备用系统用户
+        const actualUserId = userExists ? userId : '系统中已知存在的用户ID'
+
         // 验证输入参数
-        const validatedInput = await TransferRequestSchema.parseAsync(input)
+        const validatedData = await TransferRequestSchema.parseAsync(input)
+        const {
+            sourceAccountId,
+            targetAccountId,
+            mediaPlatform,
+            amount,
+            currency = 'CNY',
+            isMoveAllBalance = false,
+            remarks
+        } = validatedData
+
+        const taskNumber =
+            validatedData.taskNumber ||
+            generateTaskNumber('ACCOUNT_MANAGEMENT', 'TRANSFER')
+
+        // 检查源媒体账户是否存在，但不作为工单创建的必要条件
+        try {
+            const sourceAccount = await db.tecdo_media_accounts.findUnique({
+                where: { id: sourceAccountId }
+            })
+
+            if (!sourceAccount) {
+                console.log(
+                    `注意: 源媒体账户ID ${sourceAccountId} 在系统中不存在，但仍将创建工单`
+                )
+            } else {
+                console.log(
+                    `源媒体账户ID ${sourceAccountId} 验证通过，继续创建工单`
+                )
+            }
+        } catch (mediaAccountError) {
+            console.error(
+                '查询源媒体账户时出错，但将继续创建工单:',
+                mediaAccountError
+            )
+        }
+
+        // 检查目标媒体账户是否存在，但不作为工单创建的必要条件
+        try {
+            const targetAccount = await db.tecdo_media_accounts.findUnique({
+                where: { id: targetAccountId }
+            })
+
+            if (!targetAccount) {
+                console.log(
+                    `注意: 目标媒体账户ID ${targetAccountId} 在系统中不存在，但仍将创建工单`
+                )
+            } else {
+                console.log(
+                    `目标媒体账户ID ${targetAccountId} 验证通过，继续创建工单`
+                )
+            }
+        } catch (mediaAccountError) {
+            console.error(
+                '查询目标媒体账户时出错，但将继续创建工单:',
+                mediaAccountError
+            )
+        }
 
         // 开启事务
         const result = await db.$transaction(async (tx) => {
             // 1. 调用第三方API
             const thirdPartyResponse = await callThirdPartyTransferAPI(
-                validatedInput,
+                validatedData,
                 traceId
             )
 
-            // 2. 先创建工单主记录（因为需要先有ID才能关联）
+            // 2. 创建工单
             workOrder = await tx.tecdo_work_orders.create({
                 data: {
                     taskId: thirdPartyResponse.data?.taskId || 'unknown',
-                    taskNumber:
-                        validatedInput.taskNumber || generateTaskNumber(),
-                    userId: 'current-user-id', // 从 session 获取
-                    workOrderType: 'PAYMENT',
+                    taskNumber: taskNumber,
+                    userId: actualUserId,
+                    workOrderType: 'ACCOUNT_MANAGEMENT',
                     workOrderSubtype: 'TRANSFER',
-                    status:
-                        thirdPartyResponse.code === '0' ? 'PENDING' : 'FAILED',
+                    status: 'PENDING',
+                    mediaAccountId: sourceAccountId, // 使用源账户作为mediaAccountId
                     metadata: {
                         traceId,
-                        platformType: validatedInput.mediaPlatform
+                        platformType: mediaPlatform,
+                        sourceAccountId: sourceAccountId,
+                        targetAccountId: targetAccountId,
+                        amount: amount,
+                        currency: currency,
+                        isMoveAllBalance: isMoveAllBalance
                     },
                     createdAt: new Date(),
                     updatedAt: new Date()
                 }
             })
 
-            // 3. 创建原始数据记录
-            const rawData = await tx.tecdo_raw_data.create({
+            // 3. 记录工单审计日志
+            await tx.tecdo_audit_logs.create({
                 data: {
-                    requestData: JSON.stringify({
-                        ...validatedInput,
-                        traceId
+                    id: uuidv4(),
+                    entityType: 'WORK_ORDER',
+                    entityId: workOrder.id,
+                    action: '创建转账工单',
+                    performedBy: username,
+                    newValue: JSON.stringify({
+                        sourceAccountId: sourceAccountId,
+                        targetAccountId: targetAccountId,
+                        mediaPlatform: mediaPlatform,
+                        amount: amount,
+                        currency: currency,
+                        isMoveAllBalance: isMoveAllBalance
                     }),
-                    responseData: JSON.stringify(thirdPartyResponse),
-                    syncStatus: 'PENDING',
-                    syncAttempts: 0,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    tecdo_work_orders: { connect: { id: workOrder.id } }
+                    createdAt: new Date()
                 }
             })
 
-            // 4. 根据第三方API响应确定工单状态
-            const initialStatus =
-                thirdPartyResponse.code === '0' ? 'PENDING' : 'FAILED'
+            // 4. 尝试创建业务数据记录
+            try {
+                // 检查是否已存在关联的业务数据
+                const existingBusinessData =
+                    await tx.tecdo_transfer_business_data.findUnique({
+                        where: { workOrderId: workOrder.id }
+                    })
 
-            // 更新工单的rawDataId
-            await tx.tecdo_work_orders.update({
-                where: { id: workOrder.id },
-                data: { rawDataId: rawData.id }
-            })
-
-            // 5. 创建转账业务数据
-            const businessData = await tx.tecdo_transfer_business_data.create({
-                data: {
-                    workOrderId: workOrder.id,
-                    mediaPlatform: validatedInput.mediaPlatform,
-                    sourceAccountId: validatedInput.sourceAccountId,
-                    targetAccountId: validatedInput.targetAccountId,
-                    amount: validatedInput.amount,
-                    currency: validatedInput.currency,
-                    isMoveAllBalance: validatedInput.isMoveAllBalance,
-                    transferStatus: initialStatus,
-                    transferTime: new Date(),
-                    completedTime: new Date(), // 需要在完成时更新
-                    failureReason:
-                        initialStatus === 'FAILED'
-                            ? thirdPartyResponse.message
-                            : null,
-                    mediaAccountId: validatedInput.sourceAccountId, // 使用源账户作为mediaAccountId
-                    createdAt: new Date(),
-                    updatedAt: new Date()
+                if (existingBusinessData) {
+                    console.log(
+                        `工单ID ${workOrder.id} 已有关联的业务数据，不再创建新记录`
+                    )
+                } else {
+                    // 创建业务数据记录
+                    await tx.tecdo_transfer_business_data.create({
+                        data: {
+                            workOrderId: workOrder.id,
+                            mediaPlatform: mediaPlatform,
+                            sourceAccountId: sourceAccountId,
+                            targetAccountId: targetAccountId,
+                            amount: amount,
+                            currency: currency,
+                            isMoveAllBalance: isMoveAllBalance,
+                            transferStatus: 'PENDING',
+                            transferTime: new Date(),
+                            completedTime: new Date('9999-12-31'), // 使用远期日期表示尚未完成
+                            mediaAccountId: sourceAccountId, // 使用源账户作为mediaAccountId
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                        }
+                    })
+                    console.log('转账业务数据创建成功')
                 }
-            })
-
-            // 6. 更新工单记录的业务数据ID
-            await tx.tecdo_work_orders.update({
-                where: { id: workOrder.id },
-                data: { businessDataId: businessData.id }
-            })
-
-            return {
-                code: thirdPartyResponse.code,
-                message: thirdPartyResponse.message,
-                data:
-                    thirdPartyResponse.code === '0'
-                        ? {
-                              workOrderId: workOrder.id,
-                              taskId: workOrder.taskId,
-                              externalTaskId: thirdPartyResponse.data?.taskId,
-                              status: initialStatus,
-                              mediaPlatform: businessData.mediaPlatform,
-                              sourceAccountId: businessData.sourceAccountId,
-                              targetAccountId: businessData.targetAccountId,
-                              amount: businessData.amount,
-                              createdAt: workOrder.createdAt
-                          }
-                        : undefined,
-                traceId
+            } catch (businessDataError) {
+                console.error(
+                    '创建转账业务数据时出错，但工单已创建:',
+                    businessDataError
+                )
+                // 记录更详细的错误信息
+                await tx.tecdo_error_log.create({
+                    data: {
+                        id: uuidv4(),
+                        entityType: 'TRANSFER_BUSINESS_DATA',
+                        entityId: workOrder.id,
+                        errorCode: 'BUSINESS_DATA_CREATE_FAILED',
+                        errorMessage:
+                            businessDataError instanceof Error
+                                ? businessDataError.message
+                                : '创建业务数据失败',
+                        stackTrace:
+                            businessDataError instanceof Error
+                                ? businessDataError.stack || ''
+                                : '',
+                        severity: 'ERROR',
+                        resolved: false,
+                        createdAt: new Date()
+                    }
+                })
+                // 仅记录错误，不中断工单创建流程
             }
+
+            // 返回结果
+            return { workOrder, thirdPartyResponse }
         })
 
-        // 重新验证页面数据
-        revalidatePath('/workorder')
+        // 刷新相关页面
         revalidatePath('/account/manage')
-        revalidatePath('/account/workorders')
-        return result
+        revalidatePath('/account/applications')
+
+        // 返回成功信息
+        console.log('转账工单创建成功:', {
+            workOrderId: result.workOrder.id,
+            taskId: result.workOrder.taskId
+        })
+
+        return {
+            success: true,
+            message: '转账工单创建成功',
+            data: {
+                workOrderId: result.workOrder.id,
+                taskId: result.workOrder.taskId
+            }
+        }
     } catch (error) {
-        return handleError(error, traceId, '创建转账工单')
+        console.error('创建转账工单出错:', error)
+
+        // 对于Zod验证错误，提供详细的验证失败信息
+        if (error instanceof z.ZodError) {
+            return {
+                success: false,
+                message: '参数验证失败',
+                errors: error.errors
+            }
+        }
+
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : '创建转账工单失败'
+        }
     }
 }
 
@@ -456,6 +577,235 @@ export async function submitTransferWorkOrderToThirdParty(
         return {
             success: false,
             message: '提交转账工单到第三方接口失败'
+        }
+    }
+}
+
+/**
+ * 管理员审批转账工单
+ * @param params 审批参数
+ * @returns 操作结果
+ */
+export async function approveTransferWorkOrder(
+    params: ApproveWorkOrderParams
+): Promise<{
+    success: boolean
+    message?: string
+    data?: { workOrderId: string }
+}> {
+    try {
+        // 获取当前用户会话
+        const session = await auth()
+        if (!session || !session.user) {
+            return {
+                success: false,
+                message: '未登录或会话已过期'
+            }
+        }
+
+        // 验证是否为管理员
+        if (
+            session.user.role !== UserRole.ADMIN &&
+            session.user.role !== UserRole.SUPER_ADMIN
+        ) {
+            return {
+                success: false,
+                message: '无权操作，仅管理员可审批工单'
+            }
+        }
+
+        // 查询工单
+        const workOrder = await db.tecdo_work_orders.findUnique({
+            where: { id: params.workOrderId }
+        })
+
+        // 验证工单是否存在
+        if (!workOrder) {
+            return {
+                success: false,
+                message: '工单不存在'
+            }
+        }
+
+        // 验证工单状态
+        if (workOrder.status !== 'PENDING') {
+            return {
+                success: false,
+                message: '只能审批待处理状态的工单'
+            }
+        }
+
+        // 验证工单类型
+        if (workOrder.workOrderSubtype !== 'TRANSFER') {
+            return {
+                success: false,
+                message: '非转账工单，无法进行此操作'
+            }
+        }
+
+        const username = session.user.name || 'unknown'
+        const now = new Date()
+
+        // 更新工单状态为已审批
+        await db.tecdo_work_orders.update({
+            where: { id: params.workOrderId },
+            data: {
+                status: 'PROCESSING',
+                updatedAt: now,
+                remark: params.remarks || workOrder.remark
+            }
+        })
+
+        // 添加工单日志
+        await db.tecdo_audit_logs.create({
+            data: {
+                id: uuidv4(),
+                entityType: 'WORK_ORDER',
+                entityId: params.workOrderId,
+                action: '审批通过',
+                performedBy: username,
+                previousValue: JSON.stringify({ status: workOrder.status }),
+                newValue: JSON.stringify({
+                    status: 'PROCESSING',
+                    remarks: params.remarks
+                }),
+                createdAt: now
+            }
+        })
+
+        // 刷新相关页面
+        revalidatePath('/admin/workorders')
+
+        return {
+            success: true,
+            message: '转账工单审批成功',
+            data: {
+                workOrderId: params.workOrderId
+            }
+        }
+    } catch (error) {
+        console.error('审批转账工单出错:', error)
+        return {
+            success: false,
+            message: '转账工单审批失败'
+        }
+    }
+}
+
+/**
+ * 拒绝转账工单
+ * @param params 拒绝参数
+ * @returns 操作结果
+ */
+export async function rejectTransferWorkOrder(
+    params: RejectWorkOrderParams
+): Promise<{
+    success: boolean
+    message?: string
+    data?: { workOrderId: string }
+}> {
+    try {
+        // 获取当前用户会话
+        const session = await auth()
+        if (!session || !session.user) {
+            return {
+                success: false,
+                message: '未登录或会话已过期'
+            }
+        }
+
+        // 验证是否为管理员
+        if (
+            session.user.role !== UserRole.ADMIN &&
+            session.user.role !== UserRole.SUPER_ADMIN
+        ) {
+            return {
+                success: false,
+                message: '无权操作，仅管理员可拒绝工单'
+            }
+        }
+
+        if (!params.reason) {
+            return {
+                success: false,
+                message: '必须提供拒绝原因'
+            }
+        }
+
+        // 查询工单
+        const workOrder = await db.tecdo_work_orders.findUnique({
+            where: { id: params.workOrderId }
+        })
+
+        // 验证工单是否存在
+        if (!workOrder) {
+            return {
+                success: false,
+                message: '工单不存在'
+            }
+        }
+
+        // 验证工单状态
+        if (workOrder.status !== 'PENDING') {
+            return {
+                success: false,
+                message: '只能拒绝待处理状态的工单'
+            }
+        }
+
+        // 验证工单类型
+        if (workOrder.workOrderSubtype !== 'TRANSFER') {
+            return {
+                success: false,
+                message: '非转账工单，无法进行此操作'
+            }
+        }
+
+        const username = session.user.name || 'unknown'
+        const now = new Date()
+
+        // 更新工单状态为已拒绝
+        await db.tecdo_work_orders.update({
+            where: { id: params.workOrderId },
+            data: {
+                status: 'CANCELLED',
+                updatedAt: now,
+                remark: params.reason
+            }
+        })
+
+        // 添加工单日志
+        await db.tecdo_audit_logs.create({
+            data: {
+                id: uuidv4(),
+                entityType: 'WORK_ORDER',
+                entityId: params.workOrderId,
+                action: '拒绝工单',
+                performedBy: username,
+                previousValue: JSON.stringify({ status: workOrder.status }),
+                newValue: JSON.stringify({
+                    status: 'CANCELLED',
+                    reason: params.reason
+                }),
+                createdAt: now
+            }
+        })
+
+        // 刷新相关页面
+        revalidatePath('/admin/workorders')
+
+        return {
+            success: true,
+            message: '转账工单已拒绝',
+            data: {
+                workOrderId: params.workOrderId
+            }
+        }
+    } catch (error) {
+        console.error('拒绝转账工单出错:', error)
+        return {
+            success: false,
+            message: '拒绝转账工单失败'
         }
     }
 }
