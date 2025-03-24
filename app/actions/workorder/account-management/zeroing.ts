@@ -56,17 +56,14 @@ export async function createZeroingWorkOrder(
         const now = new Date()
 
         // 生成工单号
-        const taskId = uuidv4()
-        const taskNumber = generateTaskNumber(
-            WorkOrderType.ACCOUNT_MANAGEMENT,
-            WorkOrderSubtype.ZEROING
-        )
+        const workOrderId = `ZER-${uuidv4()}`
+        const taskNumber = generateTaskNumber('ACCOUNT_MANAGEMENT', 'ZEROING')
 
         // 创建清零工单记录
         const workOrder = await db.tecdo_work_orders.create({
             data: {
-                id: uuidv4(),
-                taskId: taskId,
+                id: workOrderId,
+                taskId: taskNumber,
                 taskNumber: taskNumber,
                 userId: userId,
                 workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
@@ -74,6 +71,7 @@ export async function createZeroingWorkOrder(
                 status: WorkOrderStatus.PENDING,
                 mediaAccountId: params.mediaAccountId,
                 metadata: {
+                    taskNumber: taskNumber,
                     mediaAccountName: params.mediaAccountName,
                     mediaPlatform: params.mediaPlatform,
                     companyName: params.companyName

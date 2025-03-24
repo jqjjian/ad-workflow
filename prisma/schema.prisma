@@ -109,7 +109,7 @@ model tecdo_account_application_business_data {
 model tecdo_deposit_business_data {
   id                     String                @id @default(uuid())
   workOrderId            String                @unique
-  mediaAccountId         String
+  mediaAccountId         String // 仅作为标识符，不设外键约束
   mediaPlatform          String
   amount                 String
   currency               String
@@ -125,72 +125,67 @@ model tecdo_deposit_business_data {
   tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
   tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
   tecdo_media_accountsId String?
-
-  @@index([mediaAccountId])
 }
 
 // 提款业务数据
 model tecdo_withdrawal_business_data {
-  id                   String               @id @default(uuid())
-  workOrderId          String               @unique
-  mediaAccountId       String
-  mediaPlatform        String
-  amount               String
-  currency             String
-  withdrawalStatus     String
-  withdrawalTime       DateTime?
-  completedTime        DateTime?
-  failureReason        String?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  isDeleted            Boolean              @default(false)
-  tecdo_media_accounts tecdo_media_accounts @relation(fields: [mediaAccountId], references: [id])
-  tecdo_work_orders    tecdo_work_orders    @relation(fields: [workOrderId], references: [id])
-
-  @@index([mediaAccountId])
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaAccountId         String // 仅作为标识符，不设外键约束
+  mediaPlatform          String
+  amount                 String
+  currency               String
+  withdrawalStatus       String
+  withdrawalTime         DateTime?
+  completedTime          DateTime?
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
 }
 
 // 转账业务数据
 model tecdo_transfer_business_data {
-  id                   String                @id @default(uuid())
-  workOrderId          String                @unique
-  mediaPlatform        String
-  sourceAccountId      String
-  targetAccountId      String
-  amount               String?
-  currency             String
-  isMoveAllBalance     Boolean
-  transferStatus       String
-  transferTime         DateTime?
-  completedTime        DateTime
-  failureReason        String?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  isDeleted            Boolean               @default(false)
-  mediaAccountId       String?
-  tecdo_media_accounts tecdo_media_accounts? @relation(fields: [mediaAccountId], references: [id])
-  tecdo_work_orders    tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
-
-  @@index([mediaAccountId])
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaPlatform          String
+  sourceAccountId        String
+  targetAccountId        String
+  amount                 String?
+  currency               String
+  isMoveAllBalance       Boolean
+  transferStatus         String
+  transferTime           DateTime?
+  completedTime          DateTime
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  mediaAccountId         String? // 仅作为标识符，不设外键约束
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
 }
 
 // 零余额业务数据
 model tecdo_zeroing_business_data {
-  id                   String                @id @default(uuid())
-  workOrderId          String                @unique
-  mediaAccountId       String?
-  mediaPlatform        String
-  zeroingStatus        String
-  zeroingTime          DateTime?
-  completedTime        DateTime?
-  failureReason        String?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  isDeleted            Boolean               @default(false)
-  tecdo_media_accounts tecdo_media_accounts? @relation(fields: [mediaAccountId], references: [id])
-  tecdo_work_orders    tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
-
-  @@index([mediaAccountId])
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaAccountId         String? // 仅作为标识符，不设外键约束
+  mediaPlatform          String
+  zeroingStatus          String
+  zeroingTime            DateTime?
+  completedTime          DateTime?
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
 }
 
 // 原始数据
@@ -290,7 +285,7 @@ model tecdo_work_orders {
   createdAt                               DateTime                                 @default(now())
   updatedAt                               DateTime                                 @updatedAt
   isDeleted                               Boolean                                  @default(false)
-  mediaAccountId                          String?
+  mediaAccountId                          String? // 仅作为标识符，不设外键约束
   companyInfoId                           String?
   thirdPartyTaskId                        String?
   tecdo_status_sync_log                   tecdo_status_sync_log[]
@@ -572,20 +567,19 @@ model DictionaryItem {
 
 // 账户绑定业务数据
 model tecdo_account_binding_data {
-  id                   String                @id @default(uuid())
-  workOrderId          String                @unique
-  mediaAccountId       String
-  mediaPlatform        String
-  bindingValue         String
-  bindingRole          String
-  bindingStatus        String
-  bindingTime          DateTime
-  failureReason        String?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  isDeleted            Boolean               @default(false)
-  tecdo_media_accounts tecdo_media_accounts? @relation(fields: [mediaAccountId], references: [id])
-  tecdo_work_orders    tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
-
-  @@index([mediaAccountId])
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaAccountId         String // 仅作为标识符，不设外键约束
+  mediaPlatform          String
+  bindingValue           String
+  bindingRole            String
+  bindingStatus          String
+  bindingTime            DateTime
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
 }

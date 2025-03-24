@@ -621,14 +621,23 @@ export default function AccountManagePage() {
     const handleTransfer = (record: EnhancedMediaAccount) => {
         setCurrentAccount(record)
         transferForm.resetFields()
+        // 设置表单默认值
+        transferForm.setFieldsValue({
+            mediaPlatform: record.mediaPlatform
+        })
         setMoveAllBalance(false)
         setTransferModalVisible(true)
 
-        // 获取其他可用于转账的账户（同平台、同公司主体、状态为生效中的账户）
+        // 初始筛选可用于转账的账户
+        updateEligibleAccounts(record.mediaPlatform)
+    }
+
+    // 根据选择的媒体平台更新可用于转账的账户列表
+    const updateEligibleAccounts = (platform: number) => {
         const eligibleAccounts = data.filter(
             (account) =>
-                account.uniqueId !== record.uniqueId &&
-                account.mediaPlatform === record.mediaPlatform &&
+                account.uniqueId !== currentAccount?.uniqueId &&
+                account.mediaPlatform === platform &&
                 account.status === 2
         )
         setTransferAccounts(eligibleAccounts)
@@ -643,11 +652,22 @@ export default function AccountManagePage() {
             const values = await transferForm.validateFields()
             setTransferLoading(true)
 
+            // 获取目标账户信息（假设通过values.targetAccountId可以获取）
+            // 需要从目标账户选择下拉框中获取完整的账户信息
+            const selectedTargetAccount = transferAccounts.find(
+                (acc) => acc.mediaAccountId === values.targetAccountId
+            )
+
             // 调用创建转账工单API
             const result = await createTransferWorkOrder({
                 sourceAccountId: currentAccount.mediaAccountId,
+                sourceAccountName: currentAccount.mediaAccountName, // 添加源账户名称
                 targetAccountId: values.targetAccountId,
-                mediaPlatform: currentAccount.mediaPlatform.toString(),
+                targetAccountName:
+                    selectedTargetAccount?.mediaAccountName ||
+                    `媒体账户${values.targetAccountId}`, // 添加目标账户名称
+                mediaPlatform: currentAccount.mediaPlatform.toString(), // 使用currentAccount中的mediaPlatform
+                targetMediaPlatform: values.mediaPlatform.toString(), // 目标平台可能与源平台不同
                 amount: moveAllBalance ? undefined : values.amount?.toString(),
                 currency: currentAccount.currency || 'USD',
                 isMoveAllBalance: moveAllBalance,
@@ -1252,7 +1272,8 @@ export default function AccountManagePage() {
                                             1: 'Facebook',
                                             2: 'Google',
                                             3: 'Meta',
-                                            5: 'TikTok'
+                                            5: 'TikTok',
+                                            7: 'Microsoft Advertising'
                                         }
                                         return (
                                             platformMap[
@@ -1289,6 +1310,35 @@ export default function AccountManagePage() {
                                                 {account.mediaAccountId})
                                             </Select.Option>
                                         ))}
+                                    </Select>
+                                </AntdForm.Item>
+
+                                <AntdForm.Item
+                                    label="媒体平台"
+                                    name="mediaPlatform"
+                                    initialValue={currentAccount.mediaPlatform}
+                                    rules={[
+                                        {
+                                            required: true,
+                                            message: '请选择媒体平台'
+                                        }
+                                    ]}
+                                >
+                                    <Select
+                                        placeholder="请选择媒体平台"
+                                        onChange={(value) =>
+                                            updateEligibleAccounts(value)
+                                        }
+                                    >
+                                        <Select.Option value={1}>
+                                            Facebook
+                                        </Select.Option>
+                                        <Select.Option value={2}>
+                                            Google
+                                        </Select.Option>
+                                        <Select.Option value={7}>
+                                            Microsoft Advertising
+                                        </Select.Option>
                                     </Select>
                                 </AntdForm.Item>
 

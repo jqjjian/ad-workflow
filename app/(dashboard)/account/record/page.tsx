@@ -90,7 +90,7 @@ export default function ApplicationsPage() {
             key: 'type',
             width: 100,
             render: (type) => {
-                console.log('渲染类型:', type)
+                console.log('媒体平台:', type)
                 const typeMap = {
                     [WorkOrderType.DEPOSIT]: { text: '充值', color: 'blue' },
                     [WorkOrderType.DEDUCTION]: { text: '减款', color: 'red' },
@@ -135,7 +135,7 @@ export default function ApplicationsPage() {
             key: 'mediaPlatform',
             width: 100,
             render: (platform) => {
-                console.log('渲染平台:', platform, typeof platform)
+                console.log('媒体平台:', platform, typeof platform)
                 const platformMap = {
                     1: { name: 'Facebook', color: '#1877F2' },
                     2: { name: 'Google', color: '#4285F4' },
@@ -234,17 +234,15 @@ export default function ApplicationsPage() {
                     >
                         查看
                     </Button>
-                    {record.status === WorkOrderStatus.PENDING &&
-                        (record.type === WorkOrderType.DEPOSIT ||
-                            record.type === WorkOrderType.DEDUCTION) && (
-                            <Button
-                                size="small"
-                                type="primary"
-                                onClick={() => handleEdit(record)}
-                            >
-                                编辑
-                            </Button>
-                        )}
+                    {record.status === WorkOrderStatus.PENDING && (
+                        <Button
+                            size="small"
+                            type="primary"
+                            onClick={() => handleEdit(record)}
+                        >
+                            编辑
+                        </Button>
+                    )}
                 </Space>
             )
         }

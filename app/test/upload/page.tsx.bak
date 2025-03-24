@@ -135,17 +135,13 @@ export default function AttachmentUploadPage() {
 
                     <div className="mt-2">
                         <h4 className="text-sm font-medium">文件列表:</h4>
-                        <ul className="mt-1 max-h-[300px] overflow-y-auto pr-2">
+                        <ul className="mt-1">
                             {files.map((file, index) => {
                                 // 检查文件是否为图片类型
-                                const isImage =
-                                    file.fileType &&
-                                    /^image\/(jpeg|jpg|png|gif|webp|bmp)$/i.test(
-                                        file.fileType
-                                    )
-
+                                const isImage = file.fileType && /^image\/(jpeg|jpg|png|gif|webp|bmp)$/i.test(file.fileType);
+                                
                                 return (
-                                    <li key={index} className="mb-3 text-sm">
+                                    <li key={index} className="text-sm mb-3">
                                         <a
                                             href={file.fileUrl}
                                             target="_blank"
@@ -165,7 +161,7 @@ export default function AttachmentUploadPage() {
                                                 MB)
                                             </span>
                                         )}
-
+                                        
                                         {/* 图片预览区域 */}
                                         {isImage && (
                                             <div className="mt-2">
@@ -173,23 +169,60 @@ export default function AttachmentUploadPage() {
                                                     <Image
                                                         src={file.fileUrl}
                                                         alt={file.fileName}
-                                                        style={{
-                                                            maxWidth: '200px',
-                                                            maxHeight: '150px',
-                                                            objectFit: 'cover'
-                                                        }}
+                                                        style={{ maxWidth: '200px', maxHeight: '150px', objectFit: 'cover' }}
                                                         placeholder={
                                                             <div className="flex h-[100px] w-[150px] items-center justify-center bg-gray-100">
                                                                 加载中...
                                                             </div>
                                                         }
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </li>
-                                )
-                            })}
+                                <li key={index} className="text-sm mb-3">
+                                    <a
+                                        href={file.fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:underline"
+                                    >
+                                        {file.fileName}
+                                    </a>
+                                    {file.fileSize && (
+                                        <span className="ml-2 text-gray-500">
+                                            (
+                                            {(
+                                                file.fileSize /
+                                                1024 /
+                                                1024
+                                            ).toFixed(2)}{' '}
+                                            MB)
+                                        </span>
+                                    )}
+                                    
+                                    {/* 图片预览区域 */}
+                                    {isImage && (
+                                        <div className="mt-2">
+                                            <div className="inline-block overflow-hidden rounded border border-gray-200 shadow-sm">
+                                                <Image
+                                                    src={file.fileUrl}
+                                                    alt={file.fileName}
+                                                    style={{ maxWidth: '200px', maxHeight: '150px', objectFit: 'cover' }}
+                                                    placeholder={
+                                                        <div className="flex h-[100px] w-[150px] items-center justify-center bg-gray-100">
+                                                            加载中...
+                                                        </div>
+                                                    }
+                                            <Image
+                                                src={file.fileUrl}
+                                                alt={file.fileName}
+                                                style={{ maxWidth: '200px', maxHeight: '150px' }}
+                                                placeholder={
+                                                    <div className="flex h-[100px] w-[150px] items-center justify-center bg-gray-100">
+                                                        加载中...
+                                                    </div>
+                                                }
+                                            />
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
                         </ul>
                     </div>
                 </div>
