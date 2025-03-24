@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: ad-workflow-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_here
+      MYSQL_DATABASE: ad_workflow
+      MYSQL_USER: ad_workflow
+      MYSQL_PASSWORD: password_here
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - ad-workflow-network
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  app:
+    image: ad-workflow:latest
+    container_name: ad-workflow-app
+    restart: always
+    depends_on:
+      - mysql
+    environment:
+      - DATABASE_URL=mysql://ad_workflow:password_here@mysql:3306/ad_workflow
+      - NODE_ENV=production
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your_nextauth_secret_here
+    ports:
+      - "3000:3000"
+    networks:
+      - ad-workflow-network
+    command: >
+      sh -c "npm run docker:init && npm start"
+
+networks:
+  ad-workflow-network:
+    driver: bridge
+
+volumes:
+  mysql-data: 

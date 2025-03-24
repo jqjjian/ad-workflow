@@ -11,6 +11,7 @@ import {
     type UpdatePixelBindingRequest
 } from '@/schemas/pixel-binding'
 import { generateTaskNumber, generateTraceId } from '@/lib/utils'
+import { API_BASE_URL, callExternalApi } from '@/lib/request'
 import { z } from 'zod'
 import { auth } from '@/auth'
 import { ValidationError, ThirdPartyError } from '@/utils/business-error'
@@ -50,7 +51,7 @@ async function callThirdPartyPixelBindingAPI(
 ): Promise<ThirdPartyPixelBindingResponse> {
     try {
         const response = await fetch(
-            '/openApi/v1/bindPixelApplication/create',
+            `${API_BASE_URL}/openApi/v1/bindPixelApplication/create`,
             {
                 method: 'POST',
                 headers: {

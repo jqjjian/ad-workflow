@@ -11,6 +11,7 @@ import {
     type UpdateEmailBindingRequest
 } from '@/schemas/email-binding'
 import { generateTaskNumber, generateTraceId } from '@/lib/utils'
+import { API_BASE_URL, callExternalApi } from '@/lib/request'
 import { auth } from '@/auth'
 import { z } from 'zod'
 import { ValidationError, ThirdPartyError } from '@/utils/business-error'
@@ -49,16 +50,22 @@ async function callThirdPartyEmailBindingAPI(
     traceId: string
 ): Promise<ThirdPartyEmailBindingResponse> {
     try {
-        const response = await fetch(
-            'openApi/v1/mediaAccount/bindEmailApplication/create',
-            {
-                method: 'POST',
-                body: JSON.stringify(request)
-            }
-        )
+        const result = await callExternalApi({
+            url: `${API_BASE_URL}/openApi/v1/mediaAccount/bindEmailApplication/create`,
+            body: request
+        })
 
-        const data = await response.json()
-        return ThirdPartyEmailBindingResponseSchema.parse(data)
+        console.log('邮箱绑定API调用结果:', result)
+
+        // 处理API返回结果
+        if (result.code === '0') {
+            return ThirdPartyEmailBindingResponseSchema.parse(result)
+        } else {
+            throw new ThirdPartyError(
+                result.message || '第三方服务调用失败',
+                result
+            )
+        }
     } catch (error) {
         if (error instanceof ThirdPartyError) {
             throw error
@@ -76,20 +83,22 @@ async function callThirdPartyUpdateEmailBindingAPI(
     traceId: string
 ): Promise<ThirdPartyEmailBindingResponse> {
     try {
-        const response = await fetch(
-            '/openApi/v1/mediaAccount/bindEmailApplication/update',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Trace-Id': traceId
-                },
-                body: JSON.stringify(request)
-            }
-        )
+        const result = await callExternalApi({
+            url: `${API_BASE_URL}/openApi/v1/mediaAccount/bindEmailApplication/update`,
+            body: request
+        })
 
-        const data = await response.json()
-        return ThirdPartyEmailBindingResponseSchema.parse(data)
+        console.log('邮箱绑定更新API调用结果:', result)
+
+        // 处理API返回结果
+        if (result.code === '0') {
+            return ThirdPartyEmailBindingResponseSchema.parse(result)
+        } else {
+            throw new ThirdPartyError(
+                result.message || '第三方服务调用失败',
+                result
+            )
+        }
     } catch (error) {
         if (error instanceof ThirdPartyError) {
             throw error

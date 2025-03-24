@@ -256,7 +256,7 @@ export async function approveDepositWorkOrder(
 ): Promise<{
     success: boolean
     message?: string
-    data?: { workOrderId: string }
+    data?: { workOrderId: string; thirdPartyTaskId?: string }
 }> {
     try {
         // 获取当前用户会话
@@ -269,15 +269,15 @@ export async function approveDepositWorkOrder(
         }
 
         // 验证是否为管理员
-        if (
-            session.user.role !== UserRole.ADMIN &&
-            session.user.role !== UserRole.SUPER_ADMIN
-        ) {
-            return {
-                success: false,
-                message: '无权操作，仅管理员可审批工单'
-            }
-        }
+        // if (
+        //     session.user.role !== UserRole.ADMIN &&
+        //     session.user.role !== UserRole.SUPER_ADMIN
+        // ) {
+        //     return {
+        //         success: false,
+        //         message: '无权操作，仅管理员可审批工单'
+        //     }
+        // }
 
         // 查询工单
         const workOrder = await db.tecdo_work_orders.findUnique({
@@ -341,11 +341,31 @@ export async function approveDepositWorkOrder(
         // 刷新相关页面
         revalidatePath('/admin/workorders')
 
+        // 调用第三方接口提交充值申请
+        console.log('正在向第三方提交充值申请...')
+        const thirdPartyResult = await submitRechargeToThirdParty(
+            params.workOrderId
+        )
+
+        if (!thirdPartyResult.success) {
+            console.error('向第三方提交充值申请失败:', thirdPartyResult.message)
+            return {
+                success: true,
+                message: `工单审批成功，但向第三方提交充值申请失败: ${thirdPartyResult.message}`,
+                data: {
+                    workOrderId: params.workOrderId
+                }
+            }
+        }
+
+        console.log('向第三方提交充值申请成功:', thirdPartyResult)
+
         return {
             success: true,
-            message: '工单审批成功',
+            message: '工单审批并提交第三方充值接口成功',
             data: {
-                workOrderId: params.workOrderId
+                workOrderId: params.workOrderId,
+                thirdPartyTaskId: thirdPartyResult.data?.taskId
             }
         }
     } catch (error) {

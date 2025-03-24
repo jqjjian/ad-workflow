@@ -169,7 +169,7 @@ export async function updateZeroingWorkOrder(
         }
 
         // 验证工单类型
-        if (workOrder.workOrderSubtype !== WorkOrderSubtype.ZEROING) {
+        if (workOrder.workOrderSubtype !== 'ZEROING') {
             return {
                 success: false,
                 message: '非清零工单不能执行此操作'
@@ -265,176 +265,526 @@ export async function submitZeroingWorkOrderToThirdParty(
         }
 
         // 验证工单类型
-        if (workOrder.workOrderSubtype !== WorkOrderSubtype.ZEROING) {
+        if (workOrder.workOrderSubtype !== 'ZEROING') {
             return {
                 success: false,
                 message: '非清零工单不能执行此操作'
             }
         }
 
-        // 验证工单状态，只有待处理的工单才能提交
-        if (workOrder.status !== WorkOrderStatus.PENDING) {
+        // 验证工单状态，现在检查是否为PROCESSING状态
+        if (workOrder.status !== WorkOrderStatus.PROCESSING) {
             return {
                 success: false,
-                message: '只有待处理的工单可以提交'
+                message: '只有处理中状态的工单可以提交到第三方'
             }
         }
 
         // 检查是否有对应的清零业务数据
         if (!workOrder.tecdo_zeroing_business_data) {
-            return {
-                success: false,
-                message: '未找到清零业务数据'
-            }
-        }
+            console.error(`工单ID ${workOrderId} 没有关联的业务数据记录`)
 
-        // 检查是否有对应的媒体账户
-        if (!workOrder.tecdo_media_accounts) {
-            return {
-                success: false,
-                message: '未找到对应的媒体账户'
-            }
-        }
-
-        const mediaPlatform = workOrder.tecdo_media_accounts.mediaPlatform
-        let thirdPartyResponse
-
-        // 更新工单状态为处理中
-        await db.tecdo_work_orders.update({
-            where: { id: workOrderId },
-            data: {
-                status: WorkOrderStatus.PROCESSING,
-                processingTime: new Date()
-            }
-        })
-
-        // 更新清零业务数据状态
-        await db.tecdo_zeroing_business_data.update({
-            where: { id: workOrder.tecdo_zeroing_business_data.id },
-            data: {
-                zeroingStatus: 'PROCESSING',
-                zeroingTime: new Date()
-            }
-        })
-
-        // 根据媒体平台调用不同的第三方API
-        // 这里是模拟调用，实际项目中应该根据不同平台实现真实的API调用
-        switch (mediaPlatform) {
-            case 'FACEBOOK':
-                // 调用Facebook平台API
-                thirdPartyResponse = {
-                    success: true,
-                    code: 200,
+            // 尝试创建业务数据
+            try {
+                const metadata = (workOrder.metadata as any) || {}
+                await db.tecdo_zeroing_business_data.create({
                     data: {
-                        taskId: `FB-ZERO-${Date.now()}`,
-                        status: 'PROCESSING'
+                        id: uuidv4(),
+                        workOrderId: workOrderId,
+                        mediaAccountId: workOrder.mediaAccountId || '',
+                        mediaPlatform: String(metadata.mediaPlatform || 1),
+                        zeroingStatus: 'PROCESSING',
+                        zeroingTime: new Date(),
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        isDeleted: false
                     }
-                }
-                break
-
-            case 'GOOGLE':
-                // 调用Google平台API
-                thirdPartyResponse = {
-                    success: true,
-                    code: 200,
-                    data: {
-                        taskId: `GG-ZERO-${Date.now()}`,
-                        status: 'PROCESSING'
-                    }
-                }
-                break
-
-            case 'TIKTOK':
-                // 调用TikTok平台API
-                thirdPartyResponse = {
-                    success: true,
-                    code: 200,
-                    data: {
-                        taskId: `TT-ZERO-${Date.now()}`,
-                        status: 'PROCESSING'
-                    }
-                }
-                break
-
-            case 'MICROSOFT_ADVERTISING':
-                // 调用Microsoft广告平台API
-                thirdPartyResponse = {
-                    success: true,
-                    code: 200,
-                    data: {
-                        taskId: `MS-ZERO-${Date.now()}`,
-                        status: 'PROCESSING'
-                    }
-                }
-                break
-
-            default:
+                })
+                console.log(`已为工单 ${workOrderId} 创建业务数据记录`)
+            } catch (err) {
+                console.error('创建业务数据失败:', err)
                 return {
                     success: false,
-                    message: `不支持的媒体平台: ${mediaPlatform}`
+                    message: '创建业务数据失败，无法继续处理'
                 }
+            }
         }
 
-        // 记录第三方任务ID
-        if (thirdPartyResponse.success) {
-            const taskId = thirdPartyResponse.data.taskId
-            const taskNumber = `ZERO-${Date.now()}`
+        const mediaPlatform =
+            workOrder.tecdo_media_accounts?.mediaPlatform ||
+            (workOrder.metadata as any)?.mediaPlatform ||
+            'UNKNOWN'
 
-            // 创建第三方任务记录
-            await db.tecdo_third_party_tasks.create({
-                data: {
-                    taskId: taskId,
-                    taskNumber: taskNumber,
-                    status: WorkOrderStatus.PROCESSING,
-                    userId: session.user.id,
-                    typeId: 1, // 假设1代表清零操作
-                    workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
-                    workOrderSubtype: WorkOrderSubtype.ZEROING,
-                    updatedAt: new Date(),
-                    rawData: JSON.stringify({
-                        mediaAccountId: workOrder.mediaAccountId,
-                        action: 'ZEROING'
-                    }),
-                    rawResponse: JSON.stringify(thirdPartyResponse)
-                }
+        const userId = session.user.id
+        const username = session.user.name || 'unknown'
+        let thirdPartyResponse
+
+        // 构造请求参数
+        const requestBody = {
+            mediaAccountId: workOrder.mediaAccountId,
+            mediaPlatform: mediaPlatform,
+            taskNumber: workOrder.taskNumber
+        }
+
+        console.log('向第三方API提交清零申请:', requestBody)
+
+        // 调用第三方API
+        try {
+            // 实际项目中调用真实API
+            thirdPartyResponse = await callExternalApi({
+                url: `${API_BASE_URL}/openApi/v1/mediaAccount/clearApplication/create`,
+                body: requestBody
             })
 
-            // 更新工单的第三方任务ID
+            console.log('API调用结果:', thirdPartyResponse)
+
+            // 处理API返回结果
+            if (thirdPartyResponse.code === '0') {
+                const thirdPartyTaskId = (
+                    thirdPartyResponse.data as { taskId?: string }
+                )?.taskId
+
+                // 更新工单状态
+                await db.tecdo_work_orders.update({
+                    where: { id: workOrderId },
+                    data: {
+                        thirdPartyTaskId: thirdPartyTaskId,
+                        metadata: {
+                            ...((workOrder.metadata as Record<string, any>) ||
+                                {}),
+                            thirdPartyResponse:
+                                JSON.stringify(thirdPartyResponse)
+                        },
+                        updatedAt: new Date()
+                    }
+                })
+
+                // 更新业务数据状态
+                const businessData =
+                    await db.tecdo_zeroing_business_data.findUnique({
+                        where: { workOrderId: workOrderId }
+                    })
+
+                if (businessData) {
+                    await db.tecdo_zeroing_business_data.update({
+                        where: { id: businessData.id },
+                        data: {
+                            zeroingStatus: 'PROCESSING',
+                            updatedAt: new Date()
+                        }
+                    })
+                }
+
+                // 添加工单日志
+                await db.tecdo_audit_logs.create({
+                    data: {
+                        id: uuidv4(),
+                        entityType: 'WORK_ORDER',
+                        entityId: workOrderId,
+                        action: '提交第三方',
+                        performedBy: username,
+                        newValue: JSON.stringify({
+                            thirdPartyTaskId: thirdPartyTaskId,
+                            response: thirdPartyResponse
+                        }),
+                        createdAt: new Date()
+                    }
+                })
+
+                return {
+                    success: true,
+                    message: thirdPartyResponse.message || '清零申请提交成功',
+                    thirdPartyResponse
+                }
+            } else {
+                // 更新工单状态为失败
+                await db.tecdo_work_orders.update({
+                    where: { id: workOrderId },
+                    data: {
+                        status: 'FAILED',
+                        updatedAt: new Date(),
+                        remark:
+                            thirdPartyResponse.message || '第三方平台返回错误',
+                        metadata: {
+                            ...((workOrder.metadata as Record<string, any>) ||
+                                {}),
+                            error: thirdPartyResponse.message,
+                            thirdPartyResponse:
+                                JSON.stringify(thirdPartyResponse)
+                        }
+                    }
+                })
+
+                // 更新业务数据状态
+                const businessData =
+                    await db.tecdo_zeroing_business_data.findUnique({
+                        where: { workOrderId: workOrderId }
+                    })
+
+                if (businessData) {
+                    await db.tecdo_zeroing_business_data.update({
+                        where: { id: businessData.id },
+                        data: {
+                            zeroingStatus: 'FAILED',
+                            failureReason:
+                                thirdPartyResponse.message ||
+                                '第三方平台返回错误',
+                            updatedAt: new Date()
+                        }
+                    })
+                }
+
+                // 添加工单日志
+                await db.tecdo_audit_logs.create({
+                    data: {
+                        id: uuidv4(),
+                        entityType: 'WORK_ORDER',
+                        entityId: workOrderId,
+                        action: '提交失败',
+                        performedBy: username,
+                        newValue: JSON.stringify({
+                            error: thirdPartyResponse.message,
+                            response: thirdPartyResponse
+                        }),
+                        createdAt: new Date()
+                    }
+                })
+
+                return {
+                    success: false,
+                    message: `API返回错误: ${thirdPartyResponse.message}`,
+                    thirdPartyResponse
+                }
+            }
+        } catch (apiError) {
+            console.error('API调用失败:', apiError)
+
+            const errorMessage =
+                apiError instanceof Error ? apiError.message : '未知错误'
+
+            // 更新工单状态为失败
             await db.tecdo_work_orders.update({
                 where: { id: workOrderId },
                 data: {
-                    thirdPartyTaskId: taskId
+                    status: 'FAILED',
+                    updatedAt: new Date(),
+                    remark: `API调用失败: ${errorMessage}`,
+                    metadata: {
+                        ...((workOrder.metadata as Record<string, any>) || {}),
+                        error: errorMessage
+                    }
                 }
             })
+
+            // 添加工单日志
+            await db.tecdo_audit_logs.create({
+                data: {
+                    id: uuidv4(),
+                    entityType: 'WORK_ORDER',
+                    entityId: workOrderId,
+                    action: '提交失败',
+                    performedBy: username,
+                    newValue: JSON.stringify({
+                        error: errorMessage
+                    }),
+                    createdAt: new Date()
+                }
+            })
+
+            return {
+                success: false,
+                message: `API调用失败: ${errorMessage}`
+            }
+        }
+    } catch (error) {
+        console.error('提交清零工单到第三方接口出错:', error)
+        return {
+            success: false,
+            message:
+                error instanceof Error
+                    ? error.message
+                    : '提交清零工单到第三方接口失败'
+        }
+    }
+}
+
+/**
+ * 管理员审批清零工单
+ * @param params 审批参数
+ * @returns 操作结果
+ */
+export async function approveZeroingWorkOrder(params: {
+    workOrderId: string
+    remarks?: string
+}): Promise<{
+    success: boolean
+    message?: string
+    data?: { workOrderId: string; thirdPartyTaskId?: string }
+}> {
+    try {
+        // 获取当前用户会话
+        const session = await auth()
+        if (!session || !session.user) {
+            return {
+                success: false,
+                message: '未登录或会话已过期'
+            }
         }
 
-        // 添加审计日志
+        // 验证是否为管理员 - 可根据需要启用
+        // if (
+        //     session.user.role !== UserRole.ADMIN &&
+        //     session.user.role !== UserRole.SUPER_ADMIN
+        // ) {
+        //     return {
+        //         success: false,
+        //         message: '无权操作，仅管理员可审批工单'
+        //     }
+        // }
+
+        // 查询工单
+        const workOrder = await db.tecdo_work_orders.findUnique({
+            where: { id: params.workOrderId },
+            include: { tecdo_zeroing_business_data: true }
+        })
+
+        // 验证工单是否存在
+        if (!workOrder) {
+            return {
+                success: false,
+                message: '工单不存在'
+            }
+        }
+
+        // 验证工单状态
+        if (workOrder.status !== WorkOrderStatus.PENDING) {
+            return {
+                success: false,
+                message: '只能审批待处理状态的工单'
+            }
+        }
+
+        // 验证工单类型
+        if (workOrder.workOrderSubtype !== 'ZEROING') {
+            return {
+                success: false,
+                message: '非清零工单，无法进行此操作'
+            }
+        }
+
+        const username = session.user.name || 'unknown'
+        const now = new Date()
+
+        // 更新工单状态为处理中
+        await db.tecdo_work_orders.update({
+            where: { id: params.workOrderId },
+            data: {
+                status: WorkOrderStatus.PROCESSING,
+                updatedAt: now,
+                remark: params.remarks || workOrder.remark
+            }
+        })
+
+        // 添加工单日志
         await db.tecdo_audit_logs.create({
             data: {
                 id: uuidv4(),
                 entityType: 'WORK_ORDER',
-                entityId: workOrderId,
-                action: '提交清零工单到第三方',
-                performedBy: session.user.id,
-                newValue: JSON.stringify(thirdPartyResponse),
-                createdAt: new Date()
+                entityId: params.workOrderId,
+                action: '审批通过',
+                performedBy: username,
+                previousValue: JSON.stringify({ status: workOrder.status }),
+                newValue: JSON.stringify({
+                    status: WorkOrderStatus.PROCESSING,
+                    remarks: params.remarks
+                }),
+                createdAt: now
+            }
+        })
+
+        // 调用第三方接口提交清零申请
+        console.log('正在向第三方提交清零申请...')
+        const thirdPartyResult = await submitZeroingWorkOrderToThirdParty(
+            params.workOrderId
+        )
+
+        if (!thirdPartyResult.success) {
+            console.error('向第三方提交清零申请失败:', thirdPartyResult.message)
+
+            // 添加失败日志
+            await db.tecdo_audit_logs.create({
+                data: {
+                    id: uuidv4(),
+                    entityType: 'WORK_ORDER',
+                    entityId: params.workOrderId,
+                    action: '调用第三方API失败',
+                    performedBy: username,
+                    previousValue: JSON.stringify({
+                        status: WorkOrderStatus.PROCESSING
+                    }),
+                    newValue: JSON.stringify({
+                        apiError: thirdPartyResult.message
+                    }),
+                    createdAt: new Date()
+                }
+            })
+
+            return {
+                success: true,
+                message: `工单审批成功，但向第三方提交清零申请失败: ${thirdPartyResult.message}`,
+                data: {
+                    workOrderId: params.workOrderId
+                }
+            }
+        }
+
+        console.log('向第三方提交清零申请成功:', thirdPartyResult)
+
+        // 提取第三方任务ID
+        let thirdPartyTaskId = undefined
+        if (thirdPartyResult.thirdPartyResponse?.data?.taskId) {
+            thirdPartyTaskId = thirdPartyResult.thirdPartyResponse.data.taskId
+        }
+
+        // 刷新相关页面
+        revalidatePath('/admin/workorders')
+        revalidatePath('/account/manage')
+        revalidatePath('/account/applications')
+
+        return {
+            success: true,
+            message: '清零工单审批并提交第三方接口成功',
+            data: {
+                workOrderId: params.workOrderId,
+                thirdPartyTaskId: thirdPartyTaskId
+            }
+        }
+    } catch (error) {
+        console.error('审批清零工单出错:', error)
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : '工单审批失败'
+        }
+    }
+}
+
+/**
+ * 拒绝清零工单
+ * @param params 拒绝参数
+ * @returns 操作结果
+ */
+export async function rejectZeroingWorkOrder(params: {
+    workOrderId: string
+    reason: string
+}): Promise<{
+    success: boolean
+    message?: string
+    data?: { workOrderId: string }
+}> {
+    try {
+        // 获取当前用户会话
+        const session = await auth()
+        if (!session || !session.user) {
+            return {
+                success: false,
+                message: '未登录或会话已过期'
+            }
+        }
+
+        // 验证是否为管理员
+        // if (
+        //     session.user.role !== UserRole.ADMIN &&
+        //     session.user.role !== UserRole.SUPER_ADMIN
+        // ) {
+        //     return {
+        //         success: false,
+        //         message: '无权操作，仅管理员可拒绝工单'
+        //     }
+        // }
+
+        if (!params.reason) {
+            return {
+                success: false,
+                message: '必须提供拒绝原因'
+            }
+        }
+
+        // 查询工单
+        const workOrder = await db.tecdo_work_orders.findUnique({
+            where: { id: params.workOrderId }
+        })
+
+        // 验证工单是否存在
+        if (!workOrder) {
+            return {
+                success: false,
+                message: '工单不存在'
+            }
+        }
+
+        // 验证工单状态
+        if (workOrder.status !== WorkOrderStatus.PENDING) {
+            return {
+                success: false,
+                message: '只能拒绝待处理状态的工单'
+            }
+        }
+
+        // 验证工单类型
+        if (workOrder.workOrderSubtype !== 'ZEROING') {
+            return {
+                success: false,
+                message: '非清零工单，无法进行此操作'
+            }
+        }
+
+        const username = session.user.name || 'unknown'
+        const now = new Date()
+
+        // 更新工单状态为已拒绝
+        await db.tecdo_work_orders.update({
+            where: { id: params.workOrderId },
+            data: {
+                status: 'CANCELLED',
+                updatedAt: now,
+                remark: params.reason
+            }
+        })
+
+        // 添加工单日志
+        await db.tecdo_audit_logs.create({
+            data: {
+                id: uuidv4(),
+                entityType: 'WORK_ORDER',
+                entityId: params.workOrderId,
+                action: '拒绝工单',
+                performedBy: username,
+                previousValue: JSON.stringify({ status: workOrder.status }),
+                newValue: JSON.stringify({
+                    status: 'CANCELLED',
+                    reason: params.reason
+                }),
+                createdAt: now
             }
         })
 
         // 刷新相关页面
+        revalidatePath('/admin/workorders')
         revalidatePath('/account/manage')
-        revalidatePath('/account/record')
+        revalidatePath('/account/applications')
 
         return {
             success: true,
-            message: '工单已成功提交给第三方平台',
-            thirdPartyResponse
+            message: '清零工单已拒绝',
+            data: {
+                workOrderId: params.workOrderId
+            }
         }
     } catch (error) {
-        console.error('提交清零工单到第三方失败:', error)
+        console.error('拒绝清零工单出错:', error)
         return {
             success: false,
-            message: `提交失败: ${error instanceof Error ? error.message : String(error)}`
+            message: error instanceof Error ? error.message : '拒绝工单失败'
         }
     }
 }

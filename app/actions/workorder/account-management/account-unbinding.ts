@@ -10,9 +10,12 @@ import {
     UpdateUnbindingRequestSchema,
     type UpdateUnbindingRequest
 } from '@/schemas/account-unbinding'
+import { API_BASE_URL, callExternalApi } from '@/lib/request'
 import { generateTaskNumber, generateTraceId } from '@/lib/utils'
 import { ValidationError, ThirdPartyError } from '@/utils/business-error'
 import { z } from 'zod'
+import { auth } from '@/auth'
+import { v4 as uuidv4 } from 'uuid'
 
 // 创建一个统一的错误处理函数
 function handleError(error: unknown, traceId: string, operation: string) {
@@ -48,35 +51,23 @@ async function callThirdPartyUnbindingAPI(
     traceId: string
 ): Promise<ThirdPartyUnbindingResponse> {
     try {
-        const response = await fetch(
-            'openApi/v1/mediaAccount/unBindIdApplication/create',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Trace-Id': traceId
-                },
-                body: JSON.stringify(request)
-            }
-        )
+        // 使用callExternalApi方法调用第三方接口
+        const result = await callExternalApi({
+            url: `${API_BASE_URL}/openApi/v1/mediaAccount/unBindIdApplication/create`,
+            body: request
+        })
 
-        if (!response.ok) {
+        console.log('解绑API调用结果:', result)
+
+        // 处理API返回结果
+        if (result.code === '0') {
+            return ThirdPartyUnbindingResponseSchema.parse(result)
+        } else {
             throw new ThirdPartyError(
-                `API 响应异常: ${response.status} ${response.statusText}`,
-                { status: response.status, statusText: response.statusText }
+                result.message || '第三方服务调用失败',
+                result
             )
         }
-
-        const data = await response.json()
-
-        if (data.code !== '0') {
-            throw new ThirdPartyError(
-                data.message || '第三方服务调用失败',
-                data
-            )
-        }
-
-        return ThirdPartyUnbindingResponseSchema.parse(data)
     } catch (error) {
         if (error instanceof ThirdPartyError) {
             throw error
@@ -94,35 +85,23 @@ async function callThirdPartyUpdateUnbindingAPI(
     traceId: string
 ): Promise<ThirdPartyUnbindingResponse> {
     try {
-        const response = await fetch(
-            '/openApi/v1/mediaAccount/unBindIdApplication/update',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Trace-Id': traceId
-                },
-                body: JSON.stringify(request)
-            }
-        )
+        // 使用callExternalApi方法调用第三方接口
+        const result = await callExternalApi({
+            url: `${API_BASE_URL}/openApi/v1/mediaAccount/unBindIdApplication/update`,
+            body: request
+        })
 
-        if (!response.ok) {
+        console.log('更新解绑API调用结果:', result)
+
+        // 处理API返回结果
+        if (result.code === '0') {
+            return ThirdPartyUnbindingResponseSchema.parse(result)
+        } else {
             throw new ThirdPartyError(
-                `API 响应异常: ${response.status} ${response.statusText}`,
-                { status: response.status, statusText: response.statusText }
+                result.message || '第三方服务调用失败',
+                result
             )
         }
-
-        const data = await response.json()
-
-        if (data.code !== '0') {
-            throw new ThirdPartyError(
-                data.message || '第三方服务调用失败',
-                data
-            )
-        }
-
-        return ThirdPartyUnbindingResponseSchema.parse(data)
     } catch (error) {
         if (error instanceof ThirdPartyError) {
             throw error
@@ -137,150 +116,177 @@ async function callThirdPartyUpdateUnbindingAPI(
 
 export async function createAccountUnbindingWorkOrder(input: unknown) {
     const traceId = generateTraceId()
-    let workOrder: any = null
 
     try {
+        // 获取当前用户会话
+        const session = await auth()
+        if (!session || !session.user) {
+            return {
+                code: 'AUTH_ERROR',
+                message: '未登录或会话已过期',
+                traceId
+            }
+        }
+
         // 验证输入参数
         const validatedInput =
             await AccountUnbindingRequestSchema.parseAsync(input)
 
-        // 开启事务
-        const result = await db.$transaction(
-            async (tx) => {
-                try {
-                    // 1. 调用第三方API
-                    const thirdPartyResponse = await callThirdPartyUnbindingAPI(
-                        validatedInput,
-                        traceId
-                    )
+        // 开启事务 - 在同一事务中创建工单和调用第三方API
+        try {
+            const result = await db.$transaction(async (tx) => {
+                // 1. 创建工单主记录
+                const workOrder = await tx.tecdo_work_orders.create({
+                    data: {
+                        id: uuidv4(),
+                        taskId: generateTaskNumber(),
+                        taskNumber:
+                            validatedInput.taskNumber || generateTaskNumber(),
+                        userId: session.user?.id || 'system-user',
+                        workOrderType: 'ACCOUNT_MANAGEMENT',
+                        workOrderSubtype: 'UNBIND_ACCOUNT',
+                        status: 'PENDING', // 初始状态为PENDING
+                        mediaAccountId: validatedInput.mediaAccountId,
+                        metadata: {
+                            traceId,
+                            platformType:
+                                validatedInput.mediaPlatform === 1
+                                    ? 'BM'
+                                    : 'MCC',
+                            mediaPlatform: validatedInput.mediaPlatform
+                        },
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    }
+                })
 
-                    // 2. 创建原始数据记录
-                    const rawData = await tx.tecdo_raw_data.create({
+                // 2. 创建解绑业务数据
+                const businessData = await tx.tecdo_account_binding_data.create(
+                    {
                         data: {
-                            requestData: JSON.stringify({
-                                ...validatedInput,
-                                traceId
-                            }),
-                            responseData: JSON.stringify(thirdPartyResponse),
-                            syncStatus: 'PENDING',
-                            syncAttempts: 0,
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            tecdo_work_orders: { connect: { id: workOrder.id } }
-                        }
-                    })
-
-                    // 3. 根据第三方API响应确定工单状态
-                    const initialStatus =
-                        thirdPartyResponse.code === '0' ? 'PENDING' : 'FAILED'
-
-                    // 4. 创建工单主记录
-                    workOrder = await tx.tecdo_work_orders.create({
-                        data: {
-                            taskId:
-                                thirdPartyResponse.data?.taskId || 'unknown',
-                            taskNumber:
-                                validatedInput.taskNumber ||
-                                generateTaskNumber(),
-                            userId: 'current-user-id', // 从 session 获取
-                            workOrderType: 'ACCOUNT_MANAGEMENT',
-                            workOrderSubtype: 'UNBIND_ACCOUNT',
-                            status: initialStatus,
-                            rawDataId: rawData.id,
-                            metadata: {
-                                traceId,
-                                platformType:
-                                    validatedInput.mediaPlatform === 1
-                                        ? 'BM'
-                                        : 'MCC'
-                            },
+                            id: uuidv4(),
+                            workOrderId: workOrder.id,
+                            mediaPlatform:
+                                validatedInput.mediaPlatform.toString(),
+                            mediaAccountId: validatedInput.mediaAccountId,
+                            bindingValue: validatedInput.value,
+                            bindingRole: 'STANDARD',
+                            bindingStatus: 'PENDING',
+                            bindingTime: new Date(),
                             createdAt: new Date(),
                             updatedAt: new Date()
                         }
-                    })
-
-                    // 5. 创建解绑业务数据
-                    const businessData =
-                        await tx.tecdo_account_binding_data.create({
-                            data: {
-                                workOrderId: workOrder.id,
-                                mediaPlatform:
-                                    validatedInput.mediaPlatform.toString(),
-                                mediaAccountId: validatedInput.mediaAccountId,
-                                bindingValue: validatedInput.value,
-                                bindingRole: 'STANDARD',
-                                bindingStatus: initialStatus,
-                                bindingTime: new Date(),
-                                failureReason:
-                                    initialStatus === 'FAILED'
-                                        ? thirdPartyResponse.message
-                                        : null,
-                                createdAt: new Date(),
-                                updatedAt: new Date()
-                            }
-                        })
-
-                    // 6. 更新工单记录的业务数据ID
-                    await tx.tecdo_work_orders.update({
-                        where: { id: workOrder.id },
-                        data: { businessDataId: businessData.id }
-                    })
-
-                    return {
-                        code: thirdPartyResponse.code,
-                        message: thirdPartyResponse.message,
-                        data:
-                            thirdPartyResponse.code === '0'
-                                ? {
-                                      workOrderId: workOrder.id,
-                                      taskId: workOrder.taskId,
-                                      externalTaskId:
-                                          thirdPartyResponse.data?.taskId,
-                                      status: initialStatus,
-                                      mediaPlatform: businessData.mediaPlatform,
-                                      mediaAccountId:
-                                          businessData.mediaAccountId,
-                                      unbindingValue: businessData.bindingValue,
-                                      createdAt: workOrder.createdAt
-                                  }
-                                : undefined,
-                        traceId
                     }
-                } catch (error) {
-                    // 记录事务错误
-                    await tx.tecdo_error_log.create({
-                        data: {
-                            entityType: 'WORK_ORDER',
-                            entityId: workOrder?.id || 'unknown',
-                            errorCode:
-                                error instanceof ThirdPartyError
-                                    ? 'THIRD_PARTY_ERROR'
-                                    : 'TRANSACTION_ERROR',
-                            errorMessage:
-                                error instanceof Error
-                                    ? error.message
-                                    : '未知事务错误',
-                            stackTrace:
-                                error instanceof Error
-                                    ? error.stack
-                                    : undefined,
-                            severity: 'HIGH',
-                            resolved: false,
-                            createdAt: new Date()
-                        }
-                    })
+                )
 
-                    throw error // 重新抛出以便外层处理
+                // 3. 直接调用第三方API，不经过管理员审批
+                const thirdPartyResponse = await callThirdPartyUnbindingAPI(
+                    validatedInput,
+                    traceId
+                )
+
+                // 4. 创建原始数据记录
+                const rawData = await tx.tecdo_raw_data.create({
+                    data: {
+                        id: uuidv4(),
+                        workOrderId: workOrder.id,
+                        requestData: JSON.stringify({
+                            ...validatedInput,
+                            traceId
+                        }),
+                        responseData: JSON.stringify(thirdPartyResponse),
+                        syncStatus:
+                            thirdPartyResponse.code === '0'
+                                ? 'SUCCESS'
+                                : 'FAILED',
+                        syncAttempts: 1,
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    }
+                })
+
+                // 5. 根据第三方API响应确定工单状态
+                const newStatus =
+                    thirdPartyResponse.code === '0' ? 'PROCESSING' : 'FAILED'
+                const thirdPartyTaskId = thirdPartyResponse.data?.taskId
+
+                // 6. 更新工单状态
+                await tx.tecdo_work_orders.update({
+                    where: { id: workOrder.id },
+                    data: {
+                        status: newStatus,
+                        thirdPartyTaskId: thirdPartyTaskId,
+                        rawDataId: rawData.id,
+                        updatedAt: new Date()
+                    }
+                })
+
+                // 7. 更新解绑业务数据
+                await tx.tecdo_account_binding_data.update({
+                    where: { id: businessData.id },
+                    data: {
+                        bindingStatus: newStatus,
+                        failureReason:
+                            newStatus === 'FAILED'
+                                ? thirdPartyResponse.message
+                                : null,
+                        updatedAt: new Date()
+                    }
+                })
+
+                // 8. 添加工单日志
+                await tx.tecdo_audit_logs.create({
+                    data: {
+                        id: uuidv4(),
+                        entityType: 'WORK_ORDER',
+                        entityId: workOrder.id,
+                        action:
+                            newStatus === 'PROCESSING'
+                                ? '提交第三方成功'
+                                : '提交第三方失败',
+                        performedBy: session.user?.name || 'system',
+                        newValue: JSON.stringify({
+                            thirdPartyTaskId: thirdPartyTaskId,
+                            response: thirdPartyResponse
+                        }),
+                        createdAt: new Date()
+                    }
+                })
+
+                // 如果API调用失败，则抛出异常，整个事务将回滚
+                if (thirdPartyResponse.code !== '0') {
+                    throw new Error(
+                        `调用第三方API失败: ${thirdPartyResponse.message}`
+                    )
                 }
-            },
-            {
-                timeout: 10000 // 设置事务超时时间
-            }
-        )
 
-        // 重新验证页面数据
-        revalidatePath('/workorder')
-        return result
+                return {
+                    code: '0',
+                    message: '账户解绑工单创建并提交第三方成功',
+                    data: {
+                        workOrderId: workOrder.id,
+                        taskId: workOrder.taskId,
+                        externalTaskId: thirdPartyTaskId,
+                        status: newStatus,
+                        mediaPlatform: businessData.mediaPlatform,
+                        mediaAccountId: businessData.mediaAccountId,
+                        unbindingValue: businessData.bindingValue,
+                        createdAt: workOrder.createdAt
+                    },
+                    traceId
+                }
+            })
+
+            // 重新验证页面数据
+            revalidatePath('/workorder')
+            revalidatePath('/account/manage')
+            revalidatePath('/account/applications')
+
+            return result
+        } catch (txError) {
+            console.error('事务执行失败，工单创建回滚:', txError)
+            return handleError(txError, traceId, '创建账户解绑工单')
+        }
     } catch (error) {
         return handleError(error, traceId, '创建账户解绑')
     }

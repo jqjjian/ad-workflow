@@ -20,6 +20,7 @@ import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { ApiResponseBuilder } from '@/utils/api-response'
 import { getAccountApplicationRecords } from './account-application'
+import { v4 as uuidv4 } from 'uuid'
 
 // 从 mediaAccount.ts 导入类型
 import {
@@ -29,6 +30,9 @@ import {
     MediaAccountSearchResult,
     MediaAccountSearch
 } from '@/schemas/mediaAccount'
+
+// 引入ThirdPartyApiResponse
+import { ThirdPartyApiResponse } from './account-management/types'
 
 // 定义工单状态枚举（替代从 query.ts 导入的 WorkOrderStatus）
 enum WorkOrderStatus {
@@ -728,144 +732,98 @@ export async function createWithdrawalOrder(
     userId: string | undefined
 ): Promise<ApiResponse<{ taskId: string }>> {
     return withAuth(async () => {
-        // 实现类似创建充值工单的逻辑，但针对减款
-        // ...
-        return {
-            code: '0',
-            success: true,
-            data: { taskId: 'mock-withdrawal-task-id' }
+        if (!userId) {
+            return { code: '401', success: false, message: '用户ID不能为空' }
         }
-    })
-}
 
-/**
- * 创建转账工单
- */
-export async function createTransferOrder(
-    data: any,
-    userId: string | undefined
-): Promise<ApiResponse<{ taskId: string }>> {
-    // 类似实现
-    return { code: '0', success: true, data: { taskId: 'mock-id' } } as any
-}
-
-/**
- * 创建绑定账号工单
- */
-export async function createBindAccountOrder(
-    data: any,
-    userId: string | undefined
-): Promise<ApiResponse<{ taskId: string }>> {
-    // 类似实现
-    return { code: '0', success: true, data: { taskId: 'mock-id' } } as any
-}
-
-/**
- * 创建解绑账号工单
- */
-export async function createUnbindAccountOrder(
-    data: any,
-    userId: string | undefined
-): Promise<ApiResponse<{ taskId: string }>> {
-    // 类似实现
-    return { code: '0', success: true, data: { taskId: 'mock-id' } } as any
-}
-
-/**
- * 创建绑定Pixel工单
- */
-export async function createBindPixelOrder(
-    data: any,
-    userId: string | undefined
-): Promise<ApiResponse<{ taskId: string }>> {
-    // 类似实现
-    return { code: '0', success: true, data: { taskId: 'mock-id' } } as any
-}
-
-/**
- * 创建解绑Pixel工单
- */
-export async function createUnbindPixelOrder(
-    data: any,
-    userId: string | undefined
-): Promise<ApiResponse<{ taskId: string }>> {
-    // 类似实现
-    return { code: '0', success: true, data: { taskId: 'mock-id' } } as any
-}
-
-/**
- * 查询账户管理工单
- */
-export async function getAccountManagementOrders(params: {
-    page?: number
-    pageSize?: number
-    userId?: string
-    workOrderSubtype?: WorkOrderSubtype
-    status?: string
-    dateRange?: { start: Date; end: Date }
-    mediaAccountId?: string
-}): Promise<ApiResponse<{ total: number; items: any[] }>> {
-    return withAuth(async () => {
         try {
-            const {
-                page = 1,
-                pageSize = 10,
-                userId,
-                workOrderSubtype,
-                status,
-                dateRange,
-                mediaAccountId
-            } = params
+            // 1. 验证数据
+            const validatedData = WithdrawalSchema.parse(data)
 
-            // 构建工单查询条件
-            const where = {
-                workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
-                ...(workOrderSubtype && { workOrderSubtype }),
-                ...(userId && { userId }),
-                ...(status && { status: status as any }),
-                ...(dateRange && {
-                    createdAt: {
-                        gte: dateRange.start,
-                        lte: dateRange.end
+            // 2. 生成工单编号
+            const taskNumber = generateTaskNumber(
+                WorkOrderType.ACCOUNT_MANAGEMENT,
+                WorkOrderSubtype.WITHDRAWAL
+            )
+
+            // 3. 创建本地工单记录
+            const task = await db.tecdo_third_party_tasks.create({
+                data: {
+                    taskNumber,
+                    taskId: taskNumber,
+                    typeId: 3, // 账户管理类型ID
+                    workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
+                    workOrderSubtype: WorkOrderSubtype.WITHDRAWAL,
+                    status: 'INIT',
+                    userId,
+                    rawData: JSON.stringify(validatedData),
+                    updatedAt: new Date()
+                }
+            })
+
+            // 5. 调用第三方API
+            const apiUrl = `${API_BASE_URL}/openApi/v1/accountManagement/withdrawal/create` // 需要确认实际URL
+            const response = await callExternalApi({
+                url: apiUrl,
+                body: {
+                    taskNumber,
+                    ...validatedData
+                }
+            })
+
+            // 6. 处理响应 - 使用类型断言处理response
+            const apiResponse = response as unknown as {
+                code: string
+                message: string
+                data?: {
+                    taskId: string
+                    [key: string]: any
+                }
+            }
+
+            if (apiResponse.code !== '0' || !apiResponse.data?.taskId) {
+                // 更新状态为失败
+                await db.tecdo_third_party_tasks.update({
+                    where: { id: task.id },
+                    data: {
+                        status: 'FAILED',
+                        rawResponse: JSON.stringify(response),
+                        failureReason: '第三方返回错误'
                     }
                 })
+
+                return {
+                    code: '1',
+                    success: false,
+                    message: apiResponse.message || '创建减款订单失败'
+                }
             }
 
-            // 如果需要按媒体账号ID过滤
-            if (mediaAccountId) {
-                // TODO: Add accountManagementDetail relation to Prisma schema
-                // where['accountManagementDetail'] = {
-                //     mediaAccountId
-                // }
-                // Skip filtering by mediaAccountId for now
-            }
+            // 获取taskId
+            const taskId = apiResponse.data.taskId
 
-            // 查询总数
-            const total = await db.tecdo_third_party_tasks.count({ where })
-
-            // 查询数据
-            const items = await db.tecdo_third_party_tasks.findMany({
-                where,
-                skip: (page - 1) * pageSize,
-                take: pageSize,
-                include: {
-                    // TODO: Add these relations to Prisma schema
-                    // accountManagementDetail: true,
-                    // paymentRecord: workOrderSubtype === WorkOrderSubtype.DEPOSIT
-                },
-                orderBy: { createdAt: 'desc' }
+            // 7. 更新本地工单信息
+            await db.tecdo_third_party_tasks.update({
+                where: { id: task.id },
+                data: {
+                    taskId: taskId,
+                    status: 'PENDING',
+                    rawResponse: JSON.stringify(response)
+                }
             })
 
             return {
                 code: '0',
                 success: true,
-                data: { total, items }
+                data: {
+                    taskId: taskId
+                }
             }
         } catch (error) {
             Logger.error(
                 error instanceof Error
                     ? error
-                    : new Error(`查询账户管理工单失败: ${String(error)}`)
+                    : new Error(`创建减款订单失败: ${String(error)}`)
             )
             return {
                 code: '1',
@@ -877,27 +835,603 @@ export async function getAccountManagementOrders(params: {
 }
 
 /**
- * 更新账户管理工单
+ * 创建转账工单
  */
-export async function updateAccountManagementOrder(
-    taskId: string,
+export async function createTransferOrder(
     data: any,
     userId: string | undefined
 ): Promise<ApiResponse<{ taskId: string }>> {
-    // 实现更新逻辑
-    return { code: '0', success: true, data: { taskId } } as any
+    return withAuth(async () => {
+        if (!userId) {
+            return { code: '401', success: false, message: '用户ID不能为空' }
+        }
+
+        try {
+            // 1. 验证数据
+            const validatedData = TransferSchema.parse(data)
+
+            // 2. 生成工单编号
+            const taskNumber = generateTaskNumber(
+                WorkOrderType.ACCOUNT_MANAGEMENT,
+                WorkOrderSubtype.TRANSFER
+            )
+
+            // 3. 创建本地工单记录
+            const task = await db.tecdo_third_party_tasks.create({
+                data: {
+                    taskNumber,
+                    taskId: taskNumber,
+                    typeId: 3, // 账户管理类型ID
+                    workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
+                    workOrderSubtype: WorkOrderSubtype.TRANSFER,
+                    status: 'INIT',
+                    userId,
+                    rawData: JSON.stringify(validatedData),
+                    updatedAt: new Date()
+                }
+            })
+
+            // 5. 调用第三方API
+            const apiUrl = `${API_BASE_URL}/openApi/v1/mediaAccount/transferApplication/create` // 需要确认实际URL
+            const response = await callExternalApi<ThirdPartyApiResponse>({
+                url: apiUrl,
+                body: {
+                    taskNumber,
+                    ...validatedData
+                }
+            })
+
+            // 6. 处理响应
+            if (response.code !== '0' || !response.data?.taskId) {
+                // 更新状态为失败
+                await db.tecdo_third_party_tasks.update({
+                    where: { id: task.id },
+                    data: {
+                        status: 'FAILED',
+                        rawResponse: JSON.stringify(response),
+                        failureReason: '第三方返回错误'
+                    }
+                })
+
+                return {
+                    code: '1',
+                    success: false,
+                    message: response.message || '创建转账订单失败'
+                }
+            }
+
+            // 获取taskId (使用类型断言)
+            const taskId = response.data.taskId
+
+            // 7. 更新本地工单信息
+            await db.tecdo_third_party_tasks.update({
+                where: { id: task.id },
+                data: {
+                    taskId: taskId,
+                    status: 'PENDING',
+                    rawResponse: JSON.stringify(response)
+                }
+            })
+
+            return {
+                code: '0',
+                success: true,
+                data: {
+                    taskId: taskId
+                }
+            }
+        } catch (error) {
+            Logger.error(
+                error instanceof Error
+                    ? error
+                    : new Error(`创建转账订单失败: ${String(error)}`)
+            )
+            return {
+                code: '1',
+                success: false,
+                message: error instanceof Error ? error.message : '未知错误'
+            }
+        }
+    })
 }
+
+/**
+ * 创建绑定账号工单
+ */
+export async function createBindAccountOrder(
+    data: any,
+    userId: string | undefined
+): Promise<ApiResponse<{ taskId: string }>> {
+    return withAuth(async () => {
+        if (!userId) {
+            return { code: '401', success: false, message: '用户ID不能为空' }
+        }
+
+        try {
+            // 1. 验证数据
+            const validatedData = AccountBindSchema.parse(data)
+
+            // 2. 生成工单编号
+            const taskNumber = generateTaskNumber(
+                WorkOrderType.ACCOUNT_MANAGEMENT,
+                WorkOrderSubtype.BIND_ACCOUNT
+            )
+
+            // 3. 创建本地工单记录
+            const task = await db.tecdo_third_party_tasks.create({
+                data: {
+                    taskNumber,
+                    taskId: taskNumber,
+                    typeId: 3, // 账户管理类型ID
+                    workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
+                    workOrderSubtype: WorkOrderSubtype.BIND_ACCOUNT,
+                    status: 'INIT',
+                    userId,
+                    rawData: JSON.stringify(validatedData),
+                    updatedAt: new Date()
+                }
+            })
+
+            // 5. 调用第三方API
+            const apiUrl = `${API_BASE_URL}/openApi/v1/mediaAccount/bindldApplication/create` // 需要确认实际URL
+            const response = await callExternalApi<ThirdPartyApiResponse>({
+                url: apiUrl,
+                body: {
+                    taskNumber,
+                    ...validatedData
+                }
+            })
+
+            // 6. 处理响应
+            if (response.code !== '0' || !response.data?.taskId) {
+                // 更新状态为失败
+                await db.tecdo_third_party_tasks.update({
+                    where: { id: task.id },
+                    data: {
+                        status: 'FAILED',
+                        rawResponse: JSON.stringify(response),
+                        failureReason: '第三方返回错误'
+                    }
+                })
+
+                return {
+                    code: '1',
+                    success: false,
+                    message: response.message || '创建绑定账号订单失败'
+                }
+            }
+
+            // 7. 更新本地工单信息
+            await db.tecdo_third_party_tasks.update({
+                where: { id: task.id },
+                data: {
+                    taskId: response.data.taskId,
+                    status: 'PENDING',
+                    rawResponse: JSON.stringify(response)
+                }
+            })
+
+            return {
+                code: '0',
+                success: true,
+                data: {
+                    taskId: response.data.taskId
+                }
+            }
+        } catch (error) {
+            Logger.error(
+                error instanceof Error
+                    ? error
+                    : new Error(`创建绑定账号订单失败: ${String(error)}`)
+            )
+            return {
+                code: '1',
+                success: false,
+                message: error instanceof Error ? error.message : '未知错误'
+            }
+        }
+    })
+}
+
+/**
+ * 创建解绑账号工单
+ */
+export async function createUnbindAccountOrder(
+    data: any,
+    userId: string | undefined
+): Promise<ApiResponse<{ taskId: string }>> {
+    return withAuth(async () => {
+        if (!userId) {
+            return { code: '401', success: false, message: '用户ID不能为空' }
+        }
+
+        try {
+            // 1. 验证数据
+            const validatedData = AccountBindSchema.parse(data)
+
+            // 2. 生成工单编号
+            const taskNumber = generateTaskNumber(
+                WorkOrderType.ACCOUNT_MANAGEMENT,
+                WorkOrderSubtype.UNBIND_ACCOUNT
+            )
+
+            // 3. 创建本地工单记录
+            const task = await db.tecdo_third_party_tasks.create({
+                data: {
+                    taskNumber,
+                    taskId: taskNumber,
+                    typeId: 3, // 账户管理类型ID
+                    workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
+                    workOrderSubtype: WorkOrderSubtype.UNBIND_ACCOUNT,
+                    status: 'INIT',
+                    userId,
+                    rawData: JSON.stringify(validatedData),
+                    updatedAt: new Date()
+                }
+            })
+
+            // 5. 调用第三方API
+            const apiUrl = `${API_BASE_URL}/openApi/v1/mediaAccount/unBindldApplication/create` // 需要确认实际URL
+            const response = await callExternalApi<ThirdPartyApiResponse>({
+                url: apiUrl,
+                body: {
+                    taskNumber,
+                    ...validatedData
+                }
+            })
+
+            // 6. 处理响应
+            if (response.code !== '0' || !response.data?.taskId) {
+                // 更新状态为失败
+                await db.tecdo_third_party_tasks.update({
+                    where: { id: task.id },
+                    data: {
+                        status: 'FAILED',
+                        rawResponse: JSON.stringify(response),
+                        failureReason: '第三方返回错误'
+                    }
+                })
+
+                return {
+                    code: '1',
+                    success: false,
+                    message: response.message || '创建解绑账号订单失败'
+                }
+            }
+
+            // 7. 更新本地工单信息
+            await db.tecdo_third_party_tasks.update({
+                where: { id: task.id },
+                data: {
+                    taskId: response.data.taskId,
+                    status: 'PENDING',
+                    rawResponse: JSON.stringify(response)
+                }
+            })
+
+            return {
+                code: '0',
+                success: true,
+                data: {
+                    taskId: response.data.taskId
+                }
+            }
+        } catch (error) {
+            Logger.error(
+                error instanceof Error
+                    ? error
+                    : new Error(`创建解绑账号订单失败: ${String(error)}`)
+            )
+            return {
+                code: '1',
+                success: false,
+                message: error instanceof Error ? error.message : '未知错误'
+            }
+        }
+    })
+}
+
+/**
+ * 创建绑定Pixel工单
+ */
+export async function createBindPixelOrder(
+    data: any,
+    userId: string | undefined
+): Promise<ApiResponse<{ taskId: string }>> {
+    return withAuth(async () => {
+        if (!userId) {
+            return { code: '401', success: false, message: '用户ID不能为空' }
+        }
+
+        try {
+            // 1. 验证数据
+            const validatedData = PixelBindSchema.parse(data)
+
+            // 2. 生成工单编号
+            const taskNumber = generateTaskNumber(
+                WorkOrderType.ACCOUNT_MANAGEMENT,
+                WorkOrderSubtype.BIND_PIXEL
+            )
+
+            // 3. 创建本地工单记录
+            const task = await db.tecdo_third_party_tasks.create({
+                data: {
+                    taskNumber,
+                    taskId: taskNumber,
+                    typeId: 3, // 账户管理类型ID
+                    workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
+                    workOrderSubtype: WorkOrderSubtype.BIND_PIXEL,
+                    status: 'INIT',
+                    userId,
+                    rawData: JSON.stringify(validatedData),
+                    updatedAt: new Date()
+                }
+            })
+
+            // 5. 调用第三方API
+            const apiUrl = `${API_BASE_URL}/openApi/v1/bindPixelApplication/create` // 需要确认实际URL
+            const response = await callExternalApi<ThirdPartyApiResponse>({
+                url: apiUrl,
+                body: {
+                    taskNumber,
+                    ...validatedData
+                }
+            })
+
+            // 6. 处理响应
+            if (response.code !== '0' || !response.data?.taskId) {
+                // 更新状态为失败
+                await db.tecdo_third_party_tasks.update({
+                    where: { id: task.id },
+                    data: {
+                        status: 'FAILED',
+                        rawResponse: JSON.stringify(response),
+                        failureReason: '第三方返回错误'
+                    }
+                })
+
+                return {
+                    code: '1',
+                    success: false,
+                    message: response.message || '创建绑定Pixel订单失败'
+                }
+            }
+
+            // 7. 更新本地工单信息
+            await db.tecdo_third_party_tasks.update({
+                where: { id: task.id },
+                data: {
+                    taskId: response.data.taskId,
+                    status: 'PENDING',
+                    rawResponse: JSON.stringify(response)
+                }
+            })
+
+            return {
+                code: '0',
+                success: true,
+                data: {
+                    taskId: response.data.taskId
+                }
+            }
+        } catch (error) {
+            Logger.error(
+                error instanceof Error
+                    ? error
+                    : new Error(`创建绑定Pixel订单失败: ${String(error)}`)
+            )
+            return {
+                code: '1',
+                success: false,
+                message: error instanceof Error ? error.message : '未知错误'
+            }
+        }
+    })
+}
+
+/**
+ * 修改Pixel工单
+ */
+export async function createUnbindPixelOrder(
+    data: any,
+    userId: string | undefined
+): Promise<ApiResponse<{ taskId: string }>> {
+    return withAuth(async () => {
+        if (!userId) {
+            return { code: '401', success: false, message: '用户ID不能为空' }
+        }
+
+        try {
+            // 1. 验证数据
+            const validatedData = PixelBindSchema.parse(data)
+
+            // 2. 生成工单编号
+            const taskNumber = generateTaskNumber(
+                WorkOrderType.ACCOUNT_MANAGEMENT,
+                WorkOrderSubtype.UNBIND_PIXEL
+            )
+
+            // 3. 创建本地工单记录
+            const task = await db.tecdo_third_party_tasks.create({
+                data: {
+                    taskNumber,
+                    taskId: taskNumber,
+                    typeId: 3, // 账户管理类型ID
+                    workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
+                    workOrderSubtype: WorkOrderSubtype.UNBIND_PIXEL,
+                    status: 'INIT',
+                    userId,
+                    rawData: JSON.stringify(validatedData),
+                    updatedAt: new Date()
+                }
+            })
+
+            // 5. 调用第三方API
+            const apiUrl = `${API_BASE_URL}/openApi/v1/bindPixelApplication/update` // 需要确认实际URL
+            const response = await callExternalApi<ThirdPartyApiResponse>({
+                url: apiUrl,
+                body: {
+                    taskNumber,
+                    ...validatedData
+                }
+            })
+
+            // 6. 处理响应
+            if (response.code !== '0' || !response.data?.taskId) {
+                // 更新状态为失败
+                await db.tecdo_third_party_tasks.update({
+                    where: { id: task.id },
+                    data: {
+                        status: 'FAILED',
+                        rawResponse: JSON.stringify(response),
+                        failureReason: '第三方返回错误'
+                    }
+                })
+
+                return {
+                    code: '1',
+                    success: false,
+                    message: response.message || '创建解绑Pixel订单失败'
+                }
+            }
+
+            // 7. 更新本地工单信息
+            await db.tecdo_third_party_tasks.update({
+                where: { id: task.id },
+                data: {
+                    taskId: response.data.taskId,
+                    status: 'PENDING',
+                    rawResponse: JSON.stringify(response)
+                }
+            })
+
+            return {
+                code: '0',
+                success: true,
+                data: {
+                    taskId: response.data.taskId
+                }
+            }
+        } catch (error) {
+            Logger.error(
+                error instanceof Error
+                    ? error
+                    : new Error(`创建解绑Pixel订单失败: ${String(error)}`)
+            )
+            return {
+                code: '1',
+                success: false,
+                message: error instanceof Error ? error.message : '未知错误'
+            }
+        }
+    })
+}
+
+/**
+ * 查询账户管理工单
+ */
+// export async function getAccountManagementOrders(params: {
+//     page?: number
+//     pageSize?: number
+//     userId?: string
+//     workOrderSubtype?: WorkOrderSubtype
+//     status?: string
+//     dateRange?: { start: Date; end: Date }
+//     mediaAccountId?: string
+// }): Promise<ApiResponse<{ total: number; items: any[] }>> {
+//     return withAuth(async () => {
+//         try {
+//             const {
+//                 page = 1,
+//                 pageSize = 10,
+//                 userId,
+//                 workOrderSubtype,
+//                 status,
+//                 dateRange,
+//                 mediaAccountId
+//             } = params
+
+//             // 构建工单查询条件
+//             const where = {
+//                 workOrderType: WorkOrderType.ACCOUNT_MANAGEMENT,
+//                 ...(workOrderSubtype && { workOrderSubtype }),
+//                 ...(userId && { userId }),
+//                 ...(status && { status: status as any }),
+//                 ...(dateRange && {
+//                     createdAt: {
+//                         gte: dateRange.start,
+//                         lte: dateRange.end
+//                     }
+//                 })
+//             }
+
+//             // 如果需要按媒体账号ID过滤
+//             if (mediaAccountId) {
+//                 // TODO: Add accountManagementDetail relation to Prisma schema
+//                 // where['accountManagementDetail'] = {
+//                 //     mediaAccountId
+//                 // }
+//                 // Skip filtering by mediaAccountId for now
+//             }
+
+//             // 查询总数
+//             const total = await db.tecdo_third_party_tasks.count({ where })
+
+//             // 查询数据
+//             const items = await db.tecdo_third_party_tasks.findMany({
+//                 where,
+//                 skip: (page - 1) * pageSize,
+//                 take: pageSize,
+//                 include: {
+//                     // TODO: Add these relations to Prisma schema
+//                     // accountManagementDetail: true,
+//                     // paymentRecord: workOrderSubtype === WorkOrderSubtype.DEPOSIT
+//                 },
+//                 orderBy: { createdAt: 'desc' }
+//             })
+
+//             return {
+//                 code: '0',
+//                 success: true,
+//                 data: { total, items }
+//             }
+//         } catch (error) {
+//             Logger.error(
+//                 error instanceof Error
+//                     ? error
+//                     : new Error(`查询账户管理工单失败: ${String(error)}`)
+//             )
+//             return {
+//                 code: '1',
+//                 success: false,
+//                 message: error instanceof Error ? error.message : '未知错误'
+//             }
+//         }
+//     })
+// }
+
+/**
+ * 更新账户管理工单
+ */
+// export async function updateAccountManagementOrder(
+//     taskId: string,
+//     data: any,
+//     userId: string | undefined
+// ): Promise<ApiResponse<{ taskId: string }>> {
+//     // 实现更新逻辑
+//     return { code: '0', success: true, data: { taskId } } as any
+// }
 
 /**
  * 软删除账户管理工单
  */
-export async function deleteAccountManagementOrder(
-    taskId: string,
-    userId: string | undefined
-): Promise<ApiResponse<void>> {
-    // 实现软删除逻辑
-    return { code: '0', success: true } as any
-}
+// export async function deleteAccountManagementOrder(
+//     taskId: string,
+//     userId: string | undefined
+// ): Promise<ApiResponse<void>> {
+//     // 实现软删除逻辑
+//     return { code: '0', success: true } as any
+// }
 
 interface AccountNameUpdateWorkOrderParams {
     mediaAccountId: string
@@ -913,69 +1447,69 @@ interface AccountNameUpdateWorkOrderParams {
  * @param params 账户名修改工单参数
  * @returns 操作结果
  */
-export async function updateAccountNameWorkOrder(
-    params: AccountNameUpdateWorkOrderParams
-): Promise<{
-    success: boolean
-    message?: string
-    data?: { workOrderId: string }
-}> {
-    try {
-        // 获取当前用户会话
-        const session = await auth()
-        if (!session || !session.user) {
-            return {
-                success: false,
-                message: '未登录或会话已过期'
-            }
-        }
+// export async function updateAccountNameWorkOrder(
+//     params: AccountNameUpdateWorkOrderParams
+// ): Promise<{
+//     success: boolean
+//     message?: string
+//     data?: { workOrderId: string }
+// }> {
+//     try {
+//         // 获取当前用户会话
+//         const session = await auth()
+//         if (!session || !session.user) {
+//             return {
+//                 success: false,
+//                 message: '未登录或会话已过期'
+//             }
+//         }
 
-        // 参数验证
-        if (
-            !params.mediaAccountId ||
-            !params.mediaAccountName ||
-            !params.mediaPlatform ||
-            !params.newAccountName
-        ) {
-            return {
-                success: false,
-                message: '参数不完整'
-            }
-        }
+//         // 参数验证
+//         if (
+//             !params.mediaAccountId ||
+//             !params.mediaAccountName ||
+//             !params.mediaPlatform ||
+//             !params.newAccountName
+//         ) {
+//             return {
+//                 success: false,
+//                 message: '参数不完整'
+//             }
+//         }
 
-        // 检查新账户名是否与旧账户名相同
-        if (params.mediaAccountName === params.newAccountName) {
-            return {
-                success: false,
-                message: '新账户名与当前账户名相同'
-            }
-        }
+//         // 检查新账户名是否与旧账户名相同
+//         if (params.mediaAccountName === params.newAccountName) {
+//             return {
+//                 success: false,
+//                 message: '新账户名与当前账户名相同'
+//             }
+//         }
 
-        // 生成工单ID
-        const workOrderId = `ACCNAME-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-        const userId = session.user.id || 'unknown'
-        const username = session.user.name || 'unknown'
+//         // 生成工单ID
+//         const workOrderId = `ACCNAME-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+//         const userId = session.user.id || 'unknown'
+//         const username = session.user.name || 'unknown'
 
-        // 保存到数据库
-        // 这里替换为实际的数据库操作，与充值工单类似，不再重复示例代码
+//         // 保存到数据库
+//         // 这里替换为实际的数据库操作，与充值工单类似，不再重复示例代码
 
-        // 如果成功，刷新相关页面
-        revalidatePath('/account/manage')
-        revalidatePath('/account/workorders')
+//         // 如果成功，刷新相关页面
+//         revalidatePath('/account/manage')
+//         revalidatePath('/account/workorders')
 
-        return {
-            success: true,
-            message: '账户名修改工单创建成功',
-            data: { workOrderId }
-        }
-    } catch (error) {
-        console.error('创建账户名修改工单出错:', error)
-        return {
-            success: false,
-            message: '创建账户名修改工单失败'
-        }
-    }
-}
+//         return {
+//             success: true,
+//             message: '账户名修改工单创建成功',
+//             data: { workOrderId }
+//         }
+//     } catch (error) {
+//         console.error('创建账户名修改工单出错:', error)
+//         return {
+//             success: false,
+//             message: '创建账户名修改工单失败'
+//         }
+//     }
+// }
 
 /**
  * 修改账户名修改工单
@@ -983,143 +1517,167 @@ export async function updateAccountNameWorkOrder(
  * @param params 修改参数
  * @returns 操作结果
  */
-export async function updateAccountNameUpdateWorkOrder(
-    workOrderId: string,
-    params: Partial<AccountNameUpdateWorkOrderParams>
-): Promise<{
-    success: boolean
-    message?: string
-}> {
-    // 修改逻辑与其他工单类似
-    return {
-        success: true,
-        message: '账户名修改工单更新成功'
-    }
-}
+// export async function updateAccountNameUpdateWorkOrder(
+//     workOrderId: string,
+//     params: Partial<AccountNameUpdateWorkOrderParams>
+// ): Promise<{
+//     success: boolean
+//     message?: string
+// }> {
+//     // 修改逻辑与其他工单类似
+//     return {
+//         success: true,
+//         message: '账户名修改工单更新成功'
+//     }
+// }
 
 /**
  * 提交账户名修改工单到第三方接口
  * @param workOrderId 工单ID
  * @returns 操作结果
  */
-export async function submitAccountNameUpdateWorkOrderToThirdParty(
-    workOrderId: string
-): Promise<{
-    success: boolean
-    message?: string
-    thirdPartyResponse?: any
-}> {
-    try {
-        // 获取当前用户会话
-        const session = await auth()
-        if (!session || !session.user) {
-            return {
-                success: false,
-                message: '未登录或会话已过期'
-            }
-        }
+// export async function submitAccountNameUpdateWorkOrderToThirdParty(
+//     workOrderId: string
+// ): Promise<{
+//     success: boolean
+//     message?: string
+//     thirdPartyResponse?: any
+// }> {
+//     try {
+//         // 获取当前用户会话
+//         const session = await auth()
+//         if (!session || !session.user) {
+//             return {
+//                 success: false,
+//                 message: '未登录或会话已过期'
+//             }
+//         }
 
-        // 查询工单详情
-        // const workOrder = await db.workOrders.findUnique({
-        //     where: { workOrderId }
-        // })
+//         // 查询工单详情
+//         const workOrder = await db.tecdo_work_orders.findUnique({
+//             where: { id: workOrderId }
+//         })
 
-        // 模拟工单数据，明确类型
-        const workOrder: MockWorkOrder = {
-            workOrderId,
-            systemStatus: WorkOrderStatus.PENDING,
-            mediaPlatform: 1,
-            mediaAccountId: 'acc-123',
-            mediaAccountName: '旧账户名',
-            workOrderParams: {
-                newAccountName: '新账户名'
-            }
-        }
+//         // 验证工单是否存在且状态为待处理
+//         if (!workOrder || workOrder.status !== 'PENDING') {
+//             return {
+//                 success: false,
+//                 message: '工单不存在或状态非待处理，无法提交'
+//             }
+//         }
 
-        // 验证工单是否存在且状态为待处理
-        if (!workOrder || workOrder.systemStatus !== WorkOrderStatus.PENDING) {
-            return {
-                success: false,
-                message: '工单不存在或状态非待处理，无法提交'
-            }
-        }
+//         const userId = session.user.id
+//         const username = session.user.name || '系统用户'
+//         const metadata = (workOrder.metadata as any) || {}
 
-        const userId = session.user.id || 'unknown'
-        const username = session.user.name || 'unknown'
+//         // 确保工单包含必要参数
+//         if (!workOrder.mediaAccountId || !metadata.newAccountName) {
+//             return {
+//                 success: false,
+//                 message: '工单缺少必要参数，无法提交'
+//             }
+//         }
 
-        // 根据媒体平台选择不同的第三方API
-        let thirdPartyResponse: { success: boolean; operationId?: string } = {
-            success: false
-        }
-        const { newAccountName } = workOrder.workOrderParams
+//         const mediaPlatform = metadata.mediaPlatform
 
-        switch (workOrder.mediaPlatform) {
-            case 1: // Facebook
-                // thirdPartyResponse = await callFacebookUpdateAccountNameAPI(workOrder.mediaAccountId, newAccountName)
-                thirdPartyResponse = {
-                    success: true,
-                    operationId: 'fb-rename-123'
-                }
-                break
-            case 2: // Google
-                // thirdPartyResponse = await callGoogleUpdateAccountNameAPI(workOrder.mediaAccountId, newAccountName)
-                thirdPartyResponse = {
-                    success: true,
-                    operationId: 'google-rename-123'
-                }
-                break
-            case 5: // TikTok
-                // thirdPartyResponse = await callTiktokUpdateAccountNameAPI(workOrder.mediaAccountId, newAccountName)
-                thirdPartyResponse = {
-                    success: true,
-                    operationId: 'tiktok-rename-123'
-                }
-                break
-            default:
-                return {
-                    success: false,
-                    message: '不支持的媒体平台'
-                }
-        }
+//         // 构建请求数据
+//         const requestData = {
+//             taskNumber: workOrder.taskNumber,
+//             mediaAccountId: workOrder.mediaAccountId,
+//             mediaPlatform,
+//             newAccountName: metadata.newAccountName
+//         }
 
-        // 更新工单状态
-        // await db.workOrders.update({
-        //     where: { workOrderId },
-        //     data: {
-        //         systemStatus: thirdPartyResponse.success ? WorkOrderStatus.PROCESSING : WorkOrderStatus.FAILED,
-        //         thirdPartyStatus: thirdPartyResponse.success ? 'PROCESSING' : 'FAILED',
-        //         updatedAt: new Date(),
-        //         updatedBy: userId,
-        //         thirdPartyResponse: JSON.stringify(thirdPartyResponse)
-        //     }
-        // })
+//         // 调用第三方API
+//         const apiUrl = `${API_BASE_URL}/openApi/v1/accountManagement/updateAccountName/create` // 需要确认实际URL
+//         const response = await callExternalApi({
+//             url: apiUrl,
+//             body: requestData
+//         })
 
-        // 添加工单日志
-        // await db.workOrderLogs.create({
-        //     id: uuidv4(),
-        //     workOrderId,
-        //     timestamp: new Date(),
-        //     action: thirdPartyResponse.success ? '提交第三方成功' : '提交第三方失败',
-        //     operator: username,
-        //     details: `账户名修改提交给第三方平台${thirdPartyResponse.success ? '成功' : '失败'}，操作ID：${thirdPartyResponse.operationId || '无'}`
-        // })
+//         // 处理响应
+//         if (response.code !== '0' || !response.data?.taskId) {
+//             // 更新工单状态为失败
+//             await db.tecdo_work_orders.update({
+//                 where: { id: workOrderId },
+//                 data: {
+//                     status: 'FAILED',
+//                     updatedAt: new Date(),
+//                     remark: response.message || '第三方返回错误',
+//                     metadata: {
+//                         ...metadata,
+//                         thirdPartyResponse: JSON.stringify(response)
+//                     }
+//                 }
+//             })
 
-        // 刷新相关页面
-        revalidatePath('/account/manage')
-        revalidatePath('/account/workorders')
+//             // 添加工单日志
+//             await db.tecdo_audit_logs.create({
+//                 data: {
+//                     id: uuidv4(),
+//                     entityType: 'WORK_ORDER',
+//                     entityId: workOrderId,
+//                     action: '提交第三方失败',
+//                     performedBy: username,
+//                     newValue: JSON.stringify({
+//                         error: response.message,
+//                         response
+//                     }),
+//                     createdAt: new Date()
+//                 }
+//             })
 
-        return {
-            success: thirdPartyResponse.success,
-            message: thirdPartyResponse.success
-                ? '账户名修改工单已成功提交给第三方平台'
-                : '账户名修改工单提交第三方平台失败',
-            thirdPartyResponse
-        }
-    } catch (error) {
-        console.error('提交账户名修改工单到第三方接口出错:', error)
-        return {
-            success: false,
-            message: '提交账户名修改工单到第三方接口失败'
-        }
-    }
-}
+//             return {
+//                 success: false,
+//                 message: response.message || '提交第三方接口失败',
+//                 thirdPartyResponse: response
+//             }
+//         }
+
+//         // 更新工单状态为处理中
+//         await db.tecdo_work_orders.update({
+//             where: { id: workOrderId },
+//             data: {
+//                 status: 'PROCESSING',
+//                 updatedAt: new Date(),
+//                 thirdPartyTaskId: response.data.taskId,
+//                 metadata: {
+//                     ...metadata,
+//                     thirdPartyResponse: JSON.stringify(response)
+//                 }
+//             }
+//         })
+
+//         // 添加工单日志
+//         await db.tecdo_audit_logs.create({
+//             data: {
+//                 id: uuidv4(),
+//                 entityType: 'WORK_ORDER',
+//                 entityId: workOrderId,
+//                 action: '提交第三方成功',
+//                 performedBy: username,
+//                 newValue: JSON.stringify({
+//                     thirdPartyTaskId: response.data.taskId,
+//                     response
+//                 }),
+//                 createdAt: new Date()
+//             }
+//         })
+
+//         // 刷新相关页面
+//         revalidatePath('/account/manage')
+//         revalidatePath('/account/workorders')
+
+//         return {
+//             success: true,
+//             message: '账户名修改工单已成功提交给第三方平台',
+//             thirdPartyResponse: response
+//         }
+//     } catch (error) {
+//         console.error('提交账户名修改工单到第三方接口出错:', error)
+//         return {
+//             success: false,
+//             message: '提交账户名修改工单到第三方接口失败'
+//         }
+//     }
+// }

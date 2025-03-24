@@ -19,7 +19,10 @@ import {
 import { InfoCircleOutlined, UploadOutlined } from '@ant-design/icons'
 import { ConfigProvider } from 'antd'
 import { StyleProvider } from '@ant-design/cssinjs'
-import { getDictionaryItems } from '@/app/actions/dictionary'
+import {
+    getDictionaryItems,
+    getTimezoneDictionary
+} from '@/app/actions/dictionary'
 import { createSchemaFieldRule } from 'antd-zod'
 // import { GoogleAccountSchema, GoogleAccount, ApplyRecordData } from '@/schemas'
 // import { WorkOrderCompanyInfoSchema } from '@/schemas/company-info'
@@ -76,6 +79,13 @@ export default function Page() {
     const [productTypeList, setProductTypeList] = useState<
         { label: string; value: number }[]
     >([])
+    const [timezoneOptions, setTimezoneOptions] = useState<
+        { label: string; value: string }[]
+    >([
+        { label: '(GMT+8:00) 北京时间', value: 'Asia/Shanghai' },
+        { label: '(GMT+0:00) 伦敦', value: 'Europe/London' },
+        { label: '(GMT-5:00) 纽约', value: 'America/New_York' }
+    ])
     const [facebookAccount, setFacebookAccount] =
         useState<FacebookAccountApplication>({
             productType: undefined,
@@ -202,23 +212,36 @@ export default function Page() {
     ]
 
     const getDicData = async () => {
-        const res = await getDictionaryItems('BUSINESS', 'productType')
-        // console.log('res', res)
-        const list = res?.items.map((item) => ({
-            label: item.itemName,
-            value: Number(item.itemValue)
-        }))
+        try {
+            // 获取产品类型字典
+            const productTypeRes = await getDictionaryItems(
+                'BUSINESS',
+                'PRODUCT_TYPE'
+            )
+            if (productTypeRes?.items && productTypeRes.items.length > 0) {
+                const list = productTypeRes.items.map((item) => ({
+                    label: item.itemName,
+                    value: Number(item.itemValue)
+                }))
+                setProductTypeList(list)
+            } else {
+                // 在字典中缺失产品类型时使用默认值
+                setProductTypeList([
+                    { label: '游戏', value: ProductTypeEnum.GAME },
+                    { label: 'App', value: ProductTypeEnum.APP },
+                    { label: '电商', value: ProductTypeEnum.ECOMMERCE },
+                    { label: '其他', value: ProductTypeEnum.OTHER }
+                ])
+            }
 
-        // 在字典中缺失产品类型时使用默认值
-        if (!list || list.length === 0) {
-            setProductTypeList([
-                { label: '游戏', value: ProductTypeEnum.GAME },
-                { label: 'App', value: ProductTypeEnum.APP },
-                { label: '电商', value: ProductTypeEnum.ECOMMERCE },
-                { label: '其他', value: ProductTypeEnum.OTHER }
-            ])
-        } else {
-            setProductTypeList(list)
+            // 对于Facebook页面，可以使用Google的时区（如果没有专门的Facebook时区字典）
+            const timezoneRes = await getTimezoneDictionary('GOOGLE')
+            if (timezoneRes && timezoneRes.length > 0) {
+                setTimezoneOptions(timezoneRes)
+            }
+        } catch (error) {
+            console.error('获取字典数据失败:', error)
+            message.error('获取字典数据失败')
         }
     }
     const [isPending, startTransition] = useTransition()
@@ -751,13 +774,6 @@ export default function Page() {
         { label: '美元 (USD)', value: 'USD' }
         // { label: '人民币 (CNY)', value: 'CNY' },
         // { label: '欧元 (EUR)', value: 'EUR' }
-    ]
-
-    // 时区选项
-    const timezoneOptions = [
-        { label: '(GMT+8:00) 北京时间', value: 'Asia/Shanghai' },
-        { label: '(GMT+0:00) 伦敦', value: 'Europe/London' },
-        { label: '(GMT-5:00) 纽约', value: 'America/New_York' }
     ]
 
     // 添加手动验证函数

@@ -13,6 +13,7 @@ import {
 import { generateTaskNumber, generateTraceId } from '@/lib/utils'
 import { z } from 'zod'
 import { ApiResponse } from '@/types/api'
+import { API_BASE_URL, callExternalApi } from '@/lib/request'
 import { ValidationError, ThirdPartyError } from '@/utils/business-error'
 import { auth } from '@/auth'
 import { v4 as uuidv4 } from 'uuid'
@@ -25,32 +26,23 @@ async function callThirdPartyBindingAPI(
     traceId: string
 ): Promise<ThirdPartyBindingResponse> {
     try {
-        const response = await fetch('third-party-binding-api-url', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Trace-Id': traceId
-            },
-            body: JSON.stringify(request)
+        // 使用callExternalApi方法调用第三方接口
+        const result = await callExternalApi({
+            url: `${API_BASE_URL}/openApi/v1/mediaAccount/bindldApplication/create`,
+            body: request
         })
 
-        if (!response.ok) {
+        console.log('绑定API调用结果:', result)
+
+        // 处理API返回结果
+        if (result.code === '0') {
+            return ThirdPartyBindingResponseSchema.parse(result)
+        } else {
             throw new ThirdPartyError(
-                `API 响应异常: ${response.status} ${response.statusText}`,
-                { status: response.status, statusText: response.statusText }
+                result.message || '第三方服务调用失败',
+                result
             )
         }
-
-        const data = await response.json()
-
-        if (data.code !== '0') {
-            throw new ThirdPartyError(
-                data.message || '第三方服务调用失败',
-                data
-            )
-        }
-
-        return ThirdPartyBindingResponseSchema.parse(data)
     } catch (error) {
         if (error instanceof ThirdPartyError) {
             throw error
@@ -68,19 +60,31 @@ async function callThirdPartyUpdateBindingAPI(
     traceId: string
 ): Promise<ThirdPartyBindingResponse> {
     try {
-        const response = await fetch(
-            '/openApi/v1/mediaAccount/bindIdApplication/update',
-            {
-                method: 'POST',
-                body: JSON.stringify(request)
-            }
-        )
+        // 使用callExternalApi方法调用第三方接口
+        const result = await callExternalApi({
+            url: `${API_BASE_URL}/openApi/v1/mediaAccount/bindldApplication/update`,
+            body: request
+        })
 
-        const data = await response.json()
-        return ThirdPartyBindingResponseSchema.parse(data)
+        console.log('更新绑定API调用结果:', result)
+
+        // 处理API返回结果
+        if (result.code === '0') {
+            return ThirdPartyBindingResponseSchema.parse(result)
+        } else {
+            throw new ThirdPartyError(
+                result.message || '第三方服务调用失败',
+                result
+            )
+        }
     } catch (error) {
-        throw new Error(
-            `调用第三方修改绑定API失败: ${error instanceof Error ? error.message : '未知错误'}`
+        if (error instanceof ThirdPartyError) {
+            throw error
+        }
+
+        throw new ThirdPartyError(
+            `调用第三方修改绑定API失败: ${error instanceof Error ? error.message : '未知错误'}`,
+            error
         )
     }
 }
@@ -123,6 +127,7 @@ interface AccountBindingWorkOrderParams {
     mccId: string
     bindingType: 'bind' | 'unbind'
     remarks?: string
+    role?: number // 添加可选的角色字段
 }
 
 /**
@@ -144,7 +149,7 @@ export async function createAccountBindingWorkOrder(
                 message: '未登录或会话已过期'
             }
         }
-
+        console.log('params', params)
         // 参数验证
         if (
             !params.mediaAccountId ||
@@ -170,28 +175,6 @@ export async function createAccountBindingWorkOrder(
             : '系统中已知存在的用户ID'
         const userName = session.user.name || '系统用户'
 
-        // 检查媒体账户是否存在，但不作为工单创建的必要条件
-        try {
-            const mediaAccount = await db.tecdo_media_accounts.findUnique({
-                where: { id: params.mediaAccountId }
-            })
-
-            if (!mediaAccount) {
-                console.log(
-                    `注意: 媒体账户ID ${params.mediaAccountId} 在系统中不存在，但仍将创建工单`
-                )
-            } else {
-                console.log(
-                    `媒体账户ID ${params.mediaAccountId} 验证通过，继续创建工单`
-                )
-            }
-        } catch (mediaAccountError) {
-            console.error(
-                '查询媒体账户时出错，但将继续创建工单:',
-                mediaAccountError
-            )
-        }
-
         // 生成工单ID和跟踪ID
         const workOrderId = uuidv4() // 使用UUID生成工单ID
         const taskNumber = generateTaskNumber(
@@ -200,133 +183,190 @@ export async function createAccountBindingWorkOrder(
         )
         const traceId = generateTraceId()
 
-        // 开启事务
-        const result = await db.$transaction(async (tx) => {
-            // 1. 创建工单记录
-            const workOrder = await tx.tecdo_work_orders.create({
-                data: {
-                    id: workOrderId,
-                    taskId: workOrderId,
-                    taskNumber,
-                    userId: actualUserId,
-                    workOrderType: 'ACCOUNT_MANAGEMENT',
-                    workOrderSubtype: 'BIND_ACCOUNT',
-                    status: 'PENDING',
-                    mediaAccountId: params.mediaAccountId,
-                    remark: params.remarks,
-                    metadata: {
-                        bindingType: params.bindingType,
-                        mccId: params.mccId,
-                        createTraceId: traceId,
-                        userName,
-                        mediaPlatform: params.mediaPlatform,
-                        mediaAccountName: params.mediaAccountName,
-                        companyName: params.companyName
-                    },
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                }
-            })
-
-            // 2. 添加工单审计日志
-            await tx.tecdo_audit_logs.create({
-                data: {
-                    id: uuidv4(),
-                    entityType: 'WORK_ORDER',
-                    entityId: workOrder.id,
-                    action: '创建账户绑定工单',
-                    performedBy: userName,
-                    newValue: JSON.stringify({
+        // 开启事务 - 将所有数据库操作和第三方API调用包含在事务中
+        try {
+            const result = await db.$transaction(async (tx) => {
+                // 1. 创建工单记录 - 初始状态为PENDING
+                const workOrder = await tx.tecdo_work_orders.create({
+                    data: {
+                        id: workOrderId,
+                        taskId: workOrderId,
+                        taskNumber,
+                        userId: actualUserId,
+                        workOrderType: 'ACCOUNT_MANAGEMENT',
+                        workOrderSubtype: 'BIND_ACCOUNT',
+                        status: 'PENDING', // 初始状态为PENDING
                         mediaAccountId: params.mediaAccountId,
-                        mediaAccountName: params.mediaAccountName,
-                        mediaPlatform: params.mediaPlatform,
-                        bindingType: params.bindingType,
-                        mccId: params.mccId
-                    }),
-                    createdAt: new Date()
-                }
-            })
+                        remark: params.remarks,
+                        metadata: {
+                            bindingType: params.bindingType,
+                            mccId: params.mccId,
+                            createTraceId: traceId,
+                            userName,
+                            mediaPlatform: params.mediaPlatform,
+                            mediaAccountName: params.mediaAccountName,
+                            companyName: params.companyName
+                        },
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    }
+                })
 
-            // 3. 尝试创建绑定数据记录
-            try {
-                // 检查是否已存在关联的业务数据
-                const existingBusinessData =
-                    await tx.tecdo_account_binding_data.findUnique({
-                        where: { workOrderId: workOrder.id }
-                    })
-
-                if (existingBusinessData) {
-                    console.log(
-                        `工单ID ${workOrder.id} 已有关联的绑定数据，不再创建新记录`
-                    )
-                } else {
-                    // 创建绑定数据记录
-                    await tx.tecdo_account_binding_data.create({
-                        data: {
-                            id: uuidv4(),
-                            workOrderId: workOrder.id,
-                            mediaPlatform: params.mediaPlatform.toString(),
-                            mediaAccountId: params.mediaAccountId,
-                            bindingValue: params.mccId,
-                            bindingRole:
-                                params.bindingType === 'bind'
-                                    ? 'CHILD'
-                                    : 'NONE',
-                            bindingStatus: 'PENDING',
-                            bindingTime: new Date(),
-                            createdAt: new Date(),
-                            updatedAt: new Date()
-                        }
-                    })
-                    console.log('账户绑定业务数据创建成功')
-                }
-            } catch (businessDataError) {
-                console.error(
-                    '创建账户绑定业务数据时出错，但工单已创建:',
-                    businessDataError
-                )
-                // 记录更详细的错误信息
-                await tx.tecdo_error_log.create({
+                // 2. 添加工单审计日志
+                await tx.tecdo_audit_logs.create({
                     data: {
                         id: uuidv4(),
-                        entityType: 'ACCOUNT_BINDING_DATA',
+                        entityType: 'WORK_ORDER',
                         entityId: workOrder.id,
-                        errorCode: 'BUSINESS_DATA_CREATE_FAILED',
-                        errorMessage:
-                            businessDataError instanceof Error
-                                ? businessDataError.message
-                                : '创建业务数据失败',
-                        stackTrace:
-                            businessDataError instanceof Error
-                                ? businessDataError.stack || ''
-                                : '',
-                        severity: 'ERROR',
-                        resolved: false,
+                        action: '创建账户绑定工单',
+                        performedBy: userName,
+                        newValue: JSON.stringify({
+                            mediaAccountId: params.mediaAccountId,
+                            mediaAccountName: params.mediaAccountName,
+                            mediaPlatform: params.mediaPlatform,
+                            bindingType: params.bindingType,
+                            mccId: params.mccId
+                        }),
                         createdAt: new Date()
                     }
                 })
-                // 仅记录错误，不中断工单创建流程
+
+                // 3. 创建绑定数据记录
+                const bindingData = await tx.tecdo_account_binding_data.create({
+                    data: {
+                        id: uuidv4(),
+                        workOrderId: workOrder.id,
+                        mediaPlatform: params.mediaPlatform.toString(),
+                        mediaAccountId: params.mediaAccountId,
+                        bindingValue: params.mccId,
+                        bindingRole:
+                            params.bindingType === 'bind' ? 'CHILD' : 'NONE',
+                        bindingStatus: 'PENDING', // 初始状态为PENDING
+                        bindingTime: new Date(),
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    }
+                })
+
+                // 4. 直接调用第三方API，不经过管理员审批
+                // 准备API调用参数
+                const apiRequest = {
+                    mediaPlatform: params.mediaPlatform,
+                    mediaAccountId: params.mediaAccountId,
+                    value: params.mccId,
+                    role: params.role
+                        ? params.role.toString()
+                        : params.bindingType === 'bind'
+                          ? 'CHILD'
+                          : 'NONE',
+                    taskId: workOrderId
+                }
+
+                // 调用第三方API
+                let thirdPartyResponse
+                try {
+                    thirdPartyResponse = await callThirdPartyBindingAPI(
+                        apiRequest as AccountBindingRequest,
+                        traceId
+                    )
+
+                    console.log('调用第三方API成功:', thirdPartyResponse)
+
+                    // 5. 根据API返回更新工单状态
+                    const newStatus =
+                        thirdPartyResponse.code === '0'
+                            ? 'PROCESSING'
+                            : 'FAILED'
+                    const thirdPartyTaskId = thirdPartyResponse.data?.taskId
+
+                    // 6. 更新工单状态
+                    await tx.tecdo_work_orders.update({
+                        where: { id: workOrder.id },
+                        data: {
+                            status: newStatus,
+                            thirdPartyTaskId: thirdPartyTaskId,
+                            metadata: {
+                                ...(workOrder.metadata as any),
+                                thirdPartyResponse:
+                                    JSON.stringify(thirdPartyResponse)
+                            },
+                            updatedAt: new Date()
+                        }
+                    })
+
+                    // 7. 更新绑定数据状态
+                    await tx.tecdo_account_binding_data.update({
+                        where: { id: bindingData.id },
+                        data: {
+                            bindingStatus: newStatus,
+                            failureReason:
+                                newStatus === 'FAILED'
+                                    ? thirdPartyResponse.message
+                                    : null,
+                            updatedAt: new Date()
+                        }
+                    })
+
+                    // 8. 添加API调用日志
+                    await tx.tecdo_audit_logs.create({
+                        data: {
+                            id: uuidv4(),
+                            entityType: 'WORK_ORDER',
+                            entityId: workOrder.id,
+                            action:
+                                newStatus === 'PROCESSING'
+                                    ? '提交第三方成功'
+                                    : '提交第三方失败',
+                            performedBy: userName,
+                            newValue: JSON.stringify({
+                                thirdPartyTaskId: thirdPartyTaskId,
+                                response: thirdPartyResponse
+                            }),
+                            createdAt: new Date()
+                        }
+                    })
+
+                    // 如果API调用失败，则抛出异常，整个事务将回滚
+                    if (thirdPartyResponse.code !== '0') {
+                        throw new Error(
+                            `调用第三方API失败: ${thirdPartyResponse.message}`
+                        )
+                    }
+
+                    return {
+                        workOrder,
+                        thirdPartyTaskId,
+                        status: newStatus
+                    }
+                } catch (apiError) {
+                    console.error('调用第三方API失败:', apiError)
+                    throw apiError // 重新抛出异常，导致事务回滚
+                }
+            })
+
+            // 刷新相关页面
+            revalidatePath('/account/manage')
+            revalidatePath('/account/applications')
+
+            // 返回成功信息
+            console.log('账户绑定工单创建并提交第三方API成功:', {
+                workOrderId: result.workOrder.id,
+                taskId: result.thirdPartyTaskId
+            })
+
+            return {
+                success: true,
+                message: `MCC${params.bindingType === 'bind' ? '绑定' : '解绑'}工单创建并提交第三方成功`,
+                data: {
+                    workOrderId: result.workOrder.id,
+                    taskId: result.thirdPartyTaskId
+                }
             }
-
-            return workOrder
-        })
-
-        // 刷新相关页面
-        revalidatePath('/account/manage')
-        revalidatePath('/account/applications')
-
-        // 返回成功信息
-        console.log('账户绑定工单创建成功:', {
-            workOrderId: result.id,
-            taskId: result.taskId
-        })
-
-        return {
-            success: true,
-            message: `MCC${params.bindingType === 'bind' ? '绑定' : '解绑'}工单创建成功`,
-            data: {
-                workOrderId: result.id,
-                taskId: result.taskId
+        } catch (txError) {
+            console.error('事务执行失败，工单创建回滚:', txError)
+            return {
+                success: false,
+                message: `创建工单失败: ${txError instanceof Error ? txError.message : String(txError)}`
             }
         }
     } catch (error) {

@@ -103,6 +103,44 @@ export async function getDictionaryItems(dictType: DictType, dictCode: string) {
     })
 }
 
+/**
+ * 获取指定平台的时区字典
+ * @param platform 媒体平台名称：GOOGLE 或 TIKTOK
+ * @returns 格式化后的时区选项列表
+ */
+export async function getTimezoneDictionary(platform: 'GOOGLE' | 'TIKTOK') {
+    try {
+        const dictCode =
+            platform === 'GOOGLE' ? 'GOOGLE_TIMEZONE' : 'TIKTOK_TIMEZONE'
+        const dictionary = await getDictionaryItems('BUSINESS', dictCode)
+
+        if (!dictionary || !dictionary.items || dictionary.items.length === 0) {
+            // 返回默认时区数据，避免前端显示空数据
+            const defaultOptions = [
+                { label: '(GMT+8:00) 北京时间', value: 'Asia/Shanghai' },
+                { label: '(GMT+0:00) 伦敦', value: 'Europe/London' },
+                { label: '(GMT-5:00) 纽约', value: 'America/New_York' }
+            ]
+            console.warn(`未找到${platform}平台时区字典数据，返回默认值`)
+            return defaultOptions
+        }
+
+        // 将字典项转换为前端可用的options格式
+        return dictionary.items.map((item) => ({
+            label: `${item.itemName} (${item.itemValue})`,
+            value: item.itemCode
+        }))
+    } catch (error) {
+        console.error(`获取${platform}平台时区字典数据失败:`, error)
+        // 出错时返回默认值
+        return [
+            { label: '(GMT+8:00) 北京时间', value: 'Asia/Shanghai' },
+            { label: '(GMT+0:00) 伦敦', value: 'Europe/London' },
+            { label: '(GMT-5:00) 纽约', value: 'America/New_York' }
+        ]
+    }
+}
+
 // 初始化字典测试数据
 export async function initDictionaryData() {
     try {

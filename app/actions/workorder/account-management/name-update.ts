@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { WorkOrderStatus } from './types'
+import { callExternalApi, API_BASE_URL } from '@/lib/request'
 
 interface AccountNameUpdateWorkOrderParams {
     mediaAccountId: string
@@ -171,34 +172,15 @@ export async function submitAccountNameUpdateWorkOrderToThirdParty(
         }
         const { newAccountName } = workOrder.workOrderParams
 
-        switch (workOrder.mediaPlatform) {
-            case 1: // Facebook
-                // thirdPartyResponse = await callFacebookUpdateAccountNameAPI(workOrder.mediaAccountId, newAccountName)
-                thirdPartyResponse = {
-                    success: true,
-                    operationId: 'fb-rename-123'
-                }
-                break
-            case 2: // Google
-                // thirdPartyResponse = await callGoogleUpdateAccountNameAPI(workOrder.mediaAccountId, newAccountName)
-                thirdPartyResponse = {
-                    success: true,
-                    operationId: 'google-rename-123'
-                }
-                break
-            case 5: // TikTok
-                // thirdPartyResponse = await callTiktokUpdateAccountNameAPI(workOrder.mediaAccountId, newAccountName)
-                thirdPartyResponse = {
-                    success: true,
-                    operationId: 'tiktok-rename-123'
-                }
-                break
-            default:
-                return {
-                    success: false,
-                    message: '不支持的媒体平台'
-                }
-        }
+        const response = await callExternalApi({
+            url: `${API_BASE_URL}/openApi/v1/mediaAccount/updateNameApplication/create`,
+            body: {
+                mediaAccountId: workOrder.mediaAccountId,
+                mediaAccountName: workOrder.mediaAccountName,
+                mediaPlatform: workOrder.mediaPlatform,
+                newAccountName: newAccountName
+            }
+        })
 
         // 更新工单状态
         // await db.workOrders.update({
@@ -227,11 +209,11 @@ export async function submitAccountNameUpdateWorkOrderToThirdParty(
         revalidatePath('/account/workorders')
 
         return {
-            success: thirdPartyResponse.success,
-            message: thirdPartyResponse.success
+            success: response.success,
+            message: response.success
                 ? '账户名修改工单已成功提交给第三方平台'
                 : '账户名修改工单提交第三方平台失败',
-            thirdPartyResponse
+            thirdPartyResponse: response
         }
     } catch (error) {
         console.error('提交账户名修改工单到第三方接口出错:', error)

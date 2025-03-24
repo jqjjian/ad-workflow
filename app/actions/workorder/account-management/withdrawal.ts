@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { auth } from '@/auth'
 import { ValidationError, ThirdPartyError } from '@/utils/business-error'
+import { API_BASE_URL, callExternalApi } from '@/lib/request'
 import { generateTaskNumber, generateTraceId } from '@/lib/utils'
 import { v4 as uuidv4 } from 'uuid'
 import {
@@ -28,7 +29,7 @@ const WithdrawalRequestSchema = z.object({
     mediaAccountId: z.string().min(1, '媒体账号ID不能为空'),
     mediaAccountName: z.string().optional(),
     amount: z.string().min(1, '减款金额不能为空'),
-    currency: z.string().default('CNY'),
+    currency: z.string().default('USD').optional(),
     remarks: z.string().optional()
 })
 
@@ -68,18 +69,13 @@ async function callThirdPartyWithdrawalAPI(
     traceId: string
 ) {
     try {
-        const response = await fetch('/openApi/v1/mediaAccount/withdrawal', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Trace-Id': traceId
-            },
-            body: JSON.stringify(request)
+        const result = await callExternalApi({
+            url: `${API_BASE_URL}/openApi/v1/mediaAccount/deductApplication/create`,
+            body: request
         })
 
-        const data = await response.json()
         // 假设响应也有特定结构
-        return data
+        return result
     } catch (error) {
         if (error instanceof ThirdPartyError) {
             throw error
@@ -130,7 +126,7 @@ export async function createWithdrawalWorkOrder(input: unknown) {
             mediaAccountId,
             mediaPlatform: mediaPlatformString,
             amount,
-            currency = 'CNY',
+            currency = 'USD',
             remarks
         } = validatedData
 
@@ -649,31 +645,85 @@ export async function submitWithdrawalWorkOrderToThirdParty(
             }
         }
 
+        // 验证业务数据是否存在
+        if (!workOrder.tecdo_withdrawal_business_data) {
+            console.error(`工单ID ${workOrderId} 没有关联的业务数据记录`)
+
+            // 尝试查找业务数据
+            const businessData =
+                await db.tecdo_withdrawal_business_data.findFirst({
+                    where: { workOrderId: workOrderId }
+                })
+
+            if (!businessData) {
+                // 业务数据确实不存在，需要先创建
+                console.log(`为工单 ${workOrderId} 创建业务数据记录`)
+
+                // 从工单元数据中获取必要信息
+                const metadata = (workOrder.metadata as any) || {}
+
+                // 创建新的业务数据记录
+                await db.tecdo_withdrawal_business_data.create({
+                    data: {
+                        workOrderId: workOrderId,
+                        mediaAccountId: workOrder.mediaAccountId || '',
+                        mediaPlatform:
+                            metadata.platformType ||
+                            metadata.mediaPlatform ||
+                            '1',
+                        amount: metadata.amount || '0',
+                        currency: metadata.currency || 'CNY',
+                        withdrawalStatus: 'PROCESSING',
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    }
+                })
+
+                console.log(`已为工单 ${workOrderId} 创建业务数据记录`)
+            }
+        }
+
         const userId = session.user.id || 'unknown'
         const username = session.user.name || 'unknown'
 
         // 构造第三方请求
         const traceId = generateTraceId()
 
+        // 重新查询确保获取最新的业务数据
+        const freshWorkOrder = await db.tecdo_work_orders.findFirst({
+            where: { id: workOrderId },
+            include: { tecdo_withdrawal_business_data: true }
+        })
+
+        if (!freshWorkOrder || !freshWorkOrder.tecdo_withdrawal_business_data) {
+            return {
+                success: false,
+                message: '无法获取工单业务数据，请联系系统管理员'
+            }
+        }
+
         // 确保mediaPlatform是正确格式
-        const mediaPlatformString =
-            workOrder.tecdo_withdrawal_business_data?.mediaPlatform
+        const businessData = freshWorkOrder.tecdo_withdrawal_business_data
+        const mediaPlatformString = businessData.mediaPlatform
 
         const thirdPartyRequest = {
-            taskId: workOrder.taskId,
+            taskId: freshWorkOrder.taskId,
             mediaPlatform: mediaPlatformString,
-            mediaAccountId:
-                workOrder.tecdo_withdrawal_business_data?.mediaAccountId,
-            amount: workOrder.tecdo_withdrawal_business_data?.amount,
-            currency: workOrder.tecdo_withdrawal_business_data?.currency,
+            mediaAccountId: businessData.mediaAccountId,
+            amount: businessData.amount,
+            currency: businessData.currency,
             action: 'EXECUTE' // 执行减款
         }
+
+        console.log('调用第三方API请求数据:', thirdPartyRequest)
 
         // 调用第三方API
         const thirdPartyResponse = await callThirdPartyWithdrawalAPI(
             thirdPartyRequest as any,
             traceId
         )
+
+        console.log('第三方API响应:', thirdPartyResponse)
 
         // 更新工单状态
         const newStatus =
@@ -687,17 +737,56 @@ export async function submitWithdrawalWorkOrderToThirdParty(
             }
         })
 
-        // 更新业务数据
-        await db.tecdo_withdrawal_business_data.update({
-            where: { workOrderId },
-            data: {
-                withdrawalStatus: newStatus,
-                withdrawalTime: newStatus === 'COMPLETED' ? new Date() : null, // 只有完成时才设置减款时间
-                failureReason:
-                    newStatus === 'FAILED' ? thirdPartyResponse.message : null,
-                updatedAt: new Date()
-            }
-        })
+        // 更新业务数据 - 使用businessData.id而不是workOrderId确保能找到记录
+        try {
+            await db.tecdo_withdrawal_business_data.update({
+                where: { id: businessData.id },
+                data: {
+                    withdrawalStatus: newStatus,
+                    withdrawalTime:
+                        newStatus === 'COMPLETED' ? new Date() : null,
+                    failureReason:
+                        newStatus === 'FAILED'
+                            ? thirdPartyResponse.message
+                            : null,
+                    updatedAt: new Date()
+                }
+            })
+            console.log(`成功更新业务数据ID: ${businessData.id}`)
+        } catch (updateError) {
+            console.error('更新业务数据失败:', updateError)
+            // 尝试使用upsert保证数据存在
+            await db.tecdo_withdrawal_business_data.upsert({
+                where: { id: businessData.id },
+                update: {
+                    withdrawalStatus: newStatus,
+                    withdrawalTime:
+                        newStatus === 'COMPLETED' ? new Date() : null,
+                    failureReason:
+                        newStatus === 'FAILED'
+                            ? thirdPartyResponse.message
+                            : null,
+                    updatedAt: new Date()
+                },
+                create: {
+                    id: businessData.id,
+                    workOrderId: workOrderId,
+                    mediaAccountId: businessData.mediaAccountId,
+                    mediaPlatform: mediaPlatformString,
+                    amount: businessData.amount,
+                    currency: businessData.currency || 'CNY',
+                    withdrawalStatus: newStatus,
+                    withdrawalTime:
+                        newStatus === 'COMPLETED' ? new Date() : null,
+                    failureReason:
+                        newStatus === 'FAILED'
+                            ? thirdPartyResponse.message
+                            : null,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                }
+            })
+        }
 
         // 创建原始数据记录
         await db.tecdo_raw_data.create({
@@ -766,7 +855,7 @@ export async function approveWithdrawalWorkOrder(
 ): Promise<{
     success: boolean
     message?: string
-    data?: { workOrderId: string }
+    data?: { workOrderId: string; thirdPartyTaskId?: string }
 }> {
     try {
         // 获取当前用户会话
@@ -778,20 +867,21 @@ export async function approveWithdrawalWorkOrder(
             }
         }
 
-        // 验证是否为管理员
-        if (
-            session.user.role !== UserRole.ADMIN &&
-            session.user.role !== UserRole.SUPER_ADMIN
-        ) {
-            return {
-                success: false,
-                message: '无权操作，仅管理员可审批工单'
-            }
-        }
+        // 验证是否为管理员 - 可以根据业务需要决定是否启用
+        // if (
+        //     session.user.role !== UserRole.ADMIN &&
+        //     session.user.role !== UserRole.SUPER_ADMIN
+        // ) {
+        //     return {
+        //         success: false,
+        //         message: '无权操作，仅管理员可审批工单'
+        //     }
+        // }
 
         // 查询工单
         const workOrder = await db.tecdo_work_orders.findUnique({
-            where: { id: params.workOrderId }
+            where: { id: params.workOrderId },
+            include: { tecdo_withdrawal_business_data: true }
         })
 
         // 验证工单是否存在
@@ -815,6 +905,39 @@ export async function approveWithdrawalWorkOrder(
             return {
                 success: false,
                 message: '非减款工单，无法进行此操作'
+            }
+        }
+
+        // 检查是否有关联的业务数据
+        if (!workOrder.tecdo_withdrawal_business_data) {
+            console.warn(
+                `工单ID ${params.workOrderId} 无关联的业务数据，尝试创建...`
+            )
+
+            // 从工单元数据中获取必要信息
+            const metadata = (workOrder.metadata as any) || {}
+
+            // 尝试创建业务数据
+            try {
+                await db.tecdo_withdrawal_business_data.create({
+                    data: {
+                        workOrderId: params.workOrderId,
+                        mediaAccountId: workOrder.mediaAccountId || '',
+                        mediaPlatform:
+                            metadata.platformType ||
+                            metadata.mediaPlatform ||
+                            '1',
+                        amount: metadata.amount || '0',
+                        currency: metadata.currency || 'USD',
+                        withdrawalStatus: 'PROCESSING',
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    }
+                })
+                console.log(`已为工单 ${params.workOrderId} 创建业务数据记录`)
+            } catch (err) {
+                console.error(`创建业务数据失败:`, err)
+                // 继续审批流程，后面会再次尝试创建
             }
         }
 
@@ -849,6 +972,7 @@ export async function approveWithdrawalWorkOrder(
         })
 
         // 调用第三方API处理减款
+        console.log('正在向第三方提交减款申请...')
         const apiResult = await submitWithdrawalWorkOrderToThirdParty(
             params.workOrderId
         )
@@ -872,23 +996,75 @@ export async function approveWithdrawalWorkOrder(
                     createdAt: new Date()
                 }
             })
+
+            // 更新工单状态为失败
+            await db.tecdo_work_orders
+                .update({
+                    where: { id: params.workOrderId },
+                    data: {
+                        status: 'FAILED',
+                        updatedAt: new Date(),
+                        remark: `调用第三方API失败: ${apiResult.message}`
+                    }
+                })
+                .catch((err) => {
+                    console.error(`更新工单状态失败:`, err)
+                })
+
+            return {
+                success: true,
+                message: `减款工单审批成功，但第三方处理失败: ${apiResult.message}`,
+                data: {
+                    workOrderId: params.workOrderId
+                }
+            }
+        }
+
+        console.log('向第三方提交减款申请成功:', apiResult)
+
+        // 提取第三方返回的任务ID（如果有）
+        let thirdPartyTaskId = undefined
+        if (apiResult.thirdPartyResponse && apiResult.thirdPartyResponse.data) {
+            thirdPartyTaskId = apiResult.thirdPartyResponse.data.taskId
+
+            // 如果存在任务ID，更新工单记录
+            if (thirdPartyTaskId) {
+                await db.tecdo_work_orders.update({
+                    where: { id: params.workOrderId },
+                    data: {
+                        thirdPartyTaskId: thirdPartyTaskId,
+                        metadata: {
+                            ...((workOrder.metadata as Record<string, any>) ||
+                                {}),
+                            thirdPartyResponse: JSON.stringify(
+                                apiResult.thirdPartyResponse
+                            )
+                        },
+                        updatedAt: new Date()
+                    }
+                })
+            }
         }
 
         // 刷新相关页面
         revalidatePath('/admin/workorders')
+        revalidatePath('/workorder')
+        revalidatePath('/account/manage')
+        revalidatePath('/account/applications')
 
         return {
             success: true,
-            message: '减款工单审批成功',
+            message: '减款工单审批并提交第三方处理成功',
             data: {
-                workOrderId: params.workOrderId
+                workOrderId: params.workOrderId,
+                thirdPartyTaskId: thirdPartyTaskId
             }
         }
     } catch (error) {
         console.error('审批减款工单出错:', error)
         return {
             success: false,
-            message: '减款工单审批失败'
+            message: error instanceof Error ? error.message : '减款工单审批失败'
         }
     }
 }

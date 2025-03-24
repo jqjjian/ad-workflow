@@ -7,6 +7,7 @@ import { auth } from '@/auth'
 import { ValidationError, ThirdPartyError } from '@/utils/business-error'
 import { generateTaskNumber, generateTraceId } from '@/lib/utils'
 import { v4 as uuidv4 } from 'uuid'
+import { API_BASE_URL, callExternalApi } from '@/lib/request'
 import { UserRole, WorkOrderSubtype } from '@prisma/client'
 import { ApproveWorkOrderParams, RejectWorkOrderParams } from './types'
 
@@ -90,14 +91,17 @@ async function callThirdPartyTransferAPI(
     traceId: string
 ) {
     try {
-        const response = await fetch('/openApi/v1/mediaAccount/transfer', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Trace-Id': traceId
-            },
-            body: JSON.stringify(request)
-        })
+        const response = await fetch(
+            `${API_BASE_URL}/openApi/v1/mediaAccount/transfer`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Trace-Id': traceId
+                },
+                body: JSON.stringify(request)
+            }
+        )
 
         const data = await response.json()
         // 假设响应也有特定结构

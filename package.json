@@ -6,7 +6,9 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "db:seed": "npx ts-node prisma/seed.ts",
+        "docker:init": "prisma generate && prisma migrate deploy && npm run db:seed"
     },
     "dependencies": {
         "@ant-design/cssinjs": "^1.23.0",

@@ -39,6 +39,10 @@ import {
     approveAccountBindingWorkOrder,
     rejectAccountBindingWorkOrder
 } from '@/app/actions/workorder/account-management/account-binding'
+import {
+    approveZeroingWorkOrder,
+    rejectZeroingWorkOrder
+} from '@/app/actions/workorder/account-management/zeroing'
 import { getWorkOrders } from '@/app/actions/workorder/common'
 import {
     WorkOrderStatus,
@@ -116,16 +120,39 @@ export default function AdminWorkOrdersPage() {
                     [WorkOrderType.DEPOSIT]: { text: '充值', color: 'blue' },
                     [WorkOrderType.DEDUCTION]: { text: '减款', color: 'red' },
                     [WorkOrderType.TRANSFER]: { text: '转账', color: 'green' },
-                    [WorkOrderType.BIND]: { text: '绑定', color: 'purple' }
+                    [WorkOrderType.BIND]: { text: '绑定', color: 'purple' },
+                    // 添加对其他可能类型的支持
+                    ACCOUNT_MANAGEMENT: { text: '账户管理', color: 'blue' }
                 }
-                const typeInfo = typeMap[type as WorkOrderType]
+
+                // 扩展的类型映射，处理字符串类型
+                const extendedTypeMap: Record<
+                    string,
+                    { text: string; color: string }
+                > = {
+                    DEPOSIT: { text: '充值', color: 'blue' },
+                    WITHDRAWAL: { text: '减款', color: 'red' },
+                    TRANSFER: { text: '转账', color: 'green' },
+                    BIND_ACCOUNT: { text: '绑定账户', color: 'purple' },
+                    BIND_EMAIL: { text: '绑定邮箱', color: 'purple' },
+                    BIND_PIXEL: { text: '绑定Pixel', color: 'purple' },
+                    ZEROING: { text: '清零', color: 'orange' }
+                }
+
+                // 先从主映射表查找，再从扩展映射表查找
+                const typeInfo = typeMap[type as WorkOrderType] ||
+                    extendedTypeMap[type as string] || {
+                        text: type || '未知类型',
+                        color: 'default'
+                    }
                 return <Tag color={typeInfo.color}>{typeInfo.text}</Tag>
             },
             filters: [
                 { text: '充值', value: WorkOrderType.DEPOSIT },
                 { text: '减款', value: WorkOrderType.DEDUCTION },
                 { text: '转账', value: WorkOrderType.TRANSFER },
-                { text: '绑定', value: WorkOrderType.BIND }
+                { text: '绑定', value: WorkOrderType.BIND },
+                { text: '清零', value: 'ZEROING' }
             ],
             onFilter: (value, record) => record.type === value
         },
@@ -147,12 +174,14 @@ export default function AdminWorkOrdersPage() {
                     3: { name: 'Meta', color: '#0081FB' },
                     5: { name: 'TikTok', color: '#000000' }
                 }
+                // 确保平台值为数字
+                const platformValue = Number(platform)
                 const platformInfo =
-                    platformMap[platform as keyof typeof platformMap]
+                    platformMap[platformValue as keyof typeof platformMap]
                 return platformInfo ? (
                     <Tag color={platformInfo.color}>{platformInfo.name}</Tag>
                 ) : (
-                    platform
+                    <span>{platform || '未知'}</span>
                 )
             }
         },
@@ -284,15 +313,32 @@ export default function AdminWorkOrdersPage() {
         }
     ]
 
-    // 处理查询
-    const handleSearch = async (values: SearchForm) => {
+    // 处理分页变化
+    const handlePaginationChange = (page: number, size: number) => {
+        // 直接在函数内部使用新值进行查询，避免异步状态更新导致的问题
+        const queryParams = {
+            ...form.getFieldsValue(),
+            page,
+            pageSize: size
+        }
+
+        // 更新状态
+        setCurrentPage(page)
+        setPageSize(size)
+
+        // 使用新页码直接执行搜索
+        doSearch(queryParams)
+    }
+
+    // 抽取实际执行搜索的函数，可以接收自定义参数
+    const doSearch = async (params: any) => {
         setLoading(true)
 
         try {
             // 构建查询参数
             const queryParams: any = {
-                page: currentPage,
-                pageSize: pageSize
+                page: params.page || currentPage,
+                pageSize: params.pageSize || pageSize
             }
 
             // 根据当前标签页过滤状态
@@ -309,28 +355,28 @@ export default function AdminWorkOrdersPage() {
             }
 
             // 添加其他查询条件
-            if (values.id) {
-                queryParams.taskNumber = values.id
+            if (params.id) {
+                queryParams.taskNumber = params.id
             }
 
-            if (values.mediaAccountName) {
-                queryParams.mediaAccountName = values.mediaAccountName
+            if (params.mediaAccountName) {
+                queryParams.mediaAccountName = params.mediaAccountName
             }
 
-            if (values.mediaAccountId) {
-                queryParams.mediaAccountId = values.mediaAccountId
+            if (params.mediaAccountId) {
+                queryParams.mediaAccountId = params.mediaAccountId
             }
 
-            if (values.status) {
-                queryParams.status = values.status
+            if (params.status) {
+                queryParams.status = params.status
             }
 
             // 添加工单类型映射
-            if (values.type) {
+            if (params.type) {
                 // 前端使用的WorkOrderType需要映射到后端的workOrderType和workOrderSubtype
                 queryParams.workOrderType = 'ACCOUNT_MANAGEMENT'
 
-                switch (values.type) {
+                switch (params.type) {
                     case WorkOrderType.DEPOSIT:
                         queryParams.workOrderSubtype = 'DEPOSIT'
                         break
@@ -348,24 +394,27 @@ export default function AdminWorkOrdersPage() {
                             'BIND_PIXEL'
                         ]
                         break
+                    case 'ZEROING':
+                        queryParams.workOrderSubtype = 'ZEROING'
+                        break
                     default:
                         // 其他情况，直接使用type作为workOrderSubtype
-                        queryParams.workOrderSubtype = values.type
+                        queryParams.workOrderSubtype = params.type
                 }
             }
 
-            if (values.mediaPlatform) {
-                queryParams.mediaPlatform = values.mediaPlatform
+            if (params.mediaPlatform) {
+                queryParams.mediaPlatform = params.mediaPlatform
             }
 
-            if (values.createdBy) {
-                queryParams.createdBy = values.createdBy
+            if (params.createdBy) {
+                queryParams.createdBy = params.createdBy
             }
 
-            if (values.dateRange && values.dateRange.length === 2) {
+            if (params.dateRange && params.dateRange.length === 2) {
                 queryParams.dateRange = {
-                    start: new Date(values.dateRange[0].format('YYYY-MM-DD')),
-                    end: new Date(values.dateRange[1].format('YYYY-MM-DD'))
+                    start: new Date(params.dateRange[0].format('YYYY-MM-DD')),
+                    end: new Date(params.dateRange[1].format('YYYY-MM-DD'))
                 }
             }
 
@@ -379,7 +428,7 @@ export default function AdminWorkOrdersPage() {
                     let metadata: Record<string, any> = {}
                     try {
                         if (typeof item.metadata === 'string') {
-                            metadata = JSON.parse(item.metadata)
+                            metadata = JSON.parse(item.metadata || '{}')
                         } else if (
                             item.metadata &&
                             typeof item.metadata === 'object'
@@ -396,92 +445,126 @@ export default function AdminWorkOrdersPage() {
                 // 转换数据结构以匹配WorkOrder接口
                 const workOrders: WorkOrder[] = response.data.items.map(
                     (item: any) => {
-                        // 从metadata中提取信息
-                        const metadata = parseMeta(item)
-                        console.log('工单ID:', item.id, '元数据:', metadata)
+                        try {
+                            // 从metadata中提取信息
+                            const metadata = parseMeta(item)
+                            console.log('工单ID:', item.id, '元数据:', metadata)
 
-                        // 优先使用数字形式，其次尝试转换
-                        let mediaPlatform = metadata.mediaPlatformNumber
+                            // 优先使用数字形式，其次尝试转换
+                            let mediaPlatform = metadata.mediaPlatformNumber
 
-                        if (mediaPlatform === undefined) {
-                            // 尝试从platformType或字符串形式转换
-                            const platformTypeStr =
-                                metadata.platformType ||
-                                metadata.mediaPlatform ||
-                                item.mediaPlatform
-                            if (platformTypeStr) {
-                                mediaPlatform = Number(platformTypeStr)
-                            }
-                        }
-
-                        // 如果仍然无效，使用0作为默认值
-                        if (
-                            mediaPlatform === undefined ||
-                            isNaN(mediaPlatform)
-                        ) {
-                            mediaPlatform = 0
-                        }
-
-                        // 提取媒体账户名称
-                        const mediaAccountName =
-                            metadata.mediaAccountName ||
-                            item.mediaAccountName ||
-                            ''
-
-                        console.log('处理工单:', {
-                            id: item.id,
-                            mediaPlatform,
-                            mediaAccountName
-                        })
-
-                        return {
-                            id: item.id,
-                            type: (() => {
-                                // 根据workOrderType和workOrderSubtype映射到前端枚举
-                                if (
-                                    item.workOrderType === 'ACCOUNT_MANAGEMENT'
-                                ) {
-                                    // 账户管理类型需要根据子类型进一步判断
-                                    switch (item.workOrderSubtype) {
-                                        case 'DEPOSIT':
-                                            return WorkOrderType.DEPOSIT
-                                        case 'WITHDRAWAL':
-                                            return WorkOrderType.DEDUCTION
-                                        case 'TRANSFER':
-                                            return WorkOrderType.TRANSFER
-                                        case 'BIND_ACCOUNT':
-                                        case 'BIND_EMAIL':
-                                        case 'BIND_PIXEL':
-                                            return WorkOrderType.BIND
-                                        default:
-                                            return item.workOrderSubtype
-                                    }
-                                } else {
-                                    // 其他类型直接返回
-                                    return item.workOrderType as any
+                            if (mediaPlatform === undefined) {
+                                // 尝试从platformType或字符串形式转换
+                                const platformTypeStr =
+                                    metadata.platformType ||
+                                    metadata.mediaPlatform ||
+                                    item.mediaPlatform
+                                if (platformTypeStr) {
+                                    mediaPlatform = Number(platformTypeStr)
                                 }
-                            })(),
-                            status: item.status as WorkOrderStatus,
-                            createdAt: new Date(
-                                item.createdAt
-                            ).toLocaleString(),
-                            updatedAt: new Date(
-                                item.updatedAt
-                            ).toLocaleString(),
-                            createdBy: item.createdBy || '未知',
-                            updatedBy: item.updatedBy || '未知',
-                            mediaAccountId: item.mediaAccountId || '',
-                            mediaAccountName: mediaAccountName,
-                            mediaPlatform: Number(mediaPlatform),
-                            companyName:
-                                metadata.companyName || item.companyName || '',
-                            amount: metadata.amount,
-                            dailyBudget: metadata.dailyBudget,
-                            currency: metadata.currency || 'USD',
-                            remarks: item.remark || '',
-                            taskId: item.taskId || item.thirdPartyTaskId,
-                            reason: item.failureReason,
-                            thirdPartyResponse: item.thirdPartyResponse
+                            }
+
+                            // 如果仍然无效，使用0作为默认值
+                            if (
+                                mediaPlatform === undefined ||
+                                isNaN(mediaPlatform)
+                            ) {
+                                mediaPlatform = 0
+                            }
+
+                            // 提取媒体账户名称
+                            const mediaAccountName =
+                                metadata.mediaAccountName ||
+                                item.mediaAccountName ||
+                                ''
+
+                            // 确保金额字段为正确类型 (number或undefined)
+                            const amount = metadata.amount
+                                ? Number(metadata.amount)
+                                : item.amount
+                                  ? Number(item.amount)
+                                  : undefined
+
+                            console.log('处理工单:', {
+                                id: item.id,
+                                mediaPlatform,
+                                mediaAccountName,
+                                amount
+                            })
+
+                            return {
+                                id: item.id,
+                                type: (() => {
+                                    // 根据workOrderType和workOrderSubtype映射到前端枚举
+                                    if (
+                                        item.workOrderType ===
+                                        'ACCOUNT_MANAGEMENT'
+                                    ) {
+                                        // 账户管理类型需要根据子类型进一步判断
+                                        switch (item.workOrderSubtype) {
+                                            case 'DEPOSIT':
+                                                return WorkOrderType.DEPOSIT
+                                            case 'WITHDRAWAL':
+                                                return WorkOrderType.DEDUCTION
+                                            case 'TRANSFER':
+                                                return WorkOrderType.TRANSFER
+                                            case 'BIND_ACCOUNT':
+                                            case 'BIND_EMAIL':
+                                            case 'BIND_PIXEL':
+                                                return WorkOrderType.BIND
+                                            case 'ZEROING':
+                                                return 'ZEROING'
+                                            default:
+                                                return item.workOrderSubtype
+                                        }
+                                    } else {
+                                        // 其他类型直接返回
+                                        return item.workOrderType as any
+                                    }
+                                })(),
+                                status: item.status as WorkOrderStatus,
+                                createdAt: new Date(
+                                    item.createdAt
+                                ).toLocaleString(),
+                                updatedAt: new Date(
+                                    item.updatedAt
+                                ).toLocaleString(),
+                                createdBy: item.createdBy || '未知',
+                                updatedBy: item.updatedBy || '未知',
+                                mediaAccountId: item.mediaAccountId || '',
+                                mediaAccountName: mediaAccountName || '',
+                                mediaPlatform: Number(mediaPlatform) || 0,
+                                companyName:
+                                    metadata.companyName ||
+                                    item.companyName ||
+                                    '',
+                                amount,
+                                dailyBudget: metadata.dailyBudget
+                                    ? Number(metadata.dailyBudget)
+                                    : undefined,
+                                currency:
+                                    metadata.currency || item.currency || 'USD',
+                                remarks: item.remark || '',
+                                taskId: item.taskId || item.thirdPartyTaskId,
+                                reason: item.failureReason,
+                                thirdPartyResponse: item.thirdPartyResponse
+                            }
+                        } catch (err) {
+                            console.error('处理工单数据错误:', err, item)
+                            // 返回一个最小可用的工单对象
+                            return {
+                                id: item.id || `error-${Date.now()}`,
+                                type: WorkOrderType.DEPOSIT,
+                                status: WorkOrderStatus.PENDING,
+                                mediaAccountId: '',
+                                mediaAccountName: '数据错误',
+                                mediaPlatform: 0,
+                                createdAt: new Date().toLocaleString(),
+                                updatedAt: new Date().toLocaleString(),
+                                createdBy: '未知',
+                                updatedBy: '未知',
+                                companyName: ''
+                            }
                         }
                     }
                 )
@@ -543,10 +626,7 @@ export default function AdminWorkOrdersPage() {
                             })
                             break
                         case WorkOrderType.TRANSFER:
-                            result = await approveTransferWorkOrder({
-                                workOrderId: record.id,
-                                approvedBy: '管理员'
-                            })
+                            result = await approveTransferWorkOrder(record.id)
                             break
                         case WorkOrderType.BIND: // 对应BIND_ACCOUNT
                             result = await approveAccountBindingWorkOrder({
@@ -555,7 +635,17 @@ export default function AdminWorkOrdersPage() {
                             })
                             break
                         default:
-                            throw new Error(`不支持的工单类型: ${record.type}`)
+                            // 处理ZEROING类型，因为它不在WorkOrderType枚举中
+                            if (record.type === 'ZEROING') {
+                                result = await approveZeroingWorkOrder({
+                                    workOrderId: record.id,
+                                    remarks: ''
+                                })
+                            } else {
+                                throw new Error(
+                                    `不支持的工单类型: ${record.type}`
+                                )
+                            }
                     }
 
                     if (result && result.success) {
@@ -653,11 +743,10 @@ export default function AdminWorkOrdersPage() {
                             })
                             break
                         case WorkOrderType.TRANSFER:
-                            result = await rejectTransferWorkOrder({
-                                workOrderId: record.id,
-                                reason: reason,
-                                rejectedBy: '管理员'
-                            })
+                            result = await rejectTransferWorkOrder(
+                                record.id,
+                                reason
+                            )
                             break
                         case WorkOrderType.BIND: // 对应BIND_ACCOUNT
                             result = await rejectAccountBindingWorkOrder({
@@ -667,7 +756,17 @@ export default function AdminWorkOrdersPage() {
                             })
                             break
                         default:
-                            throw new Error(`不支持的工单类型: ${record.type}`)
+                            // 处理ZEROING类型，因为它不在WorkOrderType枚举中
+                            if (record.type === 'ZEROING') {
+                                result = await rejectZeroingWorkOrder({
+                                    workOrderId: record.id,
+                                    reason: reason
+                                })
+                            } else {
+                                throw new Error(
+                                    `不支持的工单类型: ${record.type}`
+                                )
+                            }
                     }
 
                     if (result && result.success) {
@@ -718,30 +817,30 @@ export default function AdminWorkOrdersPage() {
         })
     }
 
-    // 处理分页变化
-    const handlePaginationChange = (page: number, size: number) => {
-        setCurrentPage(page)
-        setPageSize(size)
-        handleSearch(form.getFieldsValue())
+    // 处理查询
+    const handleSearch = async (values: SearchForm) => {
+        // 重置页码，保持其他参数
+        setCurrentPage(1)
+        doSearch({ ...values, page: 1 })
     }
 
     // 处理标签页切换
     const handleTabChange = (activeKey: string) => {
         setActiveTab(activeKey)
         setCurrentPage(1)
-        handleSearch(form.getFieldsValue())
+        doSearch({ ...form.getFieldsValue(), page: 1 })
     }
 
     // 处理重置
     const handleReset = () => {
         form.resetFields()
         setCurrentPage(1)
-        handleSearch({})
+        doSearch({ page: 1 })
     }
 
     // 初始化
     useEffect(() => {
-        handleSearch({})
+        doSearch({ page: 1 })
     }, [])
 
     return (
@@ -888,6 +987,9 @@ export default function AdminWorkOrdersPage() {
                                     <Select.Option value={WorkOrderType.BIND}>
                                         绑定
                                     </Select.Option>
+                                    <Select.Option value="ZEROING">
+                                        清零
+                                    </Select.Option>
                                 </Select>
                             </Form.Item>
                             <Form.Item
@@ -912,6 +1014,18 @@ export default function AdminWorkOrdersPage() {
                         </Flex>
                     </Form>
                 </Card>
+
+                {/* 调试信息区域，仅在开发环境显示 */}
+                {process.env.NODE_ENV === 'development' && data.length > 0 && (
+                    <Card style={{ marginTop: 16 }}>
+                        <details>
+                            <summary>调试信息</summary>
+                            <pre style={{ maxHeight: 300, overflow: 'auto' }}>
+                                {JSON.stringify(data[0], null, 2)}
+                            </pre>
+                        </details>
+                    </Card>
+                )}
 
                 {/* 数据表格 */}
                 <Table

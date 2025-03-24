@@ -248,22 +248,40 @@ export default function ApplicationsPage() {
         }
     ]
 
-    const handleSearch = async (values: SearchForm) => {
+    // 处理分页变化
+    const handlePaginationChange = (page: number, size: number) => {
+        // 直接在函数内部使用新值进行查询，避免异步状态更新导致的问题
+        const queryParams = {
+            ...form.getFieldsValue(),
+            page,
+            pageSize: size
+        }
+
+        // 更新状态
+        setCurrentPage(page)
+        setPageSize(size)
+
+        // 使用新页码直接执行搜索
+        doSearch(queryParams)
+    }
+
+    // 抽取实际执行搜索的函数，可以接收自定义参数
+    const doSearch = async (params: any) => {
         setLoading(true)
 
         try {
             // 构建查询参数
             const queryParams: any = {
-                page: currentPage,
-                pageSize: pageSize
+                page: params.page || currentPage,
+                pageSize: params.pageSize || pageSize
             }
 
             // 工单类型映射
-            if (values.type) {
+            if (params.type) {
                 // 前端使用的WorkOrderType需要映射到后端的workOrderType和workOrderSubtype
                 queryParams.workOrderType = 'ACCOUNT_MANAGEMENT'
 
-                switch (values.type) {
+                switch (params.type) {
                     case WorkOrderType.DEPOSIT:
                         queryParams.workOrderSubtype = 'DEPOSIT'
                         break
@@ -283,40 +301,49 @@ export default function ApplicationsPage() {
                         break
                     default:
                         // 其他情况，直接使用type作为workOrderSubtype
-                        queryParams.workOrderSubtype = values.type
+                        queryParams.workOrderSubtype = params.type
                 }
             }
 
             // 添加其他查询条件
-            if (values.id) {
-                queryParams.taskNumber = values.id
+            if (params.id) {
+                queryParams.taskNumber = params.id
             }
 
-            if (values.mediaAccountId) {
-                queryParams.mediaAccountId = values.mediaAccountId
+            if (params.mediaAccountId) {
+                queryParams.mediaAccountId = params.mediaAccountId
             }
 
-            if (values.status) {
-                queryParams.status = values.status
+            if (params.mediaAccountName) {
+                queryParams.mediaAccountName = params.mediaAccountName
             }
 
-            if (values.dateRange && values.dateRange.length === 2) {
+            if (params.status) {
+                queryParams.status = params.status
+            }
+
+            if (params.mediaPlatform) {
+                queryParams.mediaPlatform = params.mediaPlatform
+            }
+
+            if (params.dateRange && params.dateRange.length === 2) {
                 queryParams.dateRange = {
-                    start: new Date(values.dateRange[0].format('YYYY-MM-DD')),
-                    end: new Date(values.dateRange[1].format('YYYY-MM-DD'))
+                    start: new Date(params.dateRange[0].format('YYYY-MM-DD')),
+                    end: new Date(params.dateRange[1].format('YYYY-MM-DD'))
                 }
             }
 
             // 调用服务端查询函数
             const response = await getWorkOrders(queryParams)
-            console.log(response)
+            console.log('查询结果:', response)
+
             if (response.success && response.data) {
-                // 辅助函数解析metadata
+                // 辅助函数解析metadata - 保持原有逻辑
                 const parseMeta = (item: any): Record<string, any> => {
                     let metadata: Record<string, any> = {}
                     try {
                         if (typeof item.metadata === 'string') {
-                            metadata = JSON.parse(item.metadata)
+                            metadata = JSON.parse(item.metadata || '{}')
                         } else if (
                             item.metadata &&
                             typeof item.metadata === 'object'
@@ -330,7 +357,7 @@ export default function ApplicationsPage() {
                     return metadata
                 }
 
-                // 转换数据结构以匹配Application接口
+                // 转换数据逻辑保持不变 - 这段代码不需要修改
                 const applications: Application[] = response.data.items.map(
                     (item: any) => {
                         // 从metadata中提取mediaPlatform，如果存在的话
@@ -449,18 +476,18 @@ export default function ApplicationsPage() {
         setDetailVisible(true)
     }
 
-    // 处理分页变化
-    const handlePaginationChange = (page: number, size: number) => {
-        setCurrentPage(page)
-        setPageSize(size)
-        handleSearch(form.getFieldsValue())
+    // 处理查询 - 修改为使用doSearch
+    const handleSearch = async (values: SearchForm) => {
+        // 重置页码，保持其他参数
+        setCurrentPage(1)
+        doSearch({ ...values, page: 1 })
     }
 
-    // 处理重置
+    // 处理重置 - 修改为使用doSearch
     const handleReset = () => {
         form.resetFields()
         setCurrentPage(1)
-        handleSearch({})
+        doSearch({ page: 1 })
     }
 
     // 处理编辑
@@ -537,9 +564,9 @@ export default function ApplicationsPage() {
         }
     }
 
-    // 初始化
+    // 初始化 - 修改为使用doSearch
     useEffect(() => {
-        handleSearch({})
+        doSearch({ page: 1 })
     }, [])
 
     return (

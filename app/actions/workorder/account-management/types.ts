@@ -152,7 +152,8 @@ export interface ThirdPartyApiResponse {
     code: string
     message: string
     data?: {
-        taskId?: string
+        taskId: string
+        paymentUrl?: string
         [key: string]: any
     }
 }

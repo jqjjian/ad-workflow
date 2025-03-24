@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Ad-Workflow 广告工单系统
 
-## Getting Started
+这是一个基于 [Next.js](https://nextjs.org) 构建的广告工单系统，使用 App Router、Server Actions 和 Prisma ORM。
 
-First, run the development server:
+## 开发环境启动
+
+首先，运行开发服务器:
 
 ```bash
 npm run dev
-# or
+# 或
 yarn dev
-# or
+# 或
 pnpm dev
-# or
+# 或
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+在浏览器中打开 [http://localhost:3000](http://localhost:3000) 查看结果。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Docker 部署说明
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 构建 Docker 镜像
 
-## Learn More
+```bash
+# 构建 Docker 镜像
+docker build -t ad-workflow:latest .
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Docker Compose 部署
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. 创建 docker-compose.yml 文件:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```yaml
+version: '3'
 
-## Deploy on Vercel
+services:
+    mysql:
+        image: mysql:5.7
+        container_name: ad-workflow-mysql
+        restart: always
+        environment:
+            MYSQL_ROOT_PASSWORD: your_root_password
+            MYSQL_DATABASE: ad_workflow
+            MYSQL_USER: ad_workflow
+            MYSQL_PASSWORD: your_password
+        volumes:
+            - mysql-data:/var/lib/mysql
+        ports:
+            - '3306:3306'
+        networks:
+            - ad-workflow-network
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+    app:
+        image: ad-workflow:latest
+        container_name: ad-workflow-app
+        restart: always
+        depends_on:
+            - mysql
+        environment:
+            - DATABASE_URL=mysql://ad_workflow:your_password@mysql:3306/ad_workflow
+            - NODE_ENV=production
+            - NEXTAUTH_URL=http://localhost:3000
+            - NEXTAUTH_SECRET=your_nextauth_secret
+        ports:
+            - '3000:3000'
+        networks:
+            - ad-workflow-network
+        command: >
+            sh -c "npm run docker:init && npm start"
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+networks:
+    ad-workflow-network:
+        driver: bridge
+
+volumes:
+    mysql-data:
+```
+
+2. 启动 Docker Compose:
+
+```bash
+docker-compose up -d
+```
+
+### 系统初始化
+
+系统启动时会自动执行以下操作:
+
+1. 生成 Prisma 客户端
+2. 应用数据库迁移
+3. 初始化基础数据，包括:
+    - 超级管理员账户 (账号: admin@example.com, 密码: Admin@123456)
+    - 测试用户账户 (账号: user@example.com, 密码: User@123456)
+    - 产品类型字典数据
+    - Google 时区字典数据
+    - TikTok 时区字典数据
+
+如果需要单独运行初始化脚本，可以执行:
+
+```bash
+# 只运行数据初始化脚本
+npm run db:seed
+
+# 完整初始化流程
+npm run docker:init
+```
+
+## 技术栈
+
+- Next.js 14.2.24
+- Prisma ORM
+- MySQL 5.7
+- Ant Design
+- TypeScript
+- TailwindCSS
+
+## 了解更多
+
+要了解有关 Next.js 的更多信息，请查看以下资源:
+
+- [Next.js 文档](https://nextjs.org/docs) - 了解 Next.js 功能和 API。
+- [学习 Next.js](https://nextjs.org/learn) - 一个交互式的 Next.js 教程。

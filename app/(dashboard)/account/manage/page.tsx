@@ -186,7 +186,11 @@ export default function AccountManagePage() {
     const [rechargeModalVisible, setRechargeModalVisible] = useState(false)
     const [withdrawalModalVisible, setWithdrawalModalVisible] = useState(false)
     const [transferModalVisible, setTransferModalVisible] = useState(false)
-    const [bindingModalVisible, setBindingModalVisible] = useState(false)
+    const [bindingModalData, setBindingModalData] = useState({
+        visible: false,
+        record: null as EnhancedMediaAccount | null,
+        platformSpecificLabel: 'MCC'
+    })
     const [rechargeLoading, setRechargeLoading] = useState(false)
     const [withdrawalLoading, setWithdrawalLoading] = useState(false)
     const [transferLoading, setTransferLoading] = useState(false)
@@ -347,7 +351,7 @@ export default function AccountManagePage() {
                         disabled={record.status !== 2}
                         onClick={() => handleBind(record)}
                     >
-                        绑定
+                        绑定/解绑
                     </Button>
                     <Button
                         size="small"
@@ -693,68 +697,136 @@ export default function AccountManagePage() {
 
     // 处理绑定
     const handleBind = (record: EnhancedMediaAccount) => {
-        setCurrentAccount(record)
-        bindingForm.resetFields()
-        setBindingType('mcc') // 默认选择MCC绑定
-        setBindingModalVisible(true)
+        // 根据平台类型设置不同的标签名称
+        let platformSpecificLabel = 'MCC'
+        if (record.mediaPlatform === 1) platformSpecificLabel = 'BM'
+        if (record.mediaPlatform === 5) platformSpecificLabel = 'BC'
+
+        setBindingModalData({
+            visible: true,
+            record,
+            platformSpecificLabel
+        })
+
+        // 设置表单初始值
+        bindingForm.setFieldsValue({
+            mediaPlatform: record.mediaPlatform,
+            mediaAccountId: record.mediaAccountId,
+            mediaAccountName: record.mediaAccountName,
+            bindingType: 'mcc', // 默认设置为MCC绑定
+            mccId: '',
+            mccRole: 10 // 默认选择标准角色
+        })
     }
 
     // 提交绑定申请
     const handleBindingSubmit = async () => {
         try {
-            if (!currentAccount) return
-
-            // 表单验证
-            const values = await bindingForm.validateFields()
+            await bindingForm.validateFields()
+            const values = bindingForm.getFieldsValue()
             setBindingLoading(true)
 
-            if (bindingType === 'mcc') {
-                // 调用创建账户绑定工单API (MCC绑定)
-                const result = await createAccountBindingWorkOrder({
-                    mediaAccountId: currentAccount.mediaAccountId,
-                    mediaAccountName: currentAccount.mediaAccountName,
-                    mediaPlatform: currentAccount.mediaPlatform,
-                    companyName: currentAccount.companyName,
+            // 根据绑定服务类型处理不同的逻辑
+            let apiResponse: any
+            let isSuccess = false
+            let errorMessage = ''
+            let actionText = ''
+            if (values.bindingType === 'mcc') {
+                // MCC绑定逻辑
+                apiResponse = await createAccountBindingWorkOrder({
+                    mediaAccountId:
+                        values.mediaAccountId ||
+                        bindingModalData.record?.mediaAccountId ||
+                        '',
+                    mediaAccountName:
+                        values.mediaAccountName ||
+                        bindingModalData.record?.mediaAccountName ||
+                        '',
+                    mediaPlatform: bindingModalData.record?.mediaPlatform || 2, // 默认值为2 (Google)
+                    companyName:
+                        values.companyName ||
+                        bindingModalData.record?.companyName ||
+                        '',
                     mccId: values.mccId,
                     bindingType: 'bind',
-                    remarks: values.remarks
+                    remarks: values.remarks,
+                    role: values.mccRole // 添加角色参数
                 })
-
-                if (result.success) {
-                    message.success(result.message || 'MCC绑定工单创建成功')
-                    setBindingModalVisible(false)
-                    // 刷新数据
-                    const formValues = form.getFieldsValue()
-                    handleSearch(formValues)
-                } else {
-                    message.error(result.message || 'MCC绑定工单创建失败')
-                }
-            } else {
-                // 调用创建邮箱绑定工单API
-                const result = await createEmailBindingWorkOrder({
-                    mediaAccountId: currentAccount.mediaAccountId,
-                    mediaPlatform: currentAccount.mediaPlatform,
+                actionText = 'MCC绑定'
+            } else if (values.bindingType === 'email') {
+                // 邮箱绑定逻辑
+                apiResponse = await createEmailBindingWorkOrder({
+                    mediaAccountId:
+                        values.mediaAccountId ||
+                        bindingModalData.record?.mediaAccountId ||
+                        '',
+                    mediaPlatform: 7, // 修改为Microsoft Advertising平台ID
                     value: values.email,
                     role: values.role
                 })
+                actionText = '邮箱绑定'
+            } else if (values.bindingType === 'unbind') {
+                // 解绑逻辑
+                apiResponse = await createAccountBindingWorkOrder({
+                    mediaAccountId:
+                        values.mediaAccountId ||
+                        bindingModalData.record?.mediaAccountId ||
+                        '',
+                    mediaAccountName:
+                        values.mediaAccountName ||
+                        bindingModalData.record?.mediaAccountName ||
+                        '',
+                    mediaPlatform: bindingModalData.record?.mediaPlatform || 2, // 默认值为2 (Google)
+                    companyName:
+                        values.companyName ||
+                        bindingModalData.record?.companyName ||
+                        '',
+                    mccId: values.mccId,
+                    bindingType: 'unbind',
+                    remarks: values.remarks,
+                    role: values.mccRole // 添加角色参数
+                })
+                actionText = '解绑'
+            }
 
-                // 邮箱绑定API返回的格式与MCC绑定不同，需要做适配
-                if (result.code === 'SUCCESS' || !result.code) {
-                    // 如果是成功
-                    message.success(result.message || '邮箱绑定工单创建成功')
-                    setBindingModalVisible(false)
-                    // 刷新数据
-                    const formValues = form.getFieldsValue()
-                    handleSearch(formValues)
-                } else {
-                    message.error(result.message || '邮箱绑定工单创建失败')
+            // 通用的响应处理逻辑
+            if (apiResponse && typeof apiResponse === 'object') {
+                // 不同API可能返回不同格式的成功标志
+                if ('success' in apiResponse) {
+                    isSuccess = Boolean(apiResponse.success)
+                } else if ('code' in apiResponse) {
+                    // 有些API用code表示状态
+                    isSuccess =
+                        apiResponse.code === '0' ||
+                        apiResponse.code === 'SUCCESS'
                 }
+
+                // 提取错误消息
+                errorMessage =
+                    apiResponse.message || `${actionText}申请提交失败`
+            } else {
+                errorMessage = `${actionText}申请提交失败`
+            }
+
+            setBindingLoading(false)
+
+            if (isSuccess) {
+                message.success(`${actionText}申请已提交`)
+                setBindingModalData({
+                    visible: false,
+                    record: null,
+                    platformSpecificLabel: 'MCC'
+                })
+                // 刷新数据
+                handleSearch(form.getFieldsValue())
+            } else {
+                message.error(errorMessage)
             }
         } catch (error) {
-            console.error('提交绑定申请失败:', error)
-            message.error('提交失败，请检查表单并重试')
-        } finally {
             setBindingLoading(false)
+            message.error(
+                `表单验证失败: ${error instanceof Error ? error.message : String(error)}`
+            )
         }
     }
 
@@ -1399,13 +1471,23 @@ export default function AccountManagePage() {
 
                 {/* 账户绑定弹窗 */}
                 <Modal
-                    title="账户绑定"
-                    open={bindingModalVisible}
-                    onCancel={() => setBindingModalVisible(false)}
+                    title="账户绑定与解绑"
+                    open={bindingModalData.visible}
+                    onCancel={() =>
+                        setBindingModalData({
+                            ...bindingModalData,
+                            visible: false
+                        })
+                    }
                     footer={[
                         <Button
                             key="cancel"
-                            onClick={() => setBindingModalVisible(false)}
+                            onClick={() =>
+                                setBindingModalData({
+                                    ...bindingModalData,
+                                    visible: false
+                                })
+                            }
                         >
                             取消
                         </Button>,
@@ -1420,7 +1502,7 @@ export default function AccountManagePage() {
                     ]}
                     width={600}
                 >
-                    {currentAccount && (
+                    {bindingModalData.record && (
                         <>
                             <Descriptions
                                 title="账户信息"
@@ -1430,10 +1512,10 @@ export default function AccountManagePage() {
                                 style={{ marginBottom: 20 }}
                             >
                                 <Descriptions.Item label="账户名称">
-                                    {currentAccount.mediaAccountName}
+                                    {bindingModalData.record.mediaAccountName}
                                 </Descriptions.Item>
                                 <Descriptions.Item label="账户ID">
-                                    {currentAccount.mediaAccountId}
+                                    {bindingModalData.record.mediaAccountId}
                                 </Descriptions.Item>
                                 <Descriptions.Item label="媒体平台">
                                     {(() => {
@@ -1446,13 +1528,14 @@ export default function AccountManagePage() {
                                         }
                                         return (
                                             platformMap[
-                                                currentAccount.mediaPlatform as keyof typeof platformMap
+                                                bindingModalData.record
+                                                    .mediaPlatform as keyof typeof platformMap
                                             ] || '未知'
                                         )
                                     })()}
                                 </Descriptions.Item>
                                 <Descriptions.Item label="公司主体">
-                                    {currentAccount.companyName}
+                                    {bindingModalData.record.companyName}
                                 </Descriptions.Item>
                             </Descriptions>
 
@@ -1462,34 +1545,191 @@ export default function AccountManagePage() {
                                 wrapperCol={{ span: 16 }}
                             >
                                 <AntdForm.Item
-                                    label="绑定类型"
+                                    label="服务类型"
                                     name="bindingType"
                                     initialValue="mcc"
+                                    rules={[
+                                        {
+                                            required: true,
+                                            message: '请选择服务类型'
+                                        }
+                                    ]}
                                 >
                                     <Radio.Group
-                                        onChange={(e) =>
+                                        onChange={(e) => {
                                             setBindingType(e.target.value)
-                                        }
-                                        value={bindingType}
+                                            // 同时更新表单值
+                                            bindingForm.setFieldValue(
+                                                'bindingType',
+                                                e.target.value
+                                            )
+
+                                            // 选择邮箱绑定时检查平台类型
+                                            if (
+                                                e.target.value === 'email' &&
+                                                bindingModalData.record
+                                                    ?.mediaPlatform !== 7
+                                            ) {
+                                                message.warning(
+                                                    '邮箱绑定功能仅支持Microsoft Advertising平台'
+                                                )
+                                            }
+                                        }}
                                     >
-                                        <Radio value="mcc">MCC绑定</Radio>
-                                        <Radio value="email">邮箱绑定</Radio>
+                                        <Radio value="mcc">
+                                            {(() => {
+                                                // 根据平台动态显示不同名称
+                                                if (
+                                                    bindingModalData.record
+                                                        ?.mediaPlatform === 1
+                                                )
+                                                    return 'BM绑定'
+                                                if (
+                                                    bindingModalData.record
+                                                        ?.mediaPlatform === 5
+                                                )
+                                                    return 'BC绑定'
+                                                return 'MCC绑定'
+                                            })()}
+                                        </Radio>
+                                        <Radio value="unbind">
+                                            {(() => {
+                                                // 根据平台动态显示不同名称
+                                                if (
+                                                    bindingModalData.record
+                                                        ?.mediaPlatform === 1
+                                                )
+                                                    return 'BM解绑'
+                                                if (
+                                                    bindingModalData.record
+                                                        ?.mediaPlatform === 5
+                                                )
+                                                    return 'BC解绑'
+                                                return 'MCC解绑'
+                                            })()}
+                                        </Radio>
+                                        <Radio
+                                            value="email"
+                                            disabled={
+                                                bindingModalData.record
+                                                    ?.mediaPlatform !== 7
+                                            }
+                                        >
+                                            邮箱绑定
+                                            {bindingModalData.record
+                                                ?.mediaPlatform !== 7
+                                                ? ' (仅支持MSA平台)'
+                                                : ''}
+                                        </Radio>
                                     </Radio.Group>
                                 </AntdForm.Item>
 
                                 {bindingType === 'mcc' ? (
-                                    <AntdForm.Item
-                                        label="MCC ID"
-                                        name="mccId"
-                                        rules={[
-                                            {
-                                                required: true,
-                                                message: '请输入MCC ID'
-                                            }
-                                        ]}
-                                    >
-                                        <Input placeholder="请输入要绑定的MCC ID" />
-                                    </AntdForm.Item>
+                                    <>
+                                        <AntdForm.Item
+                                            label={(() => {
+                                                // 根据平台动态显示不同名称
+                                                if (
+                                                    bindingModalData.record
+                                                        ?.mediaPlatform === 1
+                                                )
+                                                    return 'BM ID'
+                                                if (
+                                                    bindingModalData.record
+                                                        ?.mediaPlatform === 5
+                                                )
+                                                    return 'BC ID'
+                                                return 'MCC ID'
+                                            })()}
+                                            name="mccId"
+                                            rules={[
+                                                {
+                                                    required: true,
+                                                    message: (() => {
+                                                        let idType = 'MCC'
+                                                        if (
+                                                            bindingModalData
+                                                                .record
+                                                                ?.mediaPlatform ===
+                                                            1
+                                                        )
+                                                            idType = 'BM'
+                                                        if (
+                                                            bindingModalData
+                                                                .record
+                                                                ?.mediaPlatform ===
+                                                            5
+                                                        )
+                                                            idType = 'BC'
+                                                        return `请输入要${bindingForm.getFieldValue('bindingType') === 'unbind' ? '解绑' : '绑定'}的${idType} ID`
+                                                    })()
+                                                }
+                                            ]}
+                                        >
+                                            <Input
+                                                placeholder={(() => {
+                                                    let idType = 'MCC'
+                                                    if (
+                                                        bindingModalData.record
+                                                            ?.mediaPlatform ===
+                                                        1
+                                                    )
+                                                        idType = 'BM'
+                                                    if (
+                                                        bindingModalData.record
+                                                            ?.mediaPlatform ===
+                                                        5
+                                                    )
+                                                        idType = 'BC'
+                                                    const action =
+                                                        bindingForm.getFieldValue(
+                                                            'bindingType'
+                                                        ) === 'unbind'
+                                                            ? '解绑'
+                                                            : '绑定'
+                                                    return `请输入要${action}的${idType} ID`
+                                                })()}
+                                            />
+                                        </AntdForm.Item>
+
+                                        <AntdForm.Item
+                                            label="绑定角色"
+                                            name="mccRole"
+                                            rules={[
+                                                {
+                                                    required: true,
+                                                    message: '请选择绑定角色'
+                                                }
+                                            ]}
+                                        >
+                                            <Select placeholder="请选择绑定角色">
+                                                {bindingModalData.record
+                                                    ?.mediaPlatform === 1 ? (
+                                                    <>
+                                                        <Select.Option
+                                                            value={10}
+                                                        >
+                                                            标准
+                                                        </Select.Option>
+                                                        <Select.Option
+                                                            value={20}
+                                                        >
+                                                            查看
+                                                        </Select.Option>
+                                                    </>
+                                                ) : bindingModalData.record
+                                                      ?.mediaPlatform === 2 ? (
+                                                    <Select.Option value={10}>
+                                                        标准
+                                                    </Select.Option>
+                                                ) : (
+                                                    <Select.Option value={10}>
+                                                        标准
+                                                    </Select.Option>
+                                                )}
+                                            </Select>
+                                        </AntdForm.Item>
+                                    </>
                                 ) : (
                                     <>
                                         <AntdForm.Item
@@ -1507,7 +1747,9 @@ export default function AccountManagePage() {
                                                 }
                                             ]}
                                         >
-                                            <Input placeholder="请输入要绑定的邮箱地址" />
+                                            <Input
+                                                placeholder={`请输入要${bindingForm.getFieldValue('bindingType') === 'bind' ? '绑定' : '解绑'}的邮箱地址`}
+                                            />
                                         </AntdForm.Item>
                                         <AntdForm.Item
                                             label="授权角色"
@@ -1537,7 +1779,27 @@ export default function AccountManagePage() {
                                 <AntdForm.Item label="备注" name="remarks">
                                     <Input.TextArea
                                         rows={4}
-                                        placeholder={`请输入${bindingType === 'mcc' ? 'MCC' : '邮箱'}绑定原因或备注信息`}
+                                        placeholder={(() => {
+                                            let serviceType = 'MCC'
+                                            if (
+                                                bindingModalData.record
+                                                    ?.mediaPlatform === 1
+                                            )
+                                                serviceType = 'BM'
+                                            if (
+                                                bindingModalData.record
+                                                    ?.mediaPlatform === 5
+                                            )
+                                                serviceType = 'BC'
+
+                                            const action =
+                                                bindingForm.getFieldValue(
+                                                    'bindingType'
+                                                ) === 'unbind'
+                                                    ? '解绑'
+                                                    : '绑定'
+                                            return `请输入要${action}的${serviceType} ID`
+                                        })()}
                                     />
                                 </AntdForm.Item>
                             </AntdForm>
