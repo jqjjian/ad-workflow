@@ -16,8 +16,8 @@ export {
 
 // 导出各类工单创建、修改和提交方法
 export {
-    updateDepositWorkOrder,
-    submitDepositWorkOrderToThirdParty
+    updateDepositWorkOrder
+    // submitDepositWorkOrderToThirdParty
 } from './account-management/deposit'
 
 export {

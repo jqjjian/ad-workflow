@@ -1,5 +1,5 @@
 'use client'
-import type { FormProps, CheckboxProps } from 'antd'
+import type { FormProps } from 'antd'
 import { Form, Input, Button, Checkbox, Flex, Typography } from 'antd'
 import { useTransition } from 'react'
 // import { useState } from 'react'

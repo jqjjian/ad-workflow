@@ -13,7 +13,7 @@ import {
     Form,
     Input,
     Upload,
-    type FormProps,
+    // type FormProps,
     UploadFile
 } from 'antd'
 import { InfoCircleOutlined, UploadOutlined } from '@ant-design/icons'
@@ -30,7 +30,7 @@ import {
     GoogleAccountApplication,
     GoogleAccountApplicationSchema,
     AuthRoleEnum,
-    ApplicationCompanyInfo,
+    // ApplicationCompanyInfo,
     ProductTypeEnum
 } from '@/schemas/google-account'
 import {
@@ -44,13 +44,13 @@ import Link from 'next/link'
 import { message } from 'antd'
 // import Image from 'next/image'
 import {
-    FieldTimeOutlined,
+    // FieldTimeOutlined,
     PlusOutlined,
     DeleteOutlined
 } from '@ant-design/icons'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { type Rule } from 'antd/es/form'
-const { Text, Title } = Typography
+const { Title } = Typography
 const { Item: FormItem, List } = Form
 // const url = 'https://test-ua-gw.tec-develop.cn/uni-agency'
 // const token = 'ad776656d49f4adb840ef6187115fb8b'
@@ -368,7 +368,7 @@ export default function Page() {
             }
 
             // A. 处理营业执照附件
-            let attachments = []
+            const attachments = []
             const attachment = values.businessLicenseAttachment
             console.log('营业执照附件原始数据:', attachment)
 

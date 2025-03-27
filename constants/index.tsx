@@ -35,15 +35,15 @@ export const menuItems = [
             {
                 key: 'manage',
                 label: '账户管理'
-            },
-            {
-                key: 'recharge',
-                label: '充值管理'
-            },
-            {
-                key: 'balance',
-                label: '余额管理'
             }
+            // {
+            //     key: 'recharge',
+            //     label: '充值管理'
+            // },
+            // {
+            //     key: 'balance',
+            //     label: '余额管理'
+            // }
         ]
     },
     {

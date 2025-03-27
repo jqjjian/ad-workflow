@@ -51,7 +51,7 @@ const authConfig = {
         })
     ],
     pages: {
-        signIn: '/' //sigin page
+        signIn: '/login' //sigin page
     },
     events: {
         async linkAccount({ user }) {
@@ -94,7 +94,20 @@ const authConfig = {
         }
     },
     adapter: PrismaAdapter(db),
-    session: { strategy: 'jwt' }
+    session: { strategy: 'jwt' },
+    // 解决UntrustedHost错误 - 在Docker环境中信任所有主机
+    trustHost: true,
+    cookies: {
+        sessionToken: {
+            name: `next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: process.env.NODE_ENV === 'production'
+            }
+        }
+    }
 } satisfies NextAuthConfig
 
 export default authConfig

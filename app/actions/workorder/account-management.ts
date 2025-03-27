@@ -16,11 +16,11 @@ import { callExternalApi, API_BASE_URL } from '@/lib/request'
 import { Logger } from '@/lib/logger'
 import { ApiResponse } from '@/schemas/third-party-type'
 import { WorkOrderType, WorkOrderSubtype } from '@prisma/client'
-import { revalidatePath } from 'next/cache'
+// import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { ApiResponseBuilder } from '@/utils/api-response'
 import { getAccountApplicationRecords } from './account-application'
-import { v4 as uuidv4 } from 'uuid'
+// import { v4 as uuidv4 } from 'uuid'
 
 // 从 mediaAccount.ts 导入类型
 import {
@@ -646,7 +646,7 @@ export async function createDepositOrder(
             })
 
             // 6. 处理响应
-            if (response.code !== '0' || !response.data?.taskId) {
+            if (response.code !== '0' || !(response.data as any)?.taskId) {
                 // 更新状态为失败
                 await db.$transaction([
                     db.tecdo_third_party_tasks.update({
@@ -682,7 +682,7 @@ export async function createDepositOrder(
                 db.tecdo_third_party_tasks.update({
                     where: { id: task.id },
                     data: {
-                        taskId: response.data.taskId,
+                        taskId: (response.data as any).taskId,
                         status: 'PENDING', // 充值单要等支付完成才成功
                         rawResponse: JSON.stringify(response)
                     }
@@ -705,8 +705,8 @@ export async function createDepositOrder(
                 code: '0',
                 success: true,
                 data: {
-                    taskId: response.data.taskId,
-                    paymentUrl: response.data.paymentUrl
+                    taskId: (response.data as any).taskId,
+                    paymentUrl: response.data?.paymentUrl
                 }
             }
         } catch (error) {
@@ -781,7 +781,10 @@ export async function createWithdrawalOrder(
                 }
             }
 
-            if (apiResponse.code !== '0' || !apiResponse.data?.taskId) {
+            if (
+                apiResponse.code !== '0' ||
+                !(apiResponse.data as any)?.taskId
+            ) {
                 // 更新状态为失败
                 await db.tecdo_third_party_tasks.update({
                     where: { id: task.id },
@@ -800,7 +803,7 @@ export async function createWithdrawalOrder(
             }
 
             // 获取taskId
-            const taskId = apiResponse.data.taskId
+            const taskId = (apiResponse.data as any).taskId
 
             // 7. 更新本地工单信息
             await db.tecdo_third_party_tasks.update({
@@ -882,7 +885,7 @@ export async function createTransferOrder(
             })
 
             // 6. 处理响应
-            if (response.code !== '0' || !response.data?.taskId) {
+            if (response.code !== '0' || !(response.data as any)?.taskId) {
                 // 更新状态为失败
                 await db.tecdo_third_party_tasks.update({
                     where: { id: task.id },
@@ -901,7 +904,7 @@ export async function createTransferOrder(
             }
 
             // 获取taskId (使用类型断言)
-            const taskId = response.data.taskId
+            const taskId = (response.data as any).taskId
 
             // 7. 更新本地工单信息
             await db.tecdo_third_party_tasks.update({
@@ -983,7 +986,7 @@ export async function createBindAccountOrder(
             })
 
             // 6. 处理响应
-            if (response.code !== '0' || !response.data?.taskId) {
+            if (response.code !== '0' || !(response.data as any)?.taskId) {
                 // 更新状态为失败
                 await db.tecdo_third_party_tasks.update({
                     where: { id: task.id },
@@ -1005,7 +1008,7 @@ export async function createBindAccountOrder(
             await db.tecdo_third_party_tasks.update({
                 where: { id: task.id },
                 data: {
-                    taskId: response.data.taskId,
+                    taskId: (response.data as any).taskId,
                     status: 'PENDING',
                     rawResponse: JSON.stringify(response)
                 }
@@ -1015,7 +1018,7 @@ export async function createBindAccountOrder(
                 code: '0',
                 success: true,
                 data: {
-                    taskId: response.data.taskId
+                    taskId: (response.data as any).taskId
                 }
             }
         } catch (error) {
@@ -1081,7 +1084,7 @@ export async function createUnbindAccountOrder(
             })
 
             // 6. 处理响应
-            if (response.code !== '0' || !response.data?.taskId) {
+            if (response.code !== '0' || !(response.data as any)?.taskId) {
                 // 更新状态为失败
                 await db.tecdo_third_party_tasks.update({
                     where: { id: task.id },
@@ -1103,7 +1106,7 @@ export async function createUnbindAccountOrder(
             await db.tecdo_third_party_tasks.update({
                 where: { id: task.id },
                 data: {
-                    taskId: response.data.taskId,
+                    taskId: (response.data as any).taskId,
                     status: 'PENDING',
                     rawResponse: JSON.stringify(response)
                 }
@@ -1113,7 +1116,7 @@ export async function createUnbindAccountOrder(
                 code: '0',
                 success: true,
                 data: {
-                    taskId: response.data.taskId
+                    taskId: (response.data as any).taskId
                 }
             }
         } catch (error) {
@@ -1179,7 +1182,7 @@ export async function createBindPixelOrder(
             })
 
             // 6. 处理响应
-            if (response.code !== '0' || !response.data?.taskId) {
+            if (response.code !== '0' || !(response.data as any)?.taskId) {
                 // 更新状态为失败
                 await db.tecdo_third_party_tasks.update({
                     where: { id: task.id },
@@ -1201,7 +1204,7 @@ export async function createBindPixelOrder(
             await db.tecdo_third_party_tasks.update({
                 where: { id: task.id },
                 data: {
-                    taskId: response.data.taskId,
+                    taskId: (response.data as any).taskId,
                     status: 'PENDING',
                     rawResponse: JSON.stringify(response)
                 }
@@ -1211,7 +1214,7 @@ export async function createBindPixelOrder(
                 code: '0',
                 success: true,
                 data: {
-                    taskId: response.data.taskId
+                    taskId: (response.data as any).taskId
                 }
             }
         } catch (error) {
@@ -1277,7 +1280,7 @@ export async function createUnbindPixelOrder(
             })
 
             // 6. 处理响应
-            if (response.code !== '0' || !response.data?.taskId) {
+            if (response.code !== '0' || !(response.data as any)?.taskId) {
                 // 更新状态为失败
                 await db.tecdo_third_party_tasks.update({
                     where: { id: task.id },
@@ -1299,7 +1302,7 @@ export async function createUnbindPixelOrder(
             await db.tecdo_third_party_tasks.update({
                 where: { id: task.id },
                 data: {
-                    taskId: response.data.taskId,
+                    taskId: (response.data as any).taskId,
                     status: 'PENDING',
                     rawResponse: JSON.stringify(response)
                 }
@@ -1309,7 +1312,7 @@ export async function createUnbindPixelOrder(
                 code: '0',
                 success: true,
                 data: {
-                    taskId: response.data.taskId
+                    taskId: (response.data as any).taskId
                 }
             }
         } catch (error) {

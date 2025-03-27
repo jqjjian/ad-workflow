@@ -1,12 +1,13 @@
 import { z } from 'zod'
-
+import { db } from '@/lib/db'
 // 媒体平台枚举
 export const MediaPlatformId = z.enum(['1', '2', '7']).transform((val) => {
-    const map: Record<string, z.infer<typeof MediaPlatformEnum>> = {
-        '1': 'FACEBOOK',
-        '2': 'GOOGLE',
-        '7': 'MICROSOFT_ADVERTISING'
-    }
+    const map: Record<string, 'FACEBOOK' | 'GOOGLE' | 'MICROSOFT_ADVERTISING'> =
+        {
+            '1': 'FACEBOOK',
+            '2': 'GOOGLE',
+            '7': 'MICROSOFT_ADVERTISING'
+        }
     return map[val]
 })
 
@@ -20,7 +21,7 @@ export const AccountUnbindingRequestSchema = z.object({
             async (val) => {
                 if (!val) return true
                 // 检查taskNumber唯一性
-                const exists = await prisma.workOrder.findFirst({
+                const exists = await db.tecdo_work_orders.findFirst({
                     where: { taskNumber: val }
                 })
                 return !exists

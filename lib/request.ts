@@ -3,8 +3,8 @@ import { z } from 'zod'
 // 设置API基础URL环境变量
 const API_BASE_URL =
     process.env.NODE_ENV === 'production'
-        ? 'https://business.uniagency.net/uni-agency'
-        : 'https://test-ua-gw.tec-develop.cn/uni-agency'
+        ? process.env.OPEN_API_URL //'https://business.uniagency.net/uni-agency'
+        : process.env.OPEN_API_URL_TEST //'https://test-ua-gw.tec-develop.cn/uni-agency'
 
 const accessToken =
     process.env.NODE_ENV === 'production'

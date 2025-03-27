@@ -370,7 +370,7 @@ export default function Page() {
             }
 
             // A. 处理营业执照附件
-            let attachments = []
+            const attachments = []
             const attachment = values.businessLicenseAttachment
             console.log('营业执照附件原始数据:', attachment)
 

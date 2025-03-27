@@ -17,7 +17,7 @@ export default function GoogleAccountForm({
 }: GoogleAccountFormProps) {
     const [form] = Form.useForm()
 
-    const handleSubmit = async (values) => {
+    const handleSubmit = async (values: any) => {
         try {
             await onSubmit(values)
             message.success('表单提交成功')

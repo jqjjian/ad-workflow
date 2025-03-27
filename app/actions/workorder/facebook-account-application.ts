@@ -286,9 +286,9 @@ export async function facebookApply(
                     data: {
                         workOrderId: workOrder.id,
                         mediaPlatform: 'FACEBOOK',
-                        accountName: validatedData.name,
-                        currency: validatedData.currencyCode,
-                        timezone: validatedData.timezone,
+                        accountName: validatedData.name ?? '',
+                        currency: validatedData.currencyCode ?? '',
+                        timezone: validatedData.timezone ?? '',
                         productType: validatedData.productType || 0,
                         rechargeAmount: validatedData.rechargeAmount,
                         promotionLinks: JSON.stringify(
@@ -667,9 +667,9 @@ export async function updateFacebookApply(
                 await tx.tecdo_account_application_business_data.update({
                     where: { id: existingBusinessData.id },
                     data: {
-                        accountName: validatedData.name,
-                        currency: validatedData.currencyCode,
-                        timezone: validatedData.timezone,
+                        accountName: validatedData.name ?? '',
+                        currency: validatedData.currencyCode ?? '',
+                        timezone: validatedData.timezone ?? '',
                         productType: validatedData.productType || 0,
                         rechargeAmount: validatedData.rechargeAmount,
                         promotionLinks: JSON.stringify(
@@ -684,9 +684,9 @@ export async function updateFacebookApply(
                     data: {
                         workOrderId: existingWorkOrder.id,
                         mediaPlatform: 'FACEBOOK',
-                        accountName: validatedData.name,
-                        currency: validatedData.currencyCode,
-                        timezone: validatedData.timezone,
+                        accountName: validatedData.name ?? '',
+                        currency: validatedData.currencyCode ?? '',
+                        timezone: validatedData.timezone ?? '',
                         productType: validatedData.productType || 0,
                         rechargeAmount: validatedData.rechargeAmount,
                         promotionLinks: JSON.stringify(

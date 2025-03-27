@@ -13,9 +13,9 @@ import {
     Input,
     Button,
     Typography,
-    type TableProps,
+    // type TableProps,
     message,
-    Switch,
+    // Switch,
     Modal
 } from 'antd'
 import { ConfigProvider } from 'antd'
@@ -26,7 +26,7 @@ import {
     QueryApplyRecordDto,
     bindExternalTaskIdToWorkOrder
 } from '@/app/actions/workorder/account-application'
-import type { ApplicationRecord, GoogleAccount } from '@/schemas'
+import type { MediaAccountInfo } from '@/schemas'
 import { useRouter } from 'next/navigation'
 import { InfoCircleOutlined } from '@ant-design/icons'
 import { useSession } from 'next-auth/react'
@@ -661,11 +661,11 @@ export default function Page() {
                                     key: 'mediaAccountInfos',
                                     ellipsis: true,
                                     render: (
-                                        mediaAccountInfos: GoogleAccount[]
+                                        mediaAccountInfos: MediaAccountInfo
                                     ) => {
                                         return (
                                             mediaAccountInfos[0]?.promotionLinks
-                                                .map((link) => link)
+                                                .map((link: string) => link)
                                                 .join(',') || '-'
                                         )
                                     }

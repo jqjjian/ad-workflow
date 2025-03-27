@@ -22,10 +22,10 @@ import { StyleProvider } from '@ant-design/cssinjs'
 // import { getGoogleApplyRecord } from '@/app/actions/workorder/google-account-application'
 import { useRouter } from 'next/navigation'
 // import type { GoogleAccountWithCompany } from '@/schemas/google-account'
-import Image from 'next/image'
+// import Image from 'next/image'
 import { getAccountApplicationRecord } from '@/app/actions/workorder/account-application'
 
-const { Title, Text, Paragraph } = Typography
+const { Title, Text } = Typography
 
 // 状态映射，与列表页保持一致
 const statusMap: Record<number, { color: string; text: string }> = {

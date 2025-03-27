@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
-import Image from 'next/image'
-import { Layout, Button } from 'antd'
+// import Image from 'next/image'
+import { Layout } from 'antd'
 import { Content } from 'antd/es/layout/layout'
 import Title from 'antd/es/typography/Title'
 import Paragraph from 'antd/es/typography/Paragraph'

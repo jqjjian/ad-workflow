@@ -1,3 +1,15 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": ["next/core-web-vitals", "next/typescript"],
+    "rules": {
+      // 关闭或降级特定规则
+      "no-unused-vars": "warn",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "react/prop-types": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "no-var": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off",
+      "prefer-const": "off"
+      // 可以添加更多规则调整
+    }
 }

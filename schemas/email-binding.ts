@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { db } from '@/lib/db'
 
 // Microsoft Advertising 角色枚举
 export const MSARoleEnum = z
@@ -25,7 +26,7 @@ export const EmailBindingRequestSchema = z.object({
             async (val) => {
                 if (!val) return true
                 // 检查taskNumber唯一性
-                const exists = await prisma.workOrder.findFirst({
+                const exists = await db.tecdo_work_orders.findFirst({
                     where: { taskNumber: val }
                 })
                 return !exists

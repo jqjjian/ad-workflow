@@ -1,5 +1,5 @@
 import { z } from 'zod'
-
+import { db } from '@/lib/db'
 // 定义枚举类型
 export const PixelBindingTypeEnum = {
     AD_ACCOUNT: 0,
@@ -25,7 +25,7 @@ export const PixelBindingRequestSchema = z.object({
             async (val) => {
                 if (!val) return true
                 // 检查taskNumber唯一性
-                const exists = await prisma.workOrder.findFirst({
+                const exists = await db.tecdo_work_orders.findFirst({
                     where: { taskNumber: val }
                 })
                 return !exists

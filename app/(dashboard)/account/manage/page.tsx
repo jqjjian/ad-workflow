@@ -36,7 +36,7 @@ import { createAccountBindingWorkOrder } from '@/app/actions/workorder/account-m
 import { createEmailBindingWorkOrder } from '@/app/actions/workorder/account-management/email-binding'
 import {
     MediaAccount,
-    MediaAccountResponse,
+    // MediaAccountResponse,
     MediaAccountSearch
 } from '@/schemas/mediaAccount'
 import Link from 'next/link'

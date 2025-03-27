@@ -30,7 +30,7 @@ import {
     FacebookAccountApplication,
     FacebookAccountApplicationSchema,
     AuthRoleEnum,
-    ApplicationCompanyInfo,
+    // ApplicationCompanyInfo,
     ProductTypeEnum
 } from '@/schemas/facebook-account'
 import {
@@ -45,7 +45,7 @@ import Link from 'next/link'
 import { message } from 'antd'
 // import Image from 'next/image'
 import {
-    FieldTimeOutlined,
+    // FieldTimeOutlined,
     PlusOutlined,
     DeleteOutlined
 } from '@ant-design/icons'
@@ -370,7 +370,7 @@ export default function Page() {
             }
 
             // A. 处理营业执照附件
-            let attachments = []
+            const attachments = []
             const attachment = values.businessLicenseAttachment
             console.log('营业执照附件原始数据:', attachment)
 

@@ -167,7 +167,7 @@ export async function submitAccountNameUpdateWorkOrderToThirdParty(
         const username = session.user.name || 'unknown'
 
         // 根据媒体平台选择不同的第三方API
-        let thirdPartyResponse: { success: boolean; operationId?: string } = {
+        const thirdPartyResponse: { success: boolean; operationId?: string } = {
             success: false
         }
         const { newAccountName } = workOrder.workOrderParams

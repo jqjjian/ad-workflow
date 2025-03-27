@@ -44,8 +44,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             setUploading(true)
 
             const files = Array.from(e.target.files)
-            let validFiles: File[] = []
-            let invalidFiles: string[] = []
+            const validFiles: File[] = []
+            const invalidFiles: string[] = []
 
             // 验证文件类型和大小
             files.forEach((file) => {
