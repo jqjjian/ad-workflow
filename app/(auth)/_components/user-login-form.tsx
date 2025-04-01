@@ -1,5 +1,5 @@
 'use client'
-import type { FormProps, CheckboxProps } from 'antd'
+import type { FormProps } from 'antd'
 import { Form, Input, Button, Checkbox, Flex, Typography } from 'antd'
 import { useTransition } from 'react'
 // import { useState } from 'react'
@@ -9,7 +9,7 @@ import { useTransition } from 'react'
 import { useSession } from 'next-auth/react'
 import Password from 'antd/es/input/Password'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
-import { LoginSchema } from '@/schemas'
+import { LoginSchema } from '@/schemas/auth'
 import * as z from 'zod'
 import { createSchemaFieldRule } from 'antd-zod'
 import { login } from '@/app/actions/login'
@@ -72,7 +72,12 @@ export default function UserLoginForm() {
             const res = await login(values)
             if (res.success) {
                 showMessage('success', res.success)
-                update()
+                // 更新会话并等待完成
+                await update()
+                // 增加短暂延迟确保会话状态完全更新
+                setTimeout(() => {
+                    window.location.href = '/dashboard' // 使用直接跳转确保完整页面加载
+                }, 300)
             } else {
                 showMessage('error', res.error ?? '登录失败')
             }

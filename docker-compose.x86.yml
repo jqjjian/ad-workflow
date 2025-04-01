@@ -1,0 +1,105 @@
+# version: '3.8'  # 已过时，移除以避免警告
+
+services:
+  mysql:
+    image: mysql:5.7.43
+    platform: linux/amd64
+    container_name: ${MYSQL_CONTAINER_NAME:-ad-workflow-mysql-x86}
+    init: true
+    # mem_limit: 2g
+    # cpus: 2
+    restart: unless-stopped
+    secrets:
+      - db_root_password
+      - db_password
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ad_workflow}
+      MYSQL_USER: ${MYSQL_USER:-ad_workflow}
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+      MYSQL_CHARACTER_SET: utf8mb4
+      MYSQL_COLLATE: utf8mb4_unicode_ci
+      MYSQL_ENABLE_SSL: "no"
+    healthcheck:
+      test: ["CMD", "/bin/sh", "-c", "MYSQL_PWD=$$(cat /run/secrets/db_password) mysqladmin ping -h localhost -u$${MYSQL_USER} --skip-ssl"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data-x86:/var/lib/mysql
+    networks:
+      ad-workflow-network:
+        aliases:
+          - mysql
+
+  app:
+    image: ${APP_IMAGE:-ad-workflow-x86:latest}
+    platform: linux/amd64
+    container_name: ${APP_CONTAINER_NAME:-ad-workflow-app-x86}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - .env.docker
+    secrets:
+      - db_password
+    environment:
+      MYSQL_PASSWORD: /run/secrets/db_password
+      # NextAuth配置
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://127.0.0.1:3000}
+      NEXTAUTH_URL_INTERNAL: ${NEXTAUTH_URL_INTERNAL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-Xo0W6XZGEWcNIyFnSqSsD+aLRcMQfDcLkK7Rp71wsqE=}
+      NEXTAUTH_TRUST_HOST: true
+      NEXT_PUBLIC_APP_URL: ${NEXTAUTH_URL:-http://127.0.0.1:3000}
+      # Prisma配置
+      PRISMA_VERSION: "6.3.1"
+      PRISMA_BINARY_TARGETS: "linux-musl-x64-openssl-3.0.x"
+      PRISMA_CLI_QUERY_ENGINE_TYPE: "library"
+      PRISMA_CLIENT_ENGINE_TYPE: "library"
+      PRISMA_ENGINE_PROTOCOL: "json"
+      PRISMA_CLI_JS_ONLY: "true"
+      PRISMA_SKIP_DOWNLOAD_BINARIES: "true"
+      PRISMA_QUERY_ENGINE_TYPE: "json-file"
+      PRISMA_SCHEMA_ENGINE_TYPE: "json-file"
+      DEBUG: "prisma:*,engine,next-auth:*"
+      NPM_CONFIG_PREFIX: "/home/nextjs/.npm-global"
+      PRISMA_ENGINES_MIRROR: "/home/nextjs/.prisma"
+    volumes:
+      - prisma-cache-x86:/home/nextjs/.prisma
+      - node-cache-x86:/home/nextjs/.npm-global
+      - prisma-bin-x86:/home/nextjs/.prisma-bin
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    command: ["./scripts/start-x86.sh"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: '60s'
+    networks:
+      - ad-workflow-network
+
+volumes:
+  mysql-data-x86:
+    name: ad-workflow-mysql-data-x86
+  prisma-cache-x86:
+    name: ad-workflow-prisma-cache-x86
+  node-cache-x86:
+    name: ad-workflow-node-cache-x86
+  prisma-bin-x86:
+    name: ad-workflow-prisma-bin-x86
+
+networks:
+  ad-workflow-network:
+    driver: bridge
+
+secrets:
+  db_root_password:
+    file: ./secrets/mysql_root_password.txt
+  db_password:
+    file: ./secrets/mysql_password.txt 

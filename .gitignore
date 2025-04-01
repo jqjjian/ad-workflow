@@ -27,6 +27,8 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env
+.env.production
 
 # vercel
 .vercel
@@ -35,3 +37,22 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /db
+
+# Docker 
+*.tar
+*.tar.gz
+temp_package/
+.image_imported
+
+# Logs
+/logs
+*.log
+
+# Backup files
+*.backup
+*.bak
+*.sql
+
+# IDE
+.idea/
+.vscode/

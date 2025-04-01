@@ -1,93 +1,527 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// prisma/schema.prisma
-// datasource db {
-//   provider = "postgresql"
-//   url      = env("DATABASE_URL")
-//   // uncomment next line if you use Prisma <5.10
-//   // directUrl = env("DATABASE_URL_UNPOOLED")
-// }
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-// datasource db {
-//   provider  = "postgresql"
-//   url       = env("POSTGRES_PRISMA_URL") // uses connection pooling
-//   directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
-// }
+model tecdo_business_statistics {
+  id                String       @id @default(uuid())
+  userId            String?
+  mediaPlatform     String?
+  businessType      String
+  periodStart       DateTime
+  periodEnd         DateTime
+  totalCount        Int
+  successCount      Int
+  failedCount       Int
+  totalAmount       Decimal?     @db.Decimal(15, 2)
+  currency          String?
+  avgProcessingTime Int?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  user              tecdo_users? @relation(fields: [userId], references: [id])
 
-// datasource db {
-//   provider  = "postgresql"
-//   url       = env("bn_PRISMA_URL") // uses connection pooling
-//   directUrl = env("bn_URL_NON_POOLING") // uses a direct connection
-// }
+  @@index([userId])
+}
+
+model tecdo_error_log {
+  id           String    @id @default(uuid())
+  entityType   String
+  entityId     String
+  errorCode    String?
+  errorMessage String    @db.Text
+  stackTrace   String?   @db.Text
+  severity     String
+  resolved     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+}
+
+model tecdo_status_sync_log {
+  id               String            @id @default(uuid())
+  workOrderId      String
+  thirdPartyTaskId String?
+  previousStatus   String
+  newStatus        String
+  syncTimestamp    DateTime          @default(now())
+  syncDirection    String
+  syncResult       String
+  failureReason    String?           @db.Text
+  workOrder        tecdo_work_orders @relation(fields: [workOrderId], references: [id])
+
+  @@index([workOrderId])
+}
+
+// 媒体账户模型
+model tecdo_media_accounts {
+  id                             String                           @id @default(uuid())
+  userId                         String
+  platformId                     String
+  mediaPlatform                  MediaPlatform
+  accountName                    String
+  accountStatus                  AccountStatus
+  currency                       String
+  timezone                       String
+  balance                        Decimal
+  dailyBudget                    Decimal?
+  totalSpent                     Decimal
+  metadata                       Json?
+  lastSyncTime                   DateTime
+  createdAt                      DateTime                         @default(now())
+  updatedAt                      DateTime                         @updatedAt
+  isDeleted                      Boolean                          @default(false)
+  tecdo_users                    tecdo_users                      @relation(fields: [userId], references: [id])
+  tecdo_withdrawal_business_data tecdo_withdrawal_business_data[]
+  tecdo_transfer_business_data   tecdo_transfer_business_data[]
+  tecdo_zeroing_business_data    tecdo_zeroing_business_data[]
+  tecdo_account_binding_data     tecdo_account_binding_data[]
+  tecdo_work_orders              tecdo_work_orders[]
+  tecdo_deposit_business_data    tecdo_deposit_business_data[]
+
+  @@index([mediaPlatform, platformId])
+  @@index([userId])
+}
+
+// 账户申请业务数据
+model tecdo_account_application_business_data {
+  id                String            @id @default(uuid())
+  workOrderId       String            @unique
+  mediaPlatform     String
+  accountName       String
+  currency          String
+  timezone          String
+  productType       Int
+  rechargeAmount    String?
+  promotionLinks    String            @db.Text
+  authorizations    String?           @db.Text
+  applicationStatus String
+  failureReason     String?
+  metadata          String?           @db.Text
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  tecdo_work_orders tecdo_work_orders @relation(fields: [workOrderId], references: [id])
+}
+
+// 存款业务数据
+model tecdo_deposit_business_data {
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaAccountId         String // 仅作为标识符，不设外键约束
+  mediaPlatform          String
+  amount                 String
+  currency               String
+  dailyBudget            Int
+  externalTaskNumber     String?
+  depositStatus          String
+  depositTime            DateTime?
+  completedTime          DateTime?
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
+}
+
+// 提款业务数据
+model tecdo_withdrawal_business_data {
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaAccountId         String // 仅作为标识符，不设外键约束
+  mediaPlatform          String
+  amount                 String
+  currency               String
+  withdrawalStatus       String
+  withdrawalTime         DateTime?
+  completedTime          DateTime?
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
+}
+
+// 转账业务数据
+model tecdo_transfer_business_data {
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaPlatform          String
+  sourceAccountId        String
+  targetAccountId        String
+  amount                 String?
+  currency               String
+  isMoveAllBalance       Boolean
+  transferStatus         String
+  transferTime           DateTime?
+  completedTime          DateTime
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  mediaAccountId         String? // 仅作为标识符，不设外键约束
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
+}
+
+// 零余额业务数据
+model tecdo_zeroing_business_data {
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaAccountId         String? // 仅作为标识符，不设外键约束
+  mediaPlatform          String
+  zeroingStatus          String
+  zeroingTime            DateTime?
+  completedTime          DateTime?
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
+}
+
+// 原始数据
+model tecdo_raw_data {
+  id                     String                  @id @default(uuid())
+  workOrderId            String                  @unique
+  requestData            String                  @db.Text
+  responseData           String?                 @db.Text
+  syncStatus             String                  @default("PENDING")
+  syncAttempts           Int                     @default(0)
+  lastSyncTime           DateTime?
+  syncError              String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  tecdo_work_orders      tecdo_work_orders       @relation(fields: [workOrderId], references: [id])
+  tecdo_raw_request_data tecdo_raw_request_data?
+}
+
+// 原始请求数据
+model tecdo_raw_request_data {
+  id             String         @id @default(uuid())
+  rawDataId      String         @unique
+  taskNumber     String?
+  productType    Int?
+  currencyCode   String?
+  timezone       String?
+  name           String?
+  rechargeAmount String?
+  rawJson        String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  tecdo_raw_data tecdo_raw_data @relation(fields: [rawDataId], references: [id])
+}
+
+model tecdo_third_party_tasks {
+  id                Int                 @id @default(autoincrement())
+  taskId            String              @unique
+  status            WorkOrderStatus
+  userId            String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  typeId            Int
+  promotionLinkId   Int?
+  taskNumber        String              @unique
+  rawData           String?             @db.Text
+  rawResponse       String?             @db.Text
+  failureReason     String?             @db.Text
+  workOrderSubtype  WorkOrderSubtype
+  workOrderType     WorkOrderType
+  tecdo_users       tecdo_users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tecdo_work_orders tecdo_work_orders[]
+
+  @@index([promotionLinkId])
+  @@index([userId])
+}
+
+model tecdo_users {
+  id                        String                      @id @default(uuid())
+  username                  String?                     @unique
+  name                      String?
+  password                  String?
+  email                     String?                     @unique
+  email_verified            DateTime?
+  image                     String?
+  role                      UserRole                    @default(USER)
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  companyName               String?
+  phoneNumber               String?
+  areaCode                  String?
+  lastLoginAt               DateTime?
+  loginCount                Int                         @default(0)
+  status                    String                      @default("ACTIVE")
+  tecdo_business_statistics tecdo_business_statistics[]
+  tecdo_media_accounts      tecdo_media_accounts[]
+  tecdo_third_party_tasks   tecdo_third_party_tasks[]
+  tecdo_work_orders         tecdo_work_orders[]
+  tecdo_company_info        tecdo_company_info[]
+  tecdo_user_company_info   tecdo_user_company_info[]
+}
+
+model tecdo_work_orders {
+  id                                      String                                   @id @default(uuid())
+  taskId                                  String
+  taskNumber                              String                                   @unique
+  userId                                  String
+  workOrderType                           WorkOrderType
+  workOrderSubtype                        WorkOrderSubtype
+  status                                  WorkOrderStatus
+  priority                                Int                                      @default(0)
+  rawDataId                               String?                                  @unique
+  businessDataId                          String?                                  @unique
+  metadata                                Json?
+  remark                                  String?
+  processingTime                          DateTime?
+  completedTime                           DateTime?
+  createdAt                               DateTime                                 @default(now())
+  updatedAt                               DateTime                                 @updatedAt
+  isDeleted                               Boolean                                  @default(false)
+  mediaAccountId                          String? // 仅作为标识符，不设外键约束
+  companyInfoId                           String?
+  thirdPartyTaskId                        String?
+  tecdo_status_sync_log                   tecdo_status_sync_log[]
+  tecdo_account_application_business_data tecdo_account_application_business_data?
+  tecdo_deposit_business_data             tecdo_deposit_business_data?
+  tecdo_raw_data                          tecdo_raw_data?
+  tecdo_third_party_tasks                 tecdo_third_party_tasks?                 @relation(fields: [thirdPartyTaskId], references: [taskId])
+  tecdo_transfer_business_data            tecdo_transfer_business_data?
+  tecdo_users                             tecdo_users                              @relation(fields: [userId], references: [id])
+  tecdo_withdrawal_business_data          tecdo_withdrawal_business_data?
+  tecdo_zeroing_business_data             tecdo_zeroing_business_data?
+  tecdo_company_info                      tecdo_company_info?                      @relation(fields: [companyInfoId], references: [id])
+  tecdo_workorder_company_info            tecdo_workorder_company_info?
+  tecdo_account_binding_data              tecdo_account_binding_data?
+  tecdo_media_accounts                    tecdo_media_accounts?                    @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId                  String?
+
+  @@index([companyInfoId])
+  @@index([mediaAccountId])
+  @@index([thirdPartyTaskId])
+  @@index([userId])
+}
+
+// 公司信息模型
+model tecdo_company_info {
+  id                String              @id @default(uuid())
+  userId            String
+  companyNameCN     String
+  companyNameEN     String
+  businessLicenseNo String
+  location          Int                 @default(1)
+  legalRepName      String
+  idType            Int
+  idNumber          String
+  legalRepPhone     String
+  legalRepBankCard  String?
+  isDefault         Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  tecdo_users       tecdo_users         @relation(fields: [userId], references: [id])
+  tecdo_work_orders tecdo_work_orders[]
+
+  @@index([userId])
+}
+
+// 用户公司信息模型
+model tecdo_user_company_info {
+  id                           String                         @id @default(uuid())
+  userId                       String
+  companyNameCN                String
+  companyNameEN                String
+  businessLicenseNo            String
+  location                     Int                            @default(1)
+  legalRepName                 String
+  idType                       Int
+  idNumber                     String
+  legalRepPhone                String
+  legalRepBankCard             String?
+  isDefault                    Boolean                        @default(false)
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime                       @updatedAt
+  tecdo_users                  tecdo_users                    @relation(fields: [userId], references: [id])
+  tecdo_workorder_company_info tecdo_workorder_company_info[]
+
+  @@index([userId])
+}
+
+// 工单公司信息模型
+model tecdo_workorder_company_info {
+  id                                  String                                @id @default(uuid())
+  workOrderId                         String                                @unique
+  userCompanyInfoId                   String?
+  companyNameCN                       String
+  companyNameEN                       String
+  businessLicenseNo                   String
+  location                            Int
+  legalRepName                        String
+  idType                              Int
+  idNumber                            String
+  legalRepPhone                       String
+  legalRepBankCard                    String?
+  createdAt                           DateTime                              @default(now())
+  updatedAt                           DateTime                              @updatedAt
+  tecdo_user_company_info             tecdo_user_company_info?              @relation(fields: [userCompanyInfoId], references: [id])
+  tecdo_work_orders                   tecdo_work_orders                     @relation(fields: [workOrderId], references: [id])
+  tecdo_workorder_company_attachments tecdo_workorder_company_attachments[]
+
+  @@index([userCompanyInfoId])
+}
+
+// 工单公司信息附件模型
+model tecdo_workorder_company_attachments {
+  id                           String                       @id @default(uuid())
+  workOrderCompanyInfoId       String
+  fileName                     String
+  fileType                     String
+  fileSize                     Int
+  filePath                     String
+  ossObjectKey                 String
+  fileUrl                      String
+  description                  String?
+  createdAt                    DateTime                     @default(now())
+  updatedAt                    DateTime                     @updatedAt
+  tecdo_workorder_company_info tecdo_workorder_company_info @relation(fields: [workOrderCompanyInfoId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderCompanyInfoId])
+}
+
+// 审计日志模型
+model tecdo_audit_logs {
+  id            String   @id @default(uuid())
+  entityType    String
+  entityId      String
+  action        String
+  performedBy   String
+  previousValue String?
+  newValue      String?
+  createdAt     DateTime @default(now())
+}
+
+// 枚举定义
+enum WorkOrderType {
+  ACCOUNT_APPLICATION
+  ACCOUNT_MANAGEMENT
+  ATTACHMENT_MANAGEMENT
+  PAYMENT
+}
+
+enum WorkOrderSubtype {
+  GOOGLE_ACCOUNT
+  TIKTOK_ACCOUNT
+  FACEBOOK_ACCOUNT
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  ZEROING
+  BIND_ACCOUNT
+  UNBIND_ACCOUNT
+  BIND_PIXEL
+  UNBIND_PIXEL
+  BIND_EMAIL
+  UNBIND_EMAIL
+  GENERAL_MANAGEMENT
+  DOCUMENT_UPLOAD
+  IMAGE_UPLOAD
+  OTHER_ATTACHMENT
+  PAYMENT_PROCESSING
+  PAYMENT_COMPLETED
+  PAYMENT_FAILED
+}
+
+enum WorkOrderStatus {
+  INIT
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum MediaPlatform {
+  FACEBOOK
+  GOOGLE
+  MICROSOFT_ADVERTISING
+  TIKTOK
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DISABLED
+  EXPIRED
+}
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   USER
 }
 
-model User {
-  id              String           @id @default(cuid())
-  username        String?          @unique
-  name            String?
-  password        String?
-  email           String?          @unique
-  emailVerified   DateTime?        @map("email_verified")
-  image           String?
-  accounts        Account[]
-  role            UserRole         @default(USER)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  companyName     String?
-  phoneNumber     String?
-  areaCode        String?
-  thirdPartyTasks ThirdPartyTask[]
-
-  @@map("tecdo_users")
+enum DictionaryType {
+  SYSTEM
+  BUSINESS
+  USER
+  OTHER
+  PROMOTION_LINK
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String  @map("user_id")
-  type              String
-  provider          String
-  providerAccountId String  @map("provider_account_id")
-  refresh_token     String? @db.Text
-
-  access_token             String? @db.Text
-  expires_at               Int?
-  token_type               String?
-  scope                    String?
-  id_token                 String? @db.Text
-  session_state            String?
-  refresh_token_expires_in Int?
-  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@map("tecdo_accounts")
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
 }
 
-model VerificationToken {
-  id      String   @id @default(cuid())
-  email   String
-  token   String   @unique
-  expires DateTime
+// // 字典表模型
+// model tecdo_dictionary {
+//   id          String             @id @default(uuid())
+//   type        DictionaryType
+//   code        String
+//   value       String
+//   displayName String
+//   description String?
+//   sort        Int                @default(0)
+//   parentId    String?
+//   isEnabled   Boolean            @default(true)
+//   createdAt   DateTime           @default(now())
+//   updatedAt   DateTime           @updatedAt
+//   parent      tecdo_dictionary?  @relation("DictionaryParentChild", fields: [parentId], references: [id])
+//   children    tecdo_dictionary[] @relation("DictionaryParentChild")
 
-  @@unique([email, token])
-  @@map("tecdo_verification_tokens")
-}
+//   @@unique([type, code])
+//   @@index([type])
+//   @@index([parentId])
+// }
 
+// // 字典项目表
+// model tecdo_dictionary_item {
+//   id             String         @id @default(uuid())
+//   dictionaryCode String
+//   dictionaryType DictionaryType
+//   itemCode       String
+//   itemValue      String
+//   displayName    String
+//   description    String?
+//   sort           Int            @default(0)
+//   isEnabled      Boolean        @default(true)
+//   createdAt      DateTime       @default(now())
+//   updatedAt      DateTime       @updatedAt
+
+//   @@unique([dictionaryCode, itemCode])
+//   @@index([dictionaryCode, dictionaryType])
+// }
 // 字典类型枚举
 enum DictType {
   SYSTEM // 系统配置
@@ -131,35 +565,21 @@ model DictionaryItem {
   @@map("tecdo_dictionary_items")
 }
 
-// 第三方任务记录
-model ThirdPartyTask {
-  id        Int                        @id @default(autoincrement())
-  taskId    Int                        @unique // 第三方返回的任务ID
-  typeId    Int // 任务类型ID，关联字典表
-  status    String // 任务状态
-  userId    String // 关联的用户ID
-  user      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  details   CompanyRegistrationDetail? // 一对一关联详细信息
-  createdAt DateTime                   @default(now())
-  updatedAt DateTime                   @updatedAt
-
-  @@unique([typeId, taskId])
-  @@map("tecdo_third_party_tasks")
-}
-
-// 详细登记信息
-model CompanyRegistrationDetail {
-  id               Int            @id @default(autoincrement())
-  taskId           Int            @unique // 关联的任务ID
-  task             ThirdPartyTask @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
-  locationId       Int            @map("company_location_id") // 开户公司所在地
-  legalRepName     String         @map("legal_representative_name") // 开户公司法人姓名
-  idType           Int            @map("id_type") // 证件类型
-  idNumber         String         @map("id_number") // 证件号码
-  legalRepPhone    String         @map("legal_representative_phone") // 法人手机号
-  legalRepBankCard String         @map("legal_representative_bank_card") // 法人银行卡号
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-
-  @@map("tecdo_company_registration_details")
+// 账户绑定业务数据
+model tecdo_account_binding_data {
+  id                     String                @id @default(uuid())
+  workOrderId            String                @unique
+  mediaAccountId         String // 仅作为标识符，不设外键约束
+  mediaPlatform          String
+  bindingValue           String
+  bindingRole            String
+  bindingStatus          String
+  bindingTime            DateTime
+  failureReason          String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isDeleted              Boolean               @default(false)
+  tecdo_work_orders      tecdo_work_orders     @relation(fields: [workOrderId], references: [id])
+  tecdo_media_accounts   tecdo_media_accounts? @relation(fields: [tecdo_media_accountsId], references: [id])
+  tecdo_media_accountsId String?
 }

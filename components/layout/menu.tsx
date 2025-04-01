@@ -12,17 +12,39 @@ export default function MenuComponent() {
     const [selectedKeys, setSelectedKeys] = useState<string[]>([])
 
     useEffect(() => {
-        // 获取当前路由并设置初始的 openKeys 和 selectedKeys
-        const currentPath = pathname.split('/').filter(Boolean)
-        setOpenKeys(currentPath)
-        setSelectedKeys(currentPath)
+        // Get current path segments
+        const pathSegments = pathname.split('/').filter(Boolean)
+
+        // Handle menu selection based on path
+        if (pathSegments.length >= 1) {
+            const mainSection = pathSegments[0]
+            setOpenKeys([mainSection])
+
+            // Special handling for record pages to avoid conflicts
+            if (mainSection === 'account' && pathSegments[1] === 'record') {
+                // For account record page
+                setSelectedKeys(['record'])
+            } else if (
+                mainSection === 'application' &&
+                pathSegments[1] === 'record'
+            ) {
+                // For application record page
+                setSelectedKeys(['record'])
+            } else if (pathSegments.length >= 2) {
+                // For other pages with subsections
+                setSelectedKeys([pathSegments[1]])
+            } else {
+                // For main pages
+                setSelectedKeys([mainSection])
+            }
+        }
     }, [pathname])
 
     const handleMenuClick = (e: { key: string; keyPath: string[] }) => {
         const path = e.keyPath.reverse().join('/')
         router.push(`/${path}`)
-        setOpenKeys(e.keyPath) // 更新 openKeys
-        setSelectedKeys([e.key]) // 更新 selectedKeys
+        setOpenKeys(e.keyPath.slice(0, -1)) // Update openKeys (all except last)
+        setSelectedKeys([e.key]) // Update selectedKeys with the clicked key
     }
 
     const items: MenuProps['items'] = menuItems.map((nav, index) => {
@@ -46,10 +68,9 @@ export default function MenuComponent() {
             items={items}
             onClick={handleMenuClick}
             mode="inline"
-            defaultSelectedKeys={selectedKeys}
-            selectedKeys={selectedKeys} // 使用动态 selectedKeys
-            openKeys={openKeys} // 使用动态 openKeys
-            onOpenChange={(keys) => setOpenKeys(keys)} // 更新 openKeys
+            selectedKeys={selectedKeys}
+            openKeys={openKeys}
+            onOpenChange={(keys) => setOpenKeys(keys)}
             style={{
                 height: '100%',
                 borderRight: 0

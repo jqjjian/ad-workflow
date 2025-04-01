@@ -29,7 +29,7 @@ export const menuItems = [
     },
     {
         key: 'account',
-        label: '开户管理',
+        label: '广告账户',
         icon: <UserOutlined />,
         children: [
             {
@@ -37,11 +37,32 @@ export const menuItems = [
                 label: '账户管理'
             },
             {
-                key: 'recharge',
-                label: '账户充值'
+                key: 'record',
+                label: '申请记录'
+            }
+            // {
+            //     key: 'recharge',
+            //     label: '充值管理'
+            // },
+            // {
+            //     key: 'balance',
+            //     label: '余额管理'
+            // }
+        ]
+    },
+    {
+        key: 'admin',
+        label: '管理',
+        icon: <UserOutlined />,
+        children: [
+            {
+                key: 'workorders',
+                label: '工单管理',
+                icon: <FileOutlined />
             }
         ]
     },
+
     {
         key: 'system',
         label: '系统设置',

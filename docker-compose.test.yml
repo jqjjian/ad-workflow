@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:5.7.43
+    platform: linux/amd64
+    container_name: ad-workflow-mysql-test
+    environment:
+      MYSQL_ROOT_PASSWORD: testroot
+      MYSQL_DATABASE: ad_workflow
+      MYSQL_USER: ad_workflow
+      MYSQL_PASSWORD: testpass
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "ad_workflow", "-ptestpass"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  app:
+    # 使用本地镜像ID而不是名称
+    image: ad-workflow-x86:latest
+    platform: linux/amd64
+    container_name: ad-workflow-app-test
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://ad_workflow:testpass@mysql:3306/ad_workflow
+      MYSQL_HOST: mysql
+      MYSQL_USER: ad_workflow
+      MYSQL_PASSWORD: testpass
+      MYSQL_DATABASE: ad_workflow
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: Xo0W6XZGEWcNIyFnSqSsD+aLRcMQfDcLkK7Rp71wsqE=
+    ports:
+      - "3000:3000"
+    command: ["./scripts/start.sh"]

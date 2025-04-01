@@ -1,0 +1,189 @@
+# Stage 1: 基础环境
+FROM node:20 AS base
+RUN corepack enable && corepack prepare pnpm@latest --activate
+# 安装MySQL客户端工具 - 使用非常可靠的安装方法
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    wget \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat-traditional || \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y netcat-openbsd || \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y netcat || \
+    echo "警告: 无法安装netcat" \
+    && { \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-client || \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-client || \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y default-mysql-client || \
+    echo "警告: 无法安装MySQL客户端"; \
+    } \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Stage 2: 生产依赖安装
+FROM base AS deps
+WORKDIR /app
+
+# 复制脚本目录
+COPY scripts/ ./scripts/
+
+# 设置执行权限
+RUN chmod +x ./scripts/start.sh
+
+COPY package.json ./
+COPY pnpm-lock.yaml ./
+
+# Stage 3: 完整构建
+FROM base AS builder
+WORKDIR /app
+COPY scripts/ ./scripts/
+# 设置执行权限
+RUN chmod +x ./scripts/start.sh && \
+    ls -l ./scripts/start.sh
+
+# 安装构建依赖
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    build-essential \
+    python3 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 配置可写路径
+ENV PNPM_HOME=/app/.pnpm-global
+ENV PATH="$PNPM_HOME:$PATH"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN mkdir -p $PNPM_HOME
+
+COPY package.json ./
+COPY pnpm-lock.yaml ./
+# 显示诊断信息并使用--no-frozen-lockfile减少问题
+RUN pnpm config set network-timeout 300000 && \
+    pnpm config set fetch-retries 5 && \
+    pnpm config set fetch-retry-mintimeout 20000 && \
+    pnpm config set fetch-retry-maxtimeout 120000 && \
+    echo "安装依赖，不使用锁定文件..." && \
+    pnpm install --no-frozen-lockfile --unsafe-perm || (echo "==== 安装失败，查看日志 ====" && ls -la && exit 1)
+
+# 安装Prisma
+RUN echo "安装Prisma..." && \
+    pnpm add -g prisma@6.3.1 @prisma/client@6.3.1 && \
+    pnpm add -g tsx && \
+    pnpm add prisma@6.3.1 @prisma/client@6.3.1
+
+# 强制环境文件校验
+ARG ENV_FILE=.env.docker
+COPY ${ENV_FILE} .env
+RUN test -f .env || (echo "Missing .env.docker" && exit 1)
+
+COPY . .
+# 设置正确的Prisma二进制目标和引擎类型 (x86_64版本)
+ENV PRISMA_BINARY_TARGETS="linux-musl-x64-openssl-3.0.x"
+ENV PRISMA_ENGINE_PROTOCOL="json"
+ENV PRISMA_CLI_QUERY_ENGINE_TYPE="library"
+ENV PRISMA_CLIENT_ENGINE_TYPE="library"
+ENV PRISMA_CLI_JS_ONLY="true"
+# 尝试使用可用的引擎生成
+RUN echo "生成Prisma客户端..." && \
+    npm install -g prisma@6.3.1 && \
+    PRISMA_CLI_JS_ONLY=true prisma generate --schema=./prisma/schema.prisma || \
+    echo "Prisma generate failed, will try again at runtime"
+
+# 构建Next.js应用
+RUN echo "构建Next.js应用..." && \
+    export NODE_OPTIONS="--max-old-space-size=4096" && \
+    echo "已设置Node内存限制: $NODE_OPTIONS" && \
+    ls -la node_modules/.bin/ && \
+    echo "检查pnpm是否可用:" && which pnpm && \
+    (NEXT_TELEMETRY_DISABLED=1 pnpm build || \
+    (echo "构建失败，尝试使用npm" && \
+    npm install && \
+    NEXT_TELEMETRY_DISABLED=1 npm run build))
+
+# Stage 4: 生产运行
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+# 设置正确的Prisma二进制目标 (x86_64版本)
+ENV PRISMA_BINARY_TARGETS="linux-musl-x64-openssl-3.0.x"
+ENV PRISMA_ENGINE_PROTOCOL="json"
+ENV PRISMA_CLI_QUERY_ENGINE_TYPE="library"
+ENV PRISMA_CLIENT_ENGINE_TYPE="library"
+ENV PRISMA_CLI_JS_ONLY="true"
+
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs nextjs
+
+# 为nextjs用户创建npm全局目录
+RUN mkdir -p /home/nextjs/.npm-global && \
+    chown -R nextjs:nodejs /home/nextjs
+RUN mkdir logs
+RUN chown nextjs:nodejs /app/logs
+# 配置用户特定的npm全局目录
+ENV NPM_CONFIG_PREFIX=/home/nextjs/.npm-global
+ENV PATH="/home/nextjs/.npm-global/bin:$PATH"
+
+# 必须复制package.json
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/pnpm-lock.yaml ./pnpm-lock.yaml
+
+# 分开复制每个目录，避免使用多源文件的COPY命令
+COPY --from=builder --chown=nextjs:nodejs /app/public/ ./public/
+
+# 创建目标目录
+RUN mkdir -p ./.next/static/
+
+# 使用RUN命令有条件地复制文件，避免COPY命令中使用||true
+RUN if [ -d "/app/.next/static/" ]; then \
+    cp -r /app/.next/static/* ./.next/static/ || echo "No static files to copy"; \
+    fi
+
+# 单独复制standalone目录内容
+RUN if [ -d "/app/.next/standalone/" ]; then \
+    cp -r /app/.next/standalone/* ./ || echo "No standalone files to copy"; \
+    fi
+
+# 复制其他必要文件
+COPY --from=builder --chown=nextjs:nodejs /app/prisma/ ./prisma/
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/ ./node_modules/
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/ ./scripts/
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next/
+
+# 确保生产环境中脚本有执行权限
+RUN chmod +x ./scripts/start.sh
+
+# 确保目录有正确的权限
+RUN mkdir -p /app/.prisma /app/.cache && \
+    chown -R nextjs:nodejs /app/node_modules /app/.prisma /app/.cache && \
+    chmod -R 755 /app/node_modules
+
+# 确保应用目录权限正确
+RUN mkdir -p /app/node_modules /app/.next /app/prisma \
+    && chown -R nextjs:nodejs /app
+
+# 使用非root用户运行
+USER nextjs
+
+# 预先安装Prisma到用户可写的目录，并设置使用JS引擎
+RUN mkdir -p /home/nextjs/.prisma-bin && \
+    cd /home/nextjs/.prisma-bin && \
+    npm init -y && \
+    npm install --save prisma@6.3.1 @prisma/client@6.3.1 tsx && \
+    chmod -R 755 /home/nextjs/.prisma-bin && \
+    ln -s /home/nextjs/.prisma-bin/node_modules/.bin/prisma /home/nextjs/.npm-global/bin/prisma || true && \
+    ln -s /home/nextjs/.prisma-bin/node_modules/.bin/tsx /home/nextjs/.npm-global/bin/tsx || true
+
+# 创建Prisma引擎缓存目录
+RUN mkdir -p /home/nextjs/.prisma /home/nextjs/.cache && \
+    chmod -R 755 /home/nextjs/.prisma /home/nextjs/.cache
+
+# 确保目录结构和权限
+RUN mkdir -p /home/nextjs/.npm-global/lib /home/nextjs/.npm-global/bin \
+    && chmod -R 755 /home/nextjs/.npm-global \
+    && chown -R nextjs:nodejs /home/nextjs/.npm-global
+
+EXPOSE 3000
+# 修改为使用启动脚本
+CMD ["./scripts/start-x86.sh"] 

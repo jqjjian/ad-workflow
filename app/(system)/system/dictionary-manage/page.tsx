@@ -17,7 +17,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import {
     CreateDictionaryDto,
     UpdateDictionaryDto,
-    QueryDictionaryDto,
+    // QueryDictionaryDto,
     Dictionary,
     DictionaryItem
 } from '@/schemas'
@@ -25,8 +25,8 @@ import {
     getDictionaries,
     createDictionary,
     updateDictionary,
-    deleteDictionary,
-    initDictionaryData
+    deleteDictionary
+    // initDictionaryData
 } from '@/app/actions/dictionary'
 // import { DictType } from '@/schemas'
 

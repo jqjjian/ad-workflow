@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model BusinessStatistics {
+  id                String       @id
+  userId            String?
+  mediaPlatform     String?
+  businessType      String
+  periodStart       DateTime
+  periodEnd         DateTime
+  totalCount        Int
+  successCount      Int
+  failedCount       Int
+  totalAmount       Decimal?     @db.Decimal(15, 2)
+  currency          String?
+  avgProcessingTime Int?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime
+  tecdo_users       tecdo_users? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model ErrorLog {
+  id           String    @id
+  entityType   String
+  entityId     String
+  errorCode    String?
+  errorMessage String    @db.Text
+  stackTrace   String?   @db.Text
+  severity     String
+  resolved     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+}
+
+model StatusSyncLog {
+  id                String            @id
+  workOrderId       String
+  thirdPartyTaskId  String?
+  previousStatus    String
+  newStatus         String
+  syncTimestamp     DateTime          @default(now())
+  syncDirection     String
+  syncResult        String
+  failureReason     String?           @db.Text
+  tecdo_work_orders tecdo_work_orders @relation(fields: [workOrderId], references: [id])
+
+  @@index([workOrderId])
+}
+
+model tecdo_third_party_tasks {
+  id                Int                 @id @default(autoincrement())
+  taskId            String              @unique
+  status            String
+  userId            String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  typeId            Int
+  promotionLinkId   Int?
+  taskNumber        String              @unique
+  rawData           String?             @db.Text
+  rawResponse       String?             @db.Text
+  failureReason     String?             @db.Text
+  workOrderSubtype  String
+  workOrderType     String
+  tecdo_users       tecdo_users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tecdo_work_orders tecdo_work_orders[]
+
+  @@index([promotionLinkId])
+  @@index([userId])
+}
+
+model tecdo_users {
+  id                      String                    @id
+  username                String?                   @unique
+  name                    String?
+  password                String?
+  email                   String?                   @unique
+  email_verified          DateTime?
+  image                   String?
+  role                    String                    @default("USER")
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime
+  companyName             String?
+  phoneNumber             String?
+  areaCode                String?
+  lastLoginAt             DateTime?
+  loginCount              Int                       @default(0)
+  status                  String                    @default("ACTIVE")
+  BusinessStatistics      BusinessStatistics[]
+  tecdo_third_party_tasks tecdo_third_party_tasks[]
+  tecdo_work_orders       tecdo_work_orders[]
+}
+
+model tecdo_work_orders {
+  id                      String                   @id
+  taskId                  String
+  taskNumber              String                   @unique
+  userId                  String
+  workOrderType           String
+  workOrderSubtype        String
+  status                  String
+  priority                Int                      @default(0)
+  rawDataId               String                   @unique
+  businessDataId          String?                  @unique
+  metadata                Json?
+  remark                  String?
+  processingTime          DateTime?
+  completedTime           DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime
+  isDeleted               Boolean                  @default(false)
+  mediaAccountId          String?
+  companyInfoId           String?
+  thirdPartyTaskId        String?
+  StatusSyncLog           StatusSyncLog[]
+  tecdo_third_party_tasks tecdo_third_party_tasks? @relation(fields: [thirdPartyTaskId], references: [taskId])
+  tecdo_users             tecdo_users              @relation(fields: [userId], references: [id])
+
+  @@index([companyInfoId])
+  @@index([mediaAccountId])
+  @@index([thirdPartyTaskId])
+  @@index([userId])
+}

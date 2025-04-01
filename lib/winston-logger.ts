@@ -1,6 +1,9 @@
 import { createLogger, format, transports } from 'winston'
 import 'winston-daily-rotate-file'
-import moment from 'moment'
+
+// 使用require方式导入moment
+const moment = require('moment')
+
 const customFormat = format.combine(
     format.timestamp({
         format: () => moment().utcOffset(8).format('YYYY-MM-DD HH:mm:ss')

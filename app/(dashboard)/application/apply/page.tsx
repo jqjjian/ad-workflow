@@ -75,7 +75,7 @@ export default function Page() {
                                             block
                                             onClick={() =>
                                                 router.push(
-                                                    '/application/apply/google'
+                                                    '/application/apply/facebook'
                                                 )
                                             }
                                         >
