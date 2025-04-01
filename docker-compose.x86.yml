@@ -5,7 +5,7 @@ services:
     image: mysql:5.7.43
     platform: linux/amd64
     container_name: ${MYSQL_CONTAINER_NAME:-ad-workflow-mysql-x86}
-    init: true
+    init: "true"
     # mem_limit: 2g
     # cpus: 2
     restart: unless-stopped
@@ -53,7 +53,7 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://127.0.0.1:3000}
       NEXTAUTH_URL_INTERNAL: ${NEXTAUTH_URL_INTERNAL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-Xo0W6XZGEWcNIyFnSqSsD+aLRcMQfDcLkK7Rp71wsqE=}
-      NEXTAUTH_TRUST_HOST: true
+      NEXTAUTH_TRUST_HOST: "true"
       NEXT_PUBLIC_APP_URL: ${NEXTAUTH_URL:-http://127.0.0.1:3000}
       # Prisma配置
       PRISMA_VERSION: "6.3.1"
