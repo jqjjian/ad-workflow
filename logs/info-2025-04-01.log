@@ -1,0 +1,651 @@
+info: 2025-04-01 13:33:24: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:33:24: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:33:24: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:33:24: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+error: 2025-04-01 13:33:58: 	undefined
+info: 2025-04-01 13:34:26: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:34:26: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:34:26: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:34:26: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:34:57: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:34:57: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:34:57: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 13:34:57: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 13:34:57: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:34:58: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 13:34:58: 		第三方API响应状态码: 0
+info: 2025-04-01 13:34:58: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 13:34:58: 		从标准路径获取到应用数据，数量: 1
+info: 2025-04-01 13:34:58: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:34:58: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:34:58: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 13:34:58: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 13:34:58: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:34:59: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 13:34:59: 		第三方API响应状态码: 0
+info: 2025-04-01 13:34:59: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 13:34:59: 		从标准路径获取到应用数据，数量: 1
+info: 2025-04-01 13:48:30: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:48:30: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:48:30: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 13:48:30: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 13:48:30: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:48:30: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 13:48:30: 		第三方API响应状态码: 0
+info: 2025-04-01 13:48:30: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 13:48:30: 		从标准路径获取到应用数据，数量: 1
+info: 2025-04-01 13:48:30: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:48:30: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:48:30: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 13:48:30: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 13:48:30: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:48:31: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 13:48:31: 		第三方API响应状态码: 0
+info: 2025-04-01 13:48:31: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 13:48:31: 		从标准路径获取到应用数据，数量: 1
+info: 2025-04-01 13:48:41: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:48:41: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:48:41: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 13:48:41: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 13:48:41: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:48:42: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 13:48:42: 		第三方API响应状态码: 0
+info: 2025-04-01 13:48:42: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 13:48:42: 		从标准路径获取到应用数据，数量: 1
+info: 2025-04-01 13:48:42: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:48:42: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:48:42: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 13:48:42: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 13:48:42: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:48:43: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 13:48:43: 		第三方API响应状态码: 0
+info: 2025-04-01 13:48:43: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 13:48:43: 		从标准路径获取到应用数据，数量: 1
+info: 2025-04-01 13:49:57: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:49:57: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:49:57: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 13:49:57: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 13:49:57: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:49:58: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 13:49:58: 		第三方API响应状态码: 0
+info: 2025-04-01 13:49:58: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 13:49:58: 		从标准路径获取到应用数据，数量: 1
+info: 2025-04-01 13:49:58: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:49:58: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 13:49:58: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 13:49:58: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 13:49:58: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 13:49:58: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 13:49:58: 		第三方API响应状态码: 0
+info: 2025-04-01 13:49:58: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 13:49:58: 		从标准路径获取到应用数据，数量: 1
+info: 2025-04-01 14:18:40: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 14:18:40: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 14:18:40: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 14:18:40: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 14:18:40: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 14:18:41: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 14:18:41: 		第三方API响应状态码: 0
+info: 2025-04-01 14:18:41: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 14:18:41: 		从标准路径获取到应用数据，数量: 1
+info: 2025-04-01 14:18:41: 		接收查询参数: {
+  "page": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 14:18:41: 		用户ID: de858f56-2988-4c3b-8c89-d485e0168182
+info: 2025-04-01 14:18:42: 		本地工单taskIds: ["33704860074408"]
+info: 2025-04-01 14:18:42: 		调用第三方API: https://test-ua-gw.tec-develop.cn/uni-agency/openApi/v1/mediaAccountApplication/query
+info: 2025-04-01 14:18:42: 		请求参数: {
+  "taskIds": [
+    "33704860074408"
+  ],
+  "pageNumber": 1,
+  "pageSize": 10
+}
+info: 2025-04-01 14:18:42: 		第三方API响应: {
+  "data": {
+    "pageSize": 10,
+    "total": 1,
+    "mediaAccountApplications": [
+      {
+        "taskNumber": "AAG-20250401-8F58A1CB21",
+        "taskId": "33704860074408",
+        "oeId": null,
+        "mediaPlatform": 2,
+        "status": 10,
+        "feedback": null,
+        "createdTimestamp": 1743485685,
+        "company": null,
+        "updatedTimestamp": 1743485685,
+        "mediaAccountInfos": [
+          {
+            "mediaAccountId": null,
+            "status": 0,
+            "productType": 3,
+            "timezone": "America/New_York",
+            "currencyCode": "USD",
+            "promotionLinks": [
+              "https://www.example.com/"
+            ],
+            "name": "品牌账户",
+            "rechargeAmount": null,
+            "advertisingCountries": null,
+            "promotableApps": null,
+            "promotablePages": null,
+            "auths": [
+              {
+                "value": "marketing@company.net",
+                "role": 1
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "pages": 1,
+    "pageNumber": 1
+  },
+  "code": "0",
+  "message": null
+}
+info: 2025-04-01 14:18:42: 		第三方API响应状态码: 0
+info: 2025-04-01 14:18:42: 		第三方API响应完整数据: {"code":"0","message":null,"data":{"pageSize":10,"total":1,"mediaAccountApplications":[{"taskNumber":"AAG-20250401-8F58A1CB21","taskId":"33704860074408","oeId":null,"mediaPlatform":2,"status":10,"feedback":null,"createdTimestamp":1743485685,"company":null,"updatedTimestamp":1743485685,"mediaAccountInfos":[{"mediaAccountId":null,"status":0,"productType":3,"timezone":"America/New_York","currencyCode":"USD","promotionLinks":["https://www.example.com/"],"name":"品牌账户","rechargeAmount":null,"advertisingCountries":null,"promotableApps":null,"promotablePages":null,"auths":[{"value":"marketing@company.net","role":1}]}]}],"pages":1,"pageNumber":1}}
+info: 2025-04-01 14:18:42: 		从标准路径获取到应用数据，数量: 1
