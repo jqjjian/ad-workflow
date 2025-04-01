@@ -40,7 +40,7 @@ export default function Page() {
                     <Button
                         shape="round"
                         style={{ width: '98px', height: '36px' }}
-                        onClick={() => router.push('/')}
+                        onClick={() => router.push('/login')}
                     >
                         登录
                     </Button>

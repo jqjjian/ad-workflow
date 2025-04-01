@@ -2,12 +2,13 @@
     "name": "ad-workflow",
     "version": "0.1.0",
     "private": true,
+    "type": "module",
     "scripts": {
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
         "lint": "next lint",
-        "db:seed": "npx ts-node prisma/seed.ts",
+        "db:seed": "npx tsx prisma/seed.ts",
         "docker:init": "prisma generate && prisma migrate deploy && npm run db:seed"
     },
     "dependencies": {
@@ -60,6 +61,6 @@
         "platforms": [
             "linux-musl-arm64-openssl-3.0.x"
         ],
-        "seed": "ts-node prisma/seed.ts"
+        "seed": "node prisma/seed.js"
     }
 }

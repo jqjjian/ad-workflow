@@ -15,7 +15,14 @@ export default function Providers({
         <>
             <NuqsAdapter>
                 {/* <ThemeProvider attribute="class" defaultTheme="system" enableSystem> */}
-                <SessionProvider session={session}>{children}</SessionProvider>
+                <SessionProvider
+                    session={session}
+                    refetchInterval={300} // 每5分钟刷新会话
+                    refetchOnWindowFocus={true} // 窗口聚焦时刷新会话
+                    refetchWhenOffline={false} // 离线时不刷新会话
+                >
+                    {children}
+                </SessionProvider>
                 {/* </ThemeProvider> */}
             </NuqsAdapter>
         </>

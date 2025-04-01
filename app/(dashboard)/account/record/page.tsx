@@ -273,7 +273,9 @@ export default function ApplicationsPage() {
             // 构建查询参数
             const queryParams: any = {
                 page: params.page || currentPage,
-                pageSize: params.pageSize || pageSize
+                pageSize: params.pageSize || pageSize,
+                // 添加排除账户申请类型的参数
+                excludeWorkOrderType: 'ACCOUNT_APPLICATION'
             }
 
             // 工单类型映射

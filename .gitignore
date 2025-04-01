@@ -39,6 +39,7 @@ next-env.d.ts
 /db
 
 # Docker 
+*.tar
 *.tar.gz
 temp_package/
 .image_imported

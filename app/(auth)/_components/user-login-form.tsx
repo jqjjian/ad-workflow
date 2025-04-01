@@ -72,7 +72,12 @@ export default function UserLoginForm() {
             const res = await login(values)
             if (res.success) {
                 showMessage('success', res.success)
-                update()
+                // 更新会话并等待完成
+                await update()
+                // 增加短暂延迟确保会话状态完全更新
+                setTimeout(() => {
+                    window.location.href = '/dashboard' // 使用直接跳转确保完整页面加载
+                }, 300)
             } else {
                 showMessage('error', res.error ?? '登录失败')
             }

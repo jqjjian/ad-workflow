@@ -35,6 +35,10 @@ export const menuItems = [
             {
                 key: 'manage',
                 label: '账户管理'
+            },
+            {
+                key: 'record',
+                label: '申请记录'
             }
             // {
             //     key: 'recharge',

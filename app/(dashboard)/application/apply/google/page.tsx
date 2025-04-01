@@ -73,6 +73,15 @@ const { Item: FormItem, List } = Form
 export default function Page() {
     const { data: session, status } = useSession()
     const router = useRouter()
+
+    // Early check for authentication status
+    useEffect(() => {
+        if (status === 'unauthenticated') {
+            message.error('请先登录')
+            router.push('/login')
+        }
+    }, [status, router])
+
     const userId = session?.user?.id
     // console.log('userId', userId)
     const [productTypeList, setProductTypeList] = useState<
@@ -741,6 +750,7 @@ export default function Page() {
 
     useEffect(() => {
         // 检查登录状态
+        // console.log('status', status)
         if (status === 'unauthenticated') {
             message.error('请先登录')
             return
@@ -755,9 +765,18 @@ export default function Page() {
         }
     }, [taskId, status, form])
 
-    // 如果未登录，显示加载状态或重定向
-    if (status === 'loading' || !session) {
-        return <div>Loading...</div>
+    // If still loading session, show a proper loading state
+    if (status === 'loading') {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <div className="text-center">
+                    <div className="text-lg">加载中...</div>
+                    <div className="text-sm text-gray-500">
+                        正在验证登录信息
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     // 货币选项

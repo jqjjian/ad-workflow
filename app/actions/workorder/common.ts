@@ -150,6 +150,7 @@ export async function getWorkOrders(
         page = 1,
         pageSize = 10,
         workOrderType,
+        excludeWorkOrderType,
         status,
         dateRange,
         mediaAccountId,
@@ -159,9 +160,14 @@ export async function getWorkOrders(
     // 构建查询条件
     const whereClause: any = { isDeleted: false }
 
-    // 处理工单类型 - 这里需要映射到正确的枚举值
-    if (workOrderType) {
-        // 对于 DEPOSIT 类型的查询，映射到 ACCOUNT_MANAGEMENT 类型和 DEPOSIT 子类型
+    // 处理工单类型筛选逻辑
+    if (excludeWorkOrderType) {
+        // 排除特定类型
+        whereClause.workOrderType = {
+            not: excludeWorkOrderType
+        }
+    } else if (workOrderType) {
+        // 原有的工单类型处理逻辑保持不变
         if (workOrderType === 'DEPOSIT') {
             whereClause.workOrderType = 'ACCOUNT_MANAGEMENT'
             whereClause.workOrderSubtype = 'DEPOSIT'
