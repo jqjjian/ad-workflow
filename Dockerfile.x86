@@ -11,12 +11,11 @@ RUN if [ -f "/etc/apt/sources.list" ]; then \
     else \
     echo "找不到sources.list文件，跳过APT源设置"; \
     fi
-# 启用pnpm并设置国内源
-RUN corepack enable && corepack prepare pnpm@latest --activate && \
-    npm config set registry https://registry.npmmirror.com && \
-    pnpm config set registry https://registry.npmmirror.com && \
-    # 为CentOS环境设置额外的配置，移除unsafe-perm选项
-    npm config set strict-ssl false
+# 启用pnpm并设置国内源 - 使用npm直接安装而不是corepack
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set strict-ssl false && \
+    npm install -g pnpm@latest && \
+    pnpm config set registry https://registry.npmmirror.com
 # 安装MySQL客户端工具 - 使用非常可靠的安装方法
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -73,26 +72,15 @@ RUN mkdir -p $PNPM_HOME
 COPY package.json ./
 COPY pnpm-lock.yaml ./
 # 显示诊断信息并使用--no-frozen-lockfile减少问题
-RUN npm install -g pnpm && \
+# 直接使用npm管理依赖，跳过pnpm安装步骤
+RUN echo "使用npm直接安装依赖..." && \
     npm config set registry https://registry.npmmirror.com && \
     npm config set strict-ssl false && \
-    pnpm config set registry https://registry.npmmirror.com && \
-    pnpm config set network-timeout 1200000 && \
-    pnpm config set fetch-retries 10 && \
-    pnpm config set fetch-retry-mintimeout 60000 && \
-    pnpm config set fetch-retry-maxtimeout 300000 && \
-    echo "使用淘宝镜像源安装依赖，跳过平台特定依赖..." && \
     NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
     NEXT_TELEMETRY_DISABLED=1 \
     NODE_OPTIONS="--max-old-space-size=2048" \
-    pnpm install --offline-strategy=use-fetch --frozen-lockfile=false --ignore-scripts && \
-    echo "运行安装后脚本..." && \
-    pnpm rebuild || \
-    (echo "==== pnpm安装失败，尝试使用npm ====" && \
-    NEXT_TELEMETRY_DISABLED=1 \
-    NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
-    npm install --registry=https://registry.npmmirror.com --legacy-peer-deps --no-optional --no-package-lock --ignore-scripts && \
-    npm rebuild) || \
+    npm install --registry=https://registry.npmmirror.com --legacy-peer-deps --omit=optional --no-package-lock --ignore-scripts && \
+    npm rebuild || \
     (echo "==== 安装失败，尝试直接复制node_modules ====" && \
     mkdir -p node_modules && \
     echo "创建了node_modules目录") || \
@@ -130,17 +118,16 @@ RUN echo "构建Next.js应用..." && \
     # 降低内存使用，防止构建被杀死
     export NODE_OPTIONS="--max-old-space-size=2048" && \
     echo "已设置Node内存限制: $NODE_OPTIONS" && \
-    ls -la node_modules/.bin/ && \
-    echo "检查pnpm是否可用:" && which pnpm && \
+    echo "开始构建..." && \
     (NEXT_TELEMETRY_DISABLED=1 \
     NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
     NODE_ENV=production \
-    pnpm build --no-lint || \
-    (echo "构建失败，尝试使用npm" && \
+    npm run build -- --no-lint || \
+    (echo "构建失败，尝试使用最简模式" && \
     NEXT_TELEMETRY_DISABLED=1 \
     NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
     NODE_ENV=production \
-    npm run build -- --no-lint))
+    npm run build -- --no-lint --no-mangling))
 
 # Stage 4: 生产运行
 FROM base AS runner
