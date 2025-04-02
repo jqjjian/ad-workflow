@@ -22,7 +22,7 @@ export const menuItems = [
                 label: '开户申请'
             },
             {
-                key: 'record',
+                key: 'application-record',
                 label: '开户记录'
             }
         ]
@@ -37,7 +37,7 @@ export const menuItems = [
                 label: '账户管理'
             },
             {
-                key: 'record',
+                key: 'account-record',
                 label: '申请记录'
             }
             // {
