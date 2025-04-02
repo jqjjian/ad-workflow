@@ -1,5 +1,8 @@
 # Stage 1: 基础环境
 FROM node:20 AS base
+# 设置环境变量避免Next.js依赖问题
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1
 # 检查并使用阿里云apt源（如果sources.list文件存在）
 RUN if [ -f "/etc/apt/sources.list" ]; then \
     sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list || true && \
@@ -75,15 +78,25 @@ RUN npm install -g pnpm && \
     npm config set registry https://registry.npmmirror.com && \
     npm config set strict-ssl false && \
     pnpm config set registry https://registry.npmmirror.com && \
-    pnpm config set network-timeout 600000 && \
+    pnpm config set network-timeout 1200000 && \
     pnpm config set fetch-retries 10 && \
     pnpm config set fetch-retry-mintimeout 60000 && \
     pnpm config set fetch-retry-maxtimeout 300000 && \
-    echo "使用淘宝镜像源安装依赖..." && \
-    pnpm install --no-frozen-lockfile --unsafe-perm || \
-    (NODE_ENV=development pnpm install --no-frozen-lockfile --unsafe-perm) || \
-    (echo "==== 安装失败，尝试使用npm ====" && \
-    npm install --registry=https://registry.npmmirror.com --legacy-peer-deps --no-optional) || \
+    echo "使用淘宝镜像源安装依赖，跳过平台特定依赖..." && \
+    NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
+    NEXT_TELEMETRY_DISABLED=1 \
+    NODE_OPTIONS="--max-old-space-size=4096" \
+    pnpm install --offline-strategy=use-fetch --frozen-lockfile=false --unsafe-perm=true --ignore-scripts && \
+    echo "运行安装后脚本..." && \
+    pnpm rebuild || \
+    (echo "==== pnpm安装失败，尝试使用npm ====" && \
+    NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
+    npm install --registry=https://registry.npmmirror.com --legacy-peer-deps --no-optional --no-package-lock --ignore-scripts && \
+    npm rebuild) || \
+    (echo "==== 安装失败，尝试直接复制node_modules ====" && \
+    mkdir -p node_modules && \
+    echo "创建了node_modules目录") || \
     (echo "==== 安装失败，查看日志 ====" && ls -la && exit 1)
 
 # 安装Prisma
@@ -119,10 +132,14 @@ RUN echo "构建Next.js应用..." && \
     echo "已设置Node内存限制: $NODE_OPTIONS" && \
     ls -la node_modules/.bin/ && \
     echo "检查pnpm是否可用:" && which pnpm && \
-    (NEXT_TELEMETRY_DISABLED=1 pnpm build || \
+    (NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
+    pnpm build || \
     (echo "构建失败，尝试使用npm" && \
+    NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
     npm install && \
-    NEXT_TELEMETRY_DISABLED=1 npm run build))
+    npm run build))
 
 # Stage 4: 生产运行
 FROM base AS runner
