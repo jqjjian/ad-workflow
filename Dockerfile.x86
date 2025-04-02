@@ -56,12 +56,17 @@ RUN mkdir -p $PNPM_HOME
 COPY package.json ./
 COPY pnpm-lock.yaml ./
 # 显示诊断信息并使用--no-frozen-lockfile减少问题
-RUN pnpm config set network-timeout 300000 && \
-    pnpm config set fetch-retries 5 && \
-    pnpm config set fetch-retry-mintimeout 20000 && \
-    pnpm config set fetch-retry-maxtimeout 120000 && \
+RUN npm install -g pnpm && \
+    pnpm config set network-timeout 600000 && \
+    pnpm config set fetch-retries 10 && \
+    pnpm config set fetch-retry-mintimeout 60000 && \
+    pnpm config set fetch-retry-maxtimeout 300000 && \
     echo "安装依赖，不使用锁定文件..." && \
-    pnpm install --no-frozen-lockfile --unsafe-perm || (echo "==== 安装失败，查看日志 ====" && ls -la && exit 1)
+    pnpm install --no-frozen-lockfile --unsafe-perm || \
+    (NODE_ENV=development pnpm install --no-frozen-lockfile --unsafe-perm) || \
+    (echo "==== 安装失败，尝试使用npm ====" && \
+    npm install --legacy-peer-deps) || \
+    (echo "==== 安装失败，查看日志 ====" && ls -la && exit 1)
 
 # 安装Prisma
 RUN echo "安装Prisma..." && \

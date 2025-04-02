@@ -41,7 +41,7 @@ async function callThirdPartyBindingAPI(
 
         // 使用callExternalApi方法调用第三方接口
         const result = await callExternalApi({
-            url: `${API_BASE_URL}/openApi/v1/mediaAccount/bindldApplication/create`,
+            url: `${API_BASE_URL}/openApi/v1/mediaAccount/bindIdApplication/create`,
             body: apiRequest
         })
 

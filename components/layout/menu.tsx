@@ -23,13 +23,13 @@ export default function MenuComponent() {
             // Special handling for record pages to avoid conflicts
             if (mainSection === 'account' && pathSegments[1] === 'record') {
                 // For account record page
-                setSelectedKeys(['record'])
+                setSelectedKeys(['account-record'])
             } else if (
                 mainSection === 'application' &&
                 pathSegments[1] === 'record'
             ) {
                 // For application record page
-                setSelectedKeys(['record'])
+                setSelectedKeys(['application-record'])
             } else if (pathSegments.length >= 2) {
                 // For other pages with subsections
                 setSelectedKeys([pathSegments[1]])
@@ -41,8 +41,16 @@ export default function MenuComponent() {
     }, [pathname])
 
     const handleMenuClick = (e: { key: string; keyPath: string[] }) => {
-        const path = e.keyPath.reverse().join('/')
-        router.push(`/${path}`)
+        // Special handling for record pages
+        if (e.key === 'account-record') {
+            router.push('/account/record')
+        } else if (e.key === 'application-record') {
+            router.push('/application/record')
+        } else {
+            const path = e.keyPath.reverse().join('/')
+            router.push(`/${path}`)
+        }
+
         setOpenKeys(e.keyPath.slice(0, -1)) // Update openKeys (all except last)
         setSelectedKeys([e.key]) // Update selectedKeys with the clicked key
     }
