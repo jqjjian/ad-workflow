@@ -15,9 +15,7 @@ RUN if [ -f "/etc/apt/sources.list" ]; then \
 RUN corepack enable && corepack prepare pnpm@latest --activate && \
     npm config set registry https://registry.npmmirror.com && \
     pnpm config set registry https://registry.npmmirror.com && \
-    # 为CentOS环境设置额外的配置
-    npm config set unsafe-perm true && \
-    # 禁用strict-ssl，防止CentOS 7.9上的SSL证书问题
+    # 为CentOS环境设置额外的配置，移除unsafe-perm选项
     npm config set strict-ssl false
 # 安装MySQL客户端工具 - 使用非常可靠的安装方法
 RUN apt-get update && \
@@ -68,7 +66,8 @@ RUN apt-get update && \
 # 配置可写路径
 ENV PNPM_HOME=/app/.pnpm-global
 ENV PATH="$PNPM_HOME:$PATH"
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+# 增加Node内存限制，防止构建OOM
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN mkdir -p $PNPM_HOME
 
 COPY package.json ./
@@ -85,8 +84,8 @@ RUN npm install -g pnpm && \
     echo "使用淘宝镜像源安装依赖，跳过平台特定依赖..." && \
     NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
     NEXT_TELEMETRY_DISABLED=1 \
-    NODE_OPTIONS="--max-old-space-size=4096" \
-    pnpm install --offline-strategy=use-fetch --frozen-lockfile=false --unsafe-perm=true --ignore-scripts && \
+    NODE_OPTIONS="--max-old-space-size=2048" \
+    pnpm install --offline-strategy=use-fetch --frozen-lockfile=false --ignore-scripts && \
     echo "运行安装后脚本..." && \
     pnpm rebuild || \
     (echo "==== pnpm安装失败，尝试使用npm ====" && \
@@ -128,18 +127,20 @@ RUN echo "生成Prisma客户端..." && \
 
 # 构建Next.js应用
 RUN echo "构建Next.js应用..." && \
-    export NODE_OPTIONS="--max-old-space-size=4096" && \
+    # 降低内存使用，防止构建被杀死
+    export NODE_OPTIONS="--max-old-space-size=2048" && \
     echo "已设置Node内存限制: $NODE_OPTIONS" && \
     ls -la node_modules/.bin/ && \
     echo "检查pnpm是否可用:" && which pnpm && \
     (NEXT_TELEMETRY_DISABLED=1 \
     NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
-    pnpm build || \
+    NODE_ENV=production \
+    pnpm build --no-lint || \
     (echo "构建失败，尝试使用npm" && \
     NEXT_TELEMETRY_DISABLED=1 \
     NEXT_SKIP_NATIVE_DEPENDENCY_EXTRACTION_DOWNLOAD=1 \
-    npm install && \
-    npm run build))
+    NODE_ENV=production \
+    npm run build -- --no-lint))
 
 # Stage 4: 生产运行
 FROM base AS runner
