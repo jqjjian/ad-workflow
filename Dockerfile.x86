@@ -1,8 +1,13 @@
 # Stage 1: 基础环境
 FROM node:20 AS base
-# 使用阿里云apt源
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list && \
-    sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
+# 检查并使用阿里云apt源（如果sources.list文件存在）
+RUN if [ -f "/etc/apt/sources.list" ]; then \
+    sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list || true && \
+    sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list || true; \
+    echo "已更新APT源为阿里云镜像"; \
+    else \
+    echo "找不到sources.list文件，跳过APT源设置"; \
+    fi
 # 启用pnpm并设置国内源
 RUN corepack enable && corepack prepare pnpm@latest --activate && \
     npm config set registry https://registry.npmmirror.com && \
