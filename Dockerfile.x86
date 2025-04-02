@@ -11,7 +11,11 @@ RUN if [ -f "/etc/apt/sources.list" ]; then \
 # 启用pnpm并设置国内源
 RUN corepack enable && corepack prepare pnpm@latest --activate && \
     npm config set registry https://registry.npmmirror.com && \
-    pnpm config set registry https://registry.npmmirror.com
+    pnpm config set registry https://registry.npmmirror.com && \
+    # 为CentOS环境设置额外的配置
+    npm config set unsafe-perm true && \
+    # 禁用strict-ssl，防止CentOS 7.9上的SSL证书问题
+    npm config set strict-ssl false
 # 安装MySQL客户端工具 - 使用非常可靠的安装方法
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -69,6 +73,7 @@ COPY pnpm-lock.yaml ./
 # 显示诊断信息并使用--no-frozen-lockfile减少问题
 RUN npm install -g pnpm && \
     npm config set registry https://registry.npmmirror.com && \
+    npm config set strict-ssl false && \
     pnpm config set registry https://registry.npmmirror.com && \
     pnpm config set network-timeout 600000 && \
     pnpm config set fetch-retries 10 && \
@@ -78,12 +83,13 @@ RUN npm install -g pnpm && \
     pnpm install --no-frozen-lockfile --unsafe-perm || \
     (NODE_ENV=development pnpm install --no-frozen-lockfile --unsafe-perm) || \
     (echo "==== 安装失败，尝试使用npm ====" && \
-    npm install --registry=https://registry.npmmirror.com --legacy-peer-deps) || \
+    npm install --registry=https://registry.npmmirror.com --legacy-peer-deps --no-optional) || \
     (echo "==== 安装失败，查看日志 ====" && ls -la && exit 1)
 
 # 安装Prisma
 RUN echo "安装Prisma..." && \
     npm config set registry https://registry.npmmirror.com && \
+    npm config set strict-ssl false && \
     pnpm config set registry https://registry.npmmirror.com && \
     pnpm add -g prisma@6.3.1 @prisma/client@6.3.1 && \
     pnpm add -g tsx && \
