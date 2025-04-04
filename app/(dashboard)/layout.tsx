@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import React from 'react'
 import { Layout, ConfigProvider } from 'antd'
-import { Content } from 'antd/es/layout/layout'
-import { Header } from 'antd/es/layout/layout'
+import { Header, Content } from 'antd/es/layout/layout'
 import Sider from 'antd/es/layout/Sider'
 import MenuComponent from '@/components/layout/menu'
+import UserAvatar from '@/components/layout/user-avatar'
 import zhCN from 'antd/locale/zh_CN'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
@@ -33,7 +33,8 @@ export default function RootLayout({
                     <Header
                         style={{
                             display: 'flex',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
                         }}
                     >
                         <div className="text-white">logo</div>
@@ -44,6 +45,9 @@ export default function RootLayout({
                                     items={items1}
                                     style={{ flex: 1, minWidth: 0 }}
                                 /> */}
+                        <div>
+                            <UserAvatar />
+                        </div>
                     </Header>
                     <Layout className="p-0" hasSider>
                         <Sider width={200} style={{ background: '#001529' }}>

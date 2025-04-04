@@ -15,13 +15,13 @@ import {
     Select,
     Descriptions,
     Typography,
+    type TableColumnsType,
     Tag,
     Flex,
-    Tabs
+    Tabs,
+    ConfigProvider
 } from 'antd'
-import type { TableColumnsType } from 'antd'
 import { StyleProvider } from '@ant-design/cssinjs'
-import { ConfigProvider } from 'antd'
 // import { submitRechargeToThirdParty } from '@/app/actions/workorder/account-management/deposit'
 import {
     approveDepositWorkOrder,

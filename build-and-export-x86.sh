@@ -3,7 +3,51 @@
 # 确保脚本在出错时停止
 set -e
 
-echo "===== 一键式构建和导出工单系统Docker镜像 (x86_64版本) ====="
+echo "===== 一键式构建和上传工单系统Docker镜像 (x86_64版本) ====="
+
+# 设置固定的目标仓库和标签
+DOCKER_REPO="jqjjian/ad-workflow-x86"
+DOCKER_TAG="latest"
+DOCKER_USER=""
+DOCKER_PASSWORD=""
+
+# 处理命令行参数
+while getopts ":u:p:ht" opt; do
+  case $opt in
+    u)
+      DOCKER_USER=$OPTARG
+      ;;
+    p)
+      DOCKER_PASSWORD=$OPTARG
+      ;;
+    h)
+      echo "用法: $0 [-u Docker用户名] [-p Docker密码(可选)] [-h 显示帮助] [-t 构建后进行本地测试]"
+      echo "  -u 用户名: Docker Hub的用户名"
+      echo "  -p 密码: Docker Hub的密码(可选，不提供则会提示输入)"
+      echo "  -h: 显示此帮助信息"
+      echo "  -t: 构建后在本地进行测试(需要Docker支持多架构)"
+      exit 0
+      ;;
+    t)
+      RUN_TEST=true
+      ;;
+    \?)
+      echo "无效选项: -$OPTARG" >&2
+      exit 1
+      ;;
+    :)
+      echo "选项 -$OPTARG 需要参数." >&2
+      exit 1
+      ;;
+  esac
+done
+
+# 检查是否提供了用户名
+if [ -z "$DOCKER_USER" ]; then
+    echo "错误: 必须提供Docker Hub用户名 (-u 参数)"
+    echo "用法: $0 -u 用户名 [-p 密码]"
+    exit 1
+fi
 
 # 检查Docker是否安装
 if ! command -v docker &> /dev/null; then
@@ -27,40 +71,6 @@ if ! docker buildx ls | grep -q "linux/amd64"; then
     docker buildx create --name multiplatform --use || true
 fi
 
-# 设置压缩级别
-COMPRESS_LEVEL=6
-
-# 处理命令行参数
-while getopts ":c:ht" opt; do
-  case $opt in
-    c)
-      if [[ "$OPTARG" =~ ^[1-9]$ ]]; then
-        COMPRESS_LEVEL=$OPTARG
-      else
-        echo "警告: 无效的压缩级别，使用默认值: 6"
-      fi
-      ;;
-    h)
-      echo "用法: $0 [-c 压缩级别(1-9)] [-h 显示帮助] [-t 构建后进行本地测试]"
-      echo "  -c 压缩级别: 1-9之间的整数，数字越大压缩率越高，但速度越慢(默认:6)"
-      echo "  -h: 显示此帮助信息"
-      echo "  -t: 构建后在本地进行测试(需要Docker支持多架构)"
-      exit 0
-      ;;
-    t)
-      RUN_TEST=true
-      ;;
-    \?)
-      echo "无效选项: -$OPTARG" >&2
-      exit 1
-      ;;
-    :)
-      echo "选项 -$OPTARG 需要参数." >&2
-      exit 1
-      ;;
-  esac
-done
-
 # 确保scripts目录存在
 mkdir -p scripts
 
@@ -75,6 +85,22 @@ echo "检查环境和权限..."
 # 创建必要的Prisma缓存目录并确保它们可写
 mkdir -p "$HOME/.prisma" "$HOME/.cache" 2>/dev/null || true
 ls -la /app/node_modules 2>/dev/null || true
+
+# 检查和安装可能缺少的工具
+if ! command -v mysql > /dev/null 2>&1 && ! command -v mariadb > /dev/null 2>&1; then
+    echo "MySQL/MariaDB客户端未安装，尝试安装..."
+    apt-get update && { \
+        apt-get install -y mysql-client || \
+        apt-get install -y mariadb-client || \
+        apt-get install -y default-mysql-client || \
+        echo "警告：无法安装MySQL客户端，将使用替代方法连接数据库"; \
+    }
+fi
+
+if ! command -v nc > /dev/null 2>&1; then
+    echo "安装netcat工具..."
+    apt-get update && apt-get install -y netcat || apt-get install -y nc || echo "警告：无法安装netcat，将使用替代方法检查数据库连接"
+fi
 
 echo "配置Prisma环境..."
 # 完全禁用引擎下载，使用纯JavaScript实现
@@ -114,6 +140,11 @@ else
   MYSQL_PWD="$MYSQL_PASSWORD"
 fi
 
+# 设置环境变量供应用使用
+export MYSQL_PASSWORD="$MYSQL_PWD"
+# 设置完整的DATABASE_URL，支持自定义主机名
+export DATABASE_URL="mysql://$MYSQL_USER:$MYSQL_PWD@${MYSQL_HOST:-mysql}:3306/$MYSQL_DATABASE?ssl=false"
+
 echo "等待数据库就绪..."
 MAX_RETRIES=30
 RETRY_COUNT=0
@@ -122,7 +153,18 @@ RETRY_COUNT=0
 if command -v mysqladmin > /dev/null 2>&1; then
   echo "使用mysqladmin检查数据库连接..."
   # 使用--skip-ssl代替
-  until mysqladmin ping -h mysql -u"$MYSQL_USER" -p"$MYSQL_PWD" --skip-ssl; do
+  until mysqladmin ping -h ${MYSQL_HOST:-mysql} -u"$MYSQL_USER" -p"$MYSQL_PWD" --skip-ssl; do
+    RETRY_COUNT=$((RETRY_COUNT+1))
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+      echo "达到最大重试次数，无法连接到数据库"
+      exit 1
+    fi
+    echo "数据库连接失败，5秒后重试... (尝试 $RETRY_COUNT/$MAX_RETRIES)"
+    sleep 5
+  done
+elif command -v mysql > /dev/null 2>&1; then
+  echo "使用mysql命令检查数据库连接..."
+  until mysql -h ${MYSQL_HOST:-mysql} -u"$MYSQL_USER" -p"$MYSQL_PWD" -e "SELECT 1" --skip-ssl; do
     RETRY_COUNT=$((RETRY_COUNT+1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
       echo "达到最大重试次数，无法连接到数据库"
@@ -132,31 +174,37 @@ if command -v mysqladmin > /dev/null 2>&1; then
     sleep 5
   done
 else
-  echo "mysqladmin未找到，使用nc命令检查数据库端口..."
+  echo "MySQL客户端工具未找到，使用nc命令检查数据库端口..."
   # 如果没有mysqladmin，使用nc检查端口
-  if ! command -v nc > /dev/null 2>&1; then
-    echo "安装nc工具..."
-    # 修复netcat包名称，适配Debian/Ubuntu系统
-    apt-get update && apt-get install -y netcat
+  if command -v nc > /dev/null 2>&1; then
+    until nc -z ${MYSQL_HOST:-mysql} 3306; do
+      RETRY_COUNT=$((RETRY_COUNT+1))
+      if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "达到最大重试次数，无法连接到数据库"
+        exit 1
+      fi
+      echo "数据库端口无法访问，5秒后重试... (尝试 $RETRY_COUNT/$MAX_RETRIES)"
+      sleep 5
+    done
+  else
+    # 如果没有nc，使用/dev/tcp尝试连接
+    echo "检查数据库连接..."
+    until (echo > /dev/tcp/${MYSQL_HOST:-mysql}/3306) >/dev/null 2>&1; do
+      RETRY_COUNT=$((RETRY_COUNT+1))
+      if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "达到最大重试次数，无法连接到数据库"
+        exit 1
+      fi
+      echo "数据库端口无法访问，5秒后重试... (尝试 $RETRY_COUNT/$MAX_RETRIES)"
+      sleep 5
+    done
   fi
-  
-  until nc -z mysql 3306; do
-    RETRY_COUNT=$((RETRY_COUNT+1))
-    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-      echo "达到最大重试次数，无法连接到数据库"
-      exit 1
-    fi
-    echo "数据库端口无法访问，5秒后重试... (尝试 $RETRY_COUNT/$MAX_RETRIES)"
-    sleep 5
-  done
   
   echo "数据库端口可访问，等待3秒确保服务完全启动..."
   sleep 3
 fi
 
 echo "执行数据库迁移..."
-# 使用读取的密码更新数据库URL
-export DATABASE_URL="mysql://$MYSQL_USER:$MYSQL_PWD@mysql:3306/$MYSQL_DATABASE?ssl=false"
 echo "使用数据库连接: $DATABASE_URL"
 
 echo "现在执行Prisma迁移部署..."
@@ -164,10 +212,13 @@ echo "使用纯JavaScript模式执行迁移..."
 NODE_OPTIONS="--max-old-space-size=3072" npx prisma migrate deploy --schema=./prisma/schema.prisma || echo "迁移失败，继续启动应用"
 
 # 检查并安装必要的工具
-if ! command -v ts-node > /dev/null 2>&1; then
-  echo "安装 ts-node..."
-  npm install -g ts-node typescript
+echo "安装 tsx 和 ESM 支持..."
+if ! command -v tsx > /dev/null 2>&1; then
+  echo "tsx命令不可用，尝试安装..."
+  npm install -g tsx typescript @types/node
 fi
+# 添加对.ts文件的特殊处理
+export NODE_OPTIONS="--max-old-space-size=3072 --experimental-specifier-resolution=node --experimental-modules"
 
 # 添加种子数据初始化步骤
 echo "执行数据库种子初始化..."
@@ -175,7 +226,14 @@ echo "执行数据库种子初始化..."
 SEED_MARKER="$HOME/.seed_initialized"
 if [ ! -f "$SEED_MARKER" ]; then
   echo "首次运行，执行数据库种子初始化..."
-  NODE_OPTIONS="--max-old-space-size=3072" npx ts-node prisma/seed.ts || echo "种子初始化失败，继续启动应用"
+  # 使用tsx执行TypeScript种子文件
+  if command -v tsx > /dev/null 2>&1; then
+    echo "使用tsx执行种子文件..."
+    NODE_OPTIONS="--max-old-space-size=3072" npx tsx prisma/seed.ts || echo "种子初始化失败，继续启动应用"
+  else
+    echo "tsx不可用，尝试使用node执行JS版本..."
+    NODE_OPTIONS="--max-old-space-size=3072" node prisma/seed.js || echo "种子初始化失败，继续启动应用"
+  fi
   touch "$SEED_MARKER" || echo "无法创建种子标记文件，下次将再次尝试初始化"
 else
   echo "已检测到种子数据初始化标记，跳过初始化步骤"
@@ -201,6 +259,10 @@ fi
 
 # 复制启动脚本
 chmod +x scripts/start-x86.sh
+
+# 构建镜像标签
+FULL_IMAGE_NAME="${DOCKER_REPO}:${DOCKER_TAG}"
+LOCAL_IMAGE_NAME="ad-workflow-x86:latest"
 
 # 开始构建
 echo "1. 开始构建Docker镜像 (x86_64版本)..."
@@ -259,7 +321,7 @@ services:
       retries: 3
 
   app:
-    image: ad-workflow-x86:latest
+    image: jqjjian/ad-workflow-x86:latest
     platform: linux/amd64
     container_name: test-app
     depends_on:
@@ -269,6 +331,8 @@ services:
       DATABASE_URL: mysql://ad_workflow:test_password@mysql:3306/ad_workflow?ssl=false
       MYSQL_USER: ad_workflow
       MYSQL_PASSWORD: test_password
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ad_workflow
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: test_secret_key_for_local_testing
       PRISMA_BINARY_TARGETS: "linux-musl-x64-openssl-3.0.x"
@@ -294,9 +358,9 @@ secrets:
 EOF
 
 # 确保镜像存在
-if ! docker images | grep -q ad-workflow-x86; then
+if ! docker images | grep -q "jqjjian/ad-workflow-x86"; then
     echo "尝试构建镜像..."
-    docker build -t ad-workflow-x86:latest -f Dockerfile.x86 .
+    docker build -t jqjjian/ad-workflow-x86:latest -f Dockerfile.x86 .
 fi
 
 echo "启动测试环境..."
@@ -355,398 +419,42 @@ EOL
 chmod +x test-docker-x86-local.sh
 
 # 开始构建镜像
-docker buildx build --platform linux/amd64 --load -t ad-workflow-x86:latest -f Dockerfile.x86 .
+echo "构建镜像: $FULL_IMAGE_NAME"
+docker buildx build --platform linux/amd64 --load -t $LOCAL_IMAGE_NAME -f Dockerfile.x86 .
 
 # 检查构建是否成功
-if ! docker image inspect ad-workflow-x86:latest &> /dev/null; then
+if ! docker image inspect $LOCAL_IMAGE_NAME &> /dev/null; then
     echo "错误: 镜像构建失败"
     exit 1
 fi
 
-echo "2. 正在导出镜像(压缩级别: $COMPRESS_LEVEL)..."
-IMAGE_FILE="ad-workflow-x86-image.tar.gz"
-docker save ad-workflow-x86:latest | gzip -$COMPRESS_LEVEL > $IMAGE_FILE
+# 准备上传到Docker Hub
+echo "2. 登录Docker Hub并上传镜像..."
+echo "登录Docker Hub..."
 
-# 获取文件大小
-FILE_SIZE=$(du -h $IMAGE_FILE | cut -f1)
+# 如果没有提供密码，则提示输入
+if [ -z "$DOCKER_PASSWORD" ]; then
+    echo "请输入Docker Hub密码："
+    read -s DOCKER_PASSWORD
+fi
 
-echo "3. 创建部署包..."
-DEPLOY_PACKAGE="ad-workflow-x86-deploy.tar.gz"
+echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
 
-# 创建临时目录
-TEMP_DIR="temp_package_x86"
-mkdir -p $TEMP_DIR
-
-# 复制必要的文件到临时目录
-cp $IMAGE_FILE $TEMP_DIR/
-# 复制并修正docker-compose文件
-echo "复制并修正docker-compose.yml文件..."
-cp docker-compose.x86.yml $TEMP_DIR/docker-compose.yml.tmp
-# 将所有布尔值修改为字符串形式
-sed 's/NEXTAUTH_TRUST_HOST: true/NEXTAUTH_TRUST_HOST: "true"/g; s/start_period: '"'"'60s'"'"'/start_period: "60s"/g' $TEMP_DIR/docker-compose.yml.tmp > $TEMP_DIR/docker-compose.yml
-rm $TEMP_DIR/docker-compose.yml.tmp
-
-cp .env.docker $TEMP_DIR/
-cp -r secrets $TEMP_DIR/
-mkdir -p $TEMP_DIR/scripts
-cp scripts/start-x86.sh $TEMP_DIR/scripts/start.sh
-chmod +x $TEMP_DIR/scripts/start.sh
-
-# 创建修复脚本
-cat > $TEMP_DIR/fix-compose-config.sh << 'EOF'
-#!/bin/bash
-set -e
-
-echo "===== 修复Docker Compose配置文件 ====="
-
-if [ ! -f "docker-compose.yml" ]; then
-    echo "错误: 未找到docker-compose.yml文件"
+if [ $? -ne 0 ]; then
+    echo "错误: Docker Hub登录失败，请检查凭据"
     exit 1
 fi
 
-echo "备份原始文件..."
-cp docker-compose.yml docker-compose.yml.bak
-
-# 根据操作系统选择正确的sed参数
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS需要不同的sed参数
-    echo "检测到macOS系统，使用兼容参数..."
-    sed -i '' 's/NEXTAUTH_TRUST_HOST: true/NEXTAUTH_TRUST_HOST: "true"/g' docker-compose.yml
-    sed -i '' 's/start_period: '"'"'60s'"'"'/start_period: "60s"/g' docker-compose.yml
-else
-    # Linux或其他系统
-    echo "检测到Linux系统，使用标准参数..."
-    sed -i 's/NEXTAUTH_TRUST_HOST: true/NEXTAUTH_TRUST_HOST: "true"/g' docker-compose.yml
-    sed -i 's/start_period: '"'"'60s'"'"'/start_period: "60s"/g' docker-compose.yml
-fi
-
-echo "检查是否含有其他布尔值环境变量..."
-grep -E ':[[:space:]]+(true|false)[[:space:]]*($|#)' docker-compose.yml || echo "未发现其他布尔值环境变量"
-
-echo "===== 修复完成 ====="
-echo "现在可以重新运行 ./start-service.sh 启动服务"
-EOF
-
-chmod +x $TEMP_DIR/fix-compose-config.sh
-
-# 创建CentOS专用的前置安装脚本
-cat > $TEMP_DIR/install-prerequisites.sh << 'EOF'
-#!/bin/bash
-set -e
-
-echo "===== 安装工单系统所需的依赖 ====="
-
-# 检查是否为root用户
-if [ "$(id -u)" != "0" ]; then
-   echo "此脚本需要root权限运行" 
-   echo "请使用sudo或以root身份运行"
-   exit 1
-fi
-
-# 检查系统版本
-if [ -f /etc/centos-release ]; then
-    echo "检测到CentOS系统"
-    SYSTEM_TYPE="centos"
-elif [ -f /etc/redhat-release ]; then
-    echo "检测到RHEL/Fedora系统"
-    SYSTEM_TYPE="redhat"
-else
-    echo "未检测到支持的系统类型，将尝试使用yum工具"
-    SYSTEM_TYPE="unknown"
-fi
-
-echo "1. 安装基础工具..."
-yum install -y yum-utils device-mapper-persistent-data lvm2 wget curl nc || {
-    echo "无法安装基础工具包，请手动安装"
-    echo "yum install -y yum-utils device-mapper-persistent-data lvm2 wget curl nc"
-    exit 1
-}
-
-echo "2. 添加Docker存储库..."
-yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo || {
-    echo "无法添加Docker存储库，请手动添加"
-    echo "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
-    exit 1
-}
-
-echo "3. 安装Docker..."
-yum install -y docker-ce docker-ce-cli containerd.io || {
-    echo "无法安装Docker，请手动安装"
-    echo "yum install -y docker-ce docker-ce-cli containerd.io"
-    exit 1
-}
-
-echo "4. 启动Docker服务..."
-systemctl start docker
-systemctl enable docker
-
-echo "5. 安装Docker Compose..."
-curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
-ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
-
-echo "6. 验证安装..."
-docker --version
-docker-compose --version
-
-echo "===== 依赖安装完成 ====="
-echo "现在您可以运行 start-service.sh 启动工单系统"
-EOF
-
-chmod +x $TEMP_DIR/install-prerequisites.sh
-
-# 创建部署说明
-cat > $TEMP_DIR/README.md << 'EOF'
-# 工单系统部署说明 (CentOS 7.x版本)
-
-本部署包包含了所有必要的文件，用于在CentOS 7.x环境中部署工单系统。
-
-## 系统要求
-- CentOS 7.9或更高版本
-- Docker 20.10或更高版本
-- Docker Compose 1.29或更高版本
-- 至少4GB RAM
-- 至少10GB可用磁盘空间
-
-## 快速部署方法
-
-如果您的服务器是全新安装的CentOS系统，可以使用以下命令快速部署：
-
-```bash
-# 安装依赖(需要root权限)
-sudo ./install-prerequisites.sh
-
-# 导入镜像并启动服务
-./start-service.sh
-```
-
-## 手动安装步骤
-
-### 1. 安装Docker和Docker Compose（如果尚未安装）
-
-```bash
-# 安装所需的软件包
-sudo yum install -y yum-utils device-mapper-persistent-data lvm2
-
-# 添加Docker仓库
-sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-
-# 安装Docker
-sudo yum install -y docker-ce docker-ce-cli containerd.io
-
-# 启动Docker并设置为开机自启
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# 安装Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
-
-# 验证安装
-docker --version
-docker-compose --version
-```
-
-### 2. 导入Docker镜像
-
-```bash
-# 导入工单系统镜像
-docker load < ad-workflow-x86-image.tar.gz
-```
-
-### 3. 配置环境
-
-1. 修改.env.docker文件中的配置（如需要）
-2. 修改secrets目录中的密码文件（强烈建议修改默认密码）
-
-### 4. 启动应用
-
-```bash
-docker-compose up -d
-```
-
-### 5. 验证应用是否正常运行
-
-```bash
-docker-compose ps
-```
-
-应用成功启动后，可以通过http://服务器IP:3000访问工单系统。
-
-## 宝塔面板反向代理配置
-
-如果您使用宝塔面板，可以按照以下步骤配置反向代理：
-
-1. 在宝塔面板中添加站点（如www.example.com）
-2. 在站点设置中找到"反向代理"
-3. 添加反向代理，目标URL设置为http://127.0.0.1:3000
-
-## 故障排除
-
-如果遇到问题，可以查看Docker容器的日志：
-
-```bash
-docker-compose logs app
-docker-compose logs mysql
-```
-
-常见问题解决方法：
-
-1. 如果MySQL容器无法启动，尝试删除数据卷后重新启动：
-   ```bash
-   docker-compose down -v
-   docker-compose up -d
-   ```
-
-2. 如果应用容器显示"等待数据库连接"，但一直无法连接：
-   ```bash
-   # 检查MySQL是否正常运行
-   docker exec -it ad-workflow-mysql mysqladmin -u root -p version
-   # 然后重启应用容器
-   docker-compose restart app
-   ```
-
-## 数据备份
-
-定期备份MySQL数据：
-
-```bash
-# 备份到当前目录
-docker exec ad-workflow-mysql mysqldump -u root -p$(cat secrets/mysql_root_password.txt) ad_workflow > backup.sql
-```
-EOF
-
-# 创建启动脚本
-cat > $TEMP_DIR/start-service.sh << 'EOF'
-#!/bin/bash
-set -e
-
-echo "===== 启动工单系统 ====="
-
-# 设置正确的文件权限
-echo "设置文件权限..."
-chmod +x scripts/start.sh || echo "Warning: 无法设置启动脚本权限"
-
-# 检查操作系统类型
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "检测到macOS系统"
-    # macOS下检查Docker服务
-    if ! docker ps &>/dev/null; then
-        echo "Docker服务未运行，尝试启动Docker..."
-        # 尝试启动Docker Desktop应用
-        if [ -d "/Applications/Docker.app" ]; then
-            open -a Docker && sleep 5
-            echo "已尝试启动Docker Desktop，等待服务就绪..."
-            # 等待Docker启动
-            timeout=60
-            count=0
-            while ! docker ps &>/dev/null; do
-                sleep 2
-                count=$((count+1))
-                if [ $count -ge $timeout ]; then
-                    echo "Docker服务未能在规定时间内启动，请手动启动Docker应用"
-                    exit 1
-                fi
-                echo "等待Docker服务就绪... ($count/$timeout)"
-            done
-        else
-            echo "未找到Docker Desktop应用，请手动启动Docker"
-            exit 1
-        fi
-    fi
-else
-    # Linux系统
-    # 检查是否使用systemd
-    if command -v systemctl &>/dev/null; then
-        echo "检测到systemd系统"
-        if ! systemctl is-active --quiet docker; then
-            echo "启动Docker服务..."
-            systemctl start docker
-        fi
-    else
-        echo "未检测到systemd，尝试使用service命令"
-        if command -v service &>/dev/null; then
-            if ! service docker status &>/dev/null; then
-                echo "启动Docker服务..."
-                service docker start || echo "无法启动Docker服务，请手动启动"
-            fi
-        else
-            # 最后尝试直接检查Docker是否可用
-            if ! docker ps &>/dev/null; then
-                echo "Docker未运行，但找不到合适的方法启动服务"
-                echo "请手动启动Docker服务后再运行此脚本"
-                exit 1
-            fi
-        fi
-    fi
-fi
-
-# 再次检查Docker是否真的可用
-if ! docker info &>/dev/null; then
-    echo "错误: Docker服务未启动或权限不足"
-    echo "请确保Docker已正确安装并有足够权限运行"
-    exit 1
-fi
-
-# 检测使用的Docker Compose命令格式
-if docker compose version &>/dev/null; then
-    echo "使用新版本的 docker compose 命令..."
-    DOCKER_COMPOSE_CMD="docker compose"
-elif docker-compose --version &>/dev/null; then
-    echo "使用传统的 docker-compose 命令..."
-    DOCKER_COMPOSE_CMD="docker-compose"
-else
-    echo "错误: 未找到 docker compose 或 docker-compose 命令"
-    echo "请确保已正确安装 Docker Compose"
-    exit 1
-fi
-
-# 停止并移除现有容器
-echo "停止并移除现有容器..."
-$DOCKER_COMPOSE_CMD down 2>/dev/null || true
-
-# 启动容器
-echo "启动容器..."
-$DOCKER_COMPOSE_CMD up -d
-
-# 检查容器是否成功启动
-CONTAINER_PREFIX=${APP_CONTAINER_NAME:-ad-workflow-app-x86}
-if docker ps | grep -q "$CONTAINER_PREFIX"; then
-    echo "===== 启动成功 ====="
-    echo "应用已在 http://localhost:3000 启动"
-    echo "MySQL数据库在端口 3306 可访问"
-    echo "可以使用以下命令查看日志:"
-    echo "  $DOCKER_COMPOSE_CMD logs -f app"
-else
-    echo "===== 启动失败 ====="
-    echo "容器未能成功启动，请查看日志获取更多信息:"
-    echo "  $DOCKER_COMPOSE_CMD logs app"
-    echo ""
-    echo "您也可以尝试运行 ./fix-compose-config.sh 修复配置问题后重试"
-fi
-EOF
-
-# 添加执行权限
-chmod +x $TEMP_DIR/start-service.sh
-
-# 打包部署文件
-tar -czvf $DEPLOY_PACKAGE -C $TEMP_DIR .
-
-# 清理临时目录
-rm -rf $TEMP_DIR
-
-# 获取文件大小
-PACKAGE_SIZE=$(du -h $DEPLOY_PACKAGE | cut -f1)
+echo "将本地镜像重新标记为 $FULL_IMAGE_NAME..."
+docker tag $LOCAL_IMAGE_NAME $FULL_IMAGE_NAME
+
+echo "上传镜像到Docker Hub..."
+docker push $FULL_IMAGE_NAME
 
 echo "===== 全部完成 ====="
-echo "镜像文件: $IMAGE_FILE (大小: $FILE_SIZE)"
-echo "部署包: $DEPLOY_PACKAGE (大小: $PACKAGE_SIZE)"
-echo "您可以将部署包直接提供给甲方，里面包含了所有必要的部署文件和说明"
-echo "甲方可以使用以下命令解压部署包:"
-echo "$ tar -xzvf $DEPLOY_PACKAGE"
-echo "然后运行start-service.sh脚本启动服务"
-echo "部署完成后，可以通过 http://服务器IP:3000 访问应用"
+echo "本地镜像: $LOCAL_IMAGE_NAME"
+echo "Docker Hub镜像: $FULL_IMAGE_NAME"
+echo "镜像已成功上传至Docker Hub"
 
 # 如果指定了测试标志，则运行测试
 if [ "$RUN_TEST" = true ]; then

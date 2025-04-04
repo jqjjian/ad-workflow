@@ -44,7 +44,7 @@ services:
       retries: 3
 
   app:
-    image: ad-workflow-x86:latest
+    image: jqjjian/ad-workflow-x86:latest
     platform: linux/amd64
     container_name: test-app
     depends_on:
@@ -54,6 +54,8 @@ services:
       DATABASE_URL: mysql://ad_workflow:test_password@mysql:3306/ad_workflow?ssl=false
       MYSQL_USER: ad_workflow
       MYSQL_PASSWORD: test_password
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ad_workflow
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: test_secret_key_for_local_testing
       PRISMA_BINARY_TARGETS: "linux-musl-x64-openssl-3.0.x"
@@ -79,9 +81,9 @@ secrets:
 EOF
 
 # 确保镜像存在
-if ! docker images | grep -q ad-workflow-x86; then
+if ! docker images | grep -q "jqjjian/ad-workflow-x86"; then
     echo "尝试构建镜像..."
-    docker build -t ad-workflow-x86:latest -f Dockerfile.x86 .
+    docker build -t jqjjian/ad-workflow-x86:latest -f Dockerfile.x86 .
 fi
 
 echo "启动测试环境..."

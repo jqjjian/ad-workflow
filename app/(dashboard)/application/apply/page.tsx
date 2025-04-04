@@ -1,15 +1,15 @@
 // import Title from 'antd/es/typography/Title'
 'use client'
-import { Card, Row, Col, Button, Flex, Typography } from 'antd'
+import { Card, Row, Col, Button, Flex, Typography, ConfigProvider } from 'antd'
+import Title from 'antd/es/typography/Title'
+import Text from 'antd/es/typography/Text'
 import Image from 'next/image'
-import { ConfigProvider } from 'antd'
 import { StyleProvider } from '@ant-design/cssinjs'
 import { FieldTimeOutlined } from '@ant-design/icons'
 import { useRouter } from 'next/navigation'
 import GoogleLogo from '@/public/images/Google.ee741aca.svg'
 import TikTokLogo from '@/public/images/TikTok.f24a474a.svg'
 import FacebookLogo from '@/public/images/Facebook.f8e447ad.svg'
-const { Text, Title } = Typography
 export default function Page() {
     const router = useRouter()
     return (

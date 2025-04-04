@@ -2,9 +2,7 @@ import { ReactNode } from 'react'
 import { Layout } from 'antd'
 import Sidebar from './Sidebar'
 import HeaderComponent from './Header'
-
-const { Content } = Layout
-
+import { Content } from 'antd/es/layout/layout'
 type MainLayoutProps = {
     children: ReactNode
 }

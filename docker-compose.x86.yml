@@ -5,7 +5,7 @@ services:
     image: mysql:5.7.43
     platform: linux/amd64
     container_name: ${MYSQL_CONTAINER_NAME:-ad-workflow-mysql-x86}
-    init: "true"
+    init: true
     # mem_limit: 2g
     # cpus: 2
     restart: unless-stopped
@@ -25,7 +25,7 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: "30s"
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
@@ -36,7 +36,7 @@ services:
           - mysql
 
   app:
-    image: ${APP_IMAGE:-ad-workflow-x86:latest}
+    image: jqjjian/ad-workflow-x86:latest
     platform: linux/amd64
     container_name: ${APP_CONTAINER_NAME:-ad-workflow-app-x86}
     restart: unless-stopped
@@ -48,13 +48,16 @@ services:
     secrets:
       - db_password
     environment:
+      MYSQL_HOST: ${MYSQL_HOST:-mysql}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ad_workflow}
+      MYSQL_USER: ${MYSQL_USER:-ad_workflow}
       MYSQL_PASSWORD: /run/secrets/db_password
       # NextAuth配置
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://127.0.0.1:3000}
-      NEXTAUTH_URL_INTERNAL: ${NEXTAUTH_URL_INTERNAL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-Xo0W6XZGEWcNIyFnSqSsD+aLRcMQfDcLkK7Rp71wsqE=}
+      NEXTAUTH_URL: "http://${SERVER_IP:-localhost}:3000"
+      NEXTAUTH_URL_INTERNAL: "http://${SERVER_IP:-localhost}:3000"
+      NEXTAUTH_SECRET: "Xo0W6XZGEWcNIyFnSqSsD+aLRcMQfDcLkK7Rp71wsqE="
       NEXTAUTH_TRUST_HOST: "true"
-      NEXT_PUBLIC_APP_URL: ${NEXTAUTH_URL:-http://127.0.0.1:3000}
+      NEXT_PUBLIC_APP_URL: "http://${SERVER_IP:-localhost}:3000"
       # Prisma配置
       PRISMA_VERSION: "6.3.1"
       PRISMA_BINARY_TARGETS: "linux-musl-x64-openssl-3.0.x"
@@ -68,6 +71,8 @@ services:
       DEBUG: "prisma:*,engine,next-auth:*"
       NPM_CONFIG_PREFIX: "/home/nextjs/.npm-global"
       PRISMA_ENGINES_MIRROR: "/home/nextjs/.prisma"
+      NEXTAUTH_TRUSTED_HOSTS: "124.81.178.221,localhost,127.0.0.1"
+      DATABASE_URL: "mysql://${MYSQL_USER:-ad_workflow}:${MYSQL_PASSWORD:-ad_workflow_password}@${MYSQL_HOST:-mysql}:3306/${MYSQL_DATABASE:-ad_workflow}?ssl=false"
     volumes:
       - prisma-cache-x86:/home/nextjs/.prisma
       - node-cache-x86:/home/nextjs/.npm-global
@@ -80,7 +85,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: '60s'
+      start_period: "60s"
     networks:
       - ad-workflow-network
 

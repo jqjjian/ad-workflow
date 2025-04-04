@@ -14,10 +14,10 @@ import {
     Input,
     Upload,
     type FormProps,
-    UploadFile
+    UploadFile,
+    ConfigProvider
 } from 'antd'
 import { InfoCircleOutlined, UploadOutlined } from '@ant-design/icons'
-import { ConfigProvider } from 'antd'
 import { StyleProvider } from '@ant-design/cssinjs'
 import {
     getDictionaryItems,

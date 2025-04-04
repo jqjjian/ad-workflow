@@ -67,21 +67,102 @@ export default function UserLoginForm() {
 
     // const [checked, setChecked] = useState(true)
     const onFinish: FormProps['onFinish'] = (values: UserFormValue) => {
-        console.log('Success:', values)
+        console.log('开始登录流程:', values)
         startTransition(async () => {
-            const res = await login(values)
-            if (res.success) {
-                showMessage('success', res.success)
-                // 更新会话并等待完成
-                await update()
-                // 增加短暂延迟确保会话状态完全更新
-                setTimeout(() => {
-                    window.location.href = '/dashboard' // 使用直接跳转确保完整页面加载
-                }, 300)
-            } else {
-                showMessage('error', res.error ?? '登录失败')
+            try {
+                const res = await login(values)
+                console.log('登录API响应:', res)
+
+                if (res?.success) {
+                    showMessage('success', res.success)
+
+                    try {
+                        // 更新会话并等待完成
+                        console.log('开始更新会话，用户角色:', res.user?.role)
+                        await update()
+
+                        // 获取最新的会话状态并确认角色信息
+                        const session = await fetch('/api/auth/session').then(
+                            (r) => r.json()
+                        )
+                        console.log('会话更新完成，获取到会话:', session)
+                        console.log('用户角色检查:', {
+                            loginRes: res.user?.role,
+                            sessionRole: session?.user?.role
+                        })
+
+                        // 记录登录状态，防止重定向循环
+                        sessionStorage.setItem('justLoggedIn', 'true')
+                        const userRole = session?.user?.role || res.user?.role
+                        sessionStorage.setItem('userRole', userRole)
+
+                        // 设置cookie，确保中间件能获取到角色
+                        document.cookie = `userRole=${userRole}; path=/; max-age=86400;`
+
+                        console.log(
+                            '已设置justLoggedIn标记和角色信息:',
+                            userRole
+                        )
+
+                        // 获取重定向URL
+                        const urlParams = new URLSearchParams(
+                            window.location.search
+                        )
+                        const returnUrl =
+                            urlParams.get('returnUrl') || '/dashboard'
+                        console.log('登录成功，准备重定向到', returnUrl)
+
+                        // 强制全页面刷新而不是客户端路由
+                        window.location.href = returnUrl
+                    } catch (error) {
+                        console.error('会话更新出错', error)
+                        showMessage('error', '登录过程中出错，但将继续重定向')
+
+                        // 即使出错也尝试重定向
+                        const returnUrl =
+                            new URLSearchParams(window.location.search).get(
+                                'returnUrl'
+                            ) || '/dashboard'
+                        forceRedirect(returnUrl)
+                    }
+                } else {
+                    showMessage('error', res.error ?? '登录失败')
+                }
+            } catch (loginError) {
+                console.error('登录过程发生错误:', loginError)
+                showMessage('error', '登录请求失败')
             }
         })
+    }
+
+    // 独立的重定向函数，确保一定会执行
+    const forceRedirect = (url: string) => {
+        console.log('开始执行强制重定向到:', url)
+
+        // 方法1: location.replace
+        try {
+            window.location.replace(url)
+            console.log('location.replace已执行')
+        } catch (e) {
+            console.error('location.replace失败:', e)
+        }
+
+        // 方法2: 备用重定向(如果方法1失败)
+        setTimeout(() => {
+            try {
+                console.log('执行备用重定向方法')
+                document.location.href = url
+                console.log('document.location.href已执行')
+            } catch (e) {
+                console.error('备用重定向也失败:', e)
+
+                // 方法3: 最后尝试
+                setTimeout(() => {
+                    window.open(url, '_self')
+                    console.log('尝试window.open')
+                }, 100)
+            }
+        }, 200)
     }
 
     // const onFinishFailed: FormProps<UserFormValue>['onFinishFailed'] = (

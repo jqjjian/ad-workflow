@@ -22,6 +22,12 @@ export const login = async (values: z.infer<typeof LoginSchema>) => {
         return { error: '用户名不存在' }
     }
 
+    console.log('用户信息:', {
+        id: existingUser.id,
+        username: existingUser.username,
+        role: existingUser.role
+    })
+
     // if (!existingUser.emailVerified) {
     //     const verificationToken = await generateVerificationToken(
     //         existingUser.email
@@ -39,11 +45,16 @@ export const login = async (values: z.infer<typeof LoginSchema>) => {
         const res = await signIn('credentials', {
             username,
             password,
-            // callbackUrl: 'http://localhost:3000/api/auth/callback/credentials',
-            redirectTo: DEFAULT_LOGIN_REDIRECT
+            redirect: false
         })
-        console.log('res', res)
-        return { success: '登录成功' }
+        console.log('登录响应:', res)
+        return {
+            success: '登录成功',
+            user: {
+                id: existingUser.id,
+                role: existingUser.role
+            }
+        }
     } catch (error) {
         console.log('error', error)
         if (error instanceof AuthError) {

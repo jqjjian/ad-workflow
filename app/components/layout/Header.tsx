@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Layout, Input, Space, Badge, Avatar, Dropdown, Button } from 'antd'
+// import { useState } from 'react'
+import { Space, Badge, Avatar, Dropdown, Button } from 'antd'
+import { Header } from 'antd/es/layout/layout'
+import Search from 'antd/es/input/Search'
 import type { MenuProps } from 'antd'
 import {
     BellOutlined,
@@ -11,9 +13,6 @@ import {
     SettingOutlined
 } from '@ant-design/icons'
 import { useRouter } from 'next/navigation'
-
-const { Header } = Layout
-const { Search } = Input
 
 export default function HeaderComponent() {
     const router = useRouter()

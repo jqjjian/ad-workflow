@@ -4,6 +4,9 @@ import { Layout } from 'antd'
 import { Content } from 'antd/es/layout/layout'
 import Title from 'antd/es/typography/Title'
 import Paragraph from 'antd/es/typography/Paragraph'
+
+// const { Content } = Layout
+
 export const metadata: Metadata = {
     title: 'Ad-Workflow | Sign In',
     description: 'Sign In page for Ad-Workflow.'

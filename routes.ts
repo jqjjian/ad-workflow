@@ -3,14 +3,18 @@
  * 这些路由不需要授权
  * @type {string[]}
  */
-export const publicRoutes = ['/auth/new-verification']
+export const publicRoutes = [
+    '/auth/new-verification',
+    '/auth/error',
+    '/error/redirect-loop'
+]
 
 /**
  * 一个用于授权的路由数组
  * 这些数组在登录授权后重定向到/dashboard
  * @type {string[]}
  */
-export const authRoutes = ['/login', '/register'] // 根路由作为登录页
+export const authRoutes = ['/login', '/register', '/auth/reset-password'] // App Router模式下，根路径无页面访问
 
 /**
  * 一个用于授权的API前缀路由数组
@@ -29,4 +33,6 @@ export const DEFAULT_LOGIN_REDIRECT = '/dashboard'
  * 一个只有管理员身份才能访问的跌幅数组
  * 这些数组非admin角色无法访问
  */
-export const adminRoutes = ['/system']
+export const adminRoutes = ['/system', '/admin', '/analytics']
+
+console.log('当前adminRoutes配置:', adminRoutes)

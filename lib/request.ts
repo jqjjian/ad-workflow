@@ -1,15 +1,27 @@
 import { z } from 'zod'
 
 // 设置API基础URL环境变量
+// 添加日志记录环境变量状态
+console.log('NODE_ENV:', process.env.NODE_ENV)
+console.log('OPEN_API_URL:', process.env.OPEN_API_URL)
+console.log('OPEN_API_URL_TEST:', process.env.OPEN_API_URL_TEST)
+
+// 修改API_BASE_URL的获取方式，增加默认值
 const API_BASE_URL =
     process.env.NODE_ENV === 'production'
-        ? process.env.OPEN_API_URL //'https://business.uniagency.net/uni-agency'
-        : process.env.OPEN_API_URL_TEST //'https://test-ua-gw.tec-develop.cn/uni-agency'
+        ? process.env.OPEN_API_URL ||
+          'https://test-ua-gw.tec-develop.cn/uni-agency' // 提供默认值
+        : process.env.OPEN_API_URL_TEST ||
+          'https://test-ua-gw.tec-develop.cn/uni-agency' // 提供默认值
 
+console.log('最终使用的API_BASE_URL:', API_BASE_URL)
+
+// 同样为accessToken添加默认值
 const accessToken =
     process.env.NODE_ENV === 'production'
-        ? process.env.ACCESS_TOKEN_SECRET
-        : process.env.ACCESS_TOKEN_SECRET_TEST
+        ? process.env.ACCESS_TOKEN_SECRET || 'ad776656d49f4adb840ef6187115fb8b'
+        : process.env.ACCESS_TOKEN_SECRET_TEST ||
+          'ad776656d49f4adb840ef6187115fb8b'
 
 // 定义请求参数的类型
 export const ExternalApiRequestSchema = z.object({

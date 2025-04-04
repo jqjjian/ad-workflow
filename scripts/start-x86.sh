@@ -65,7 +65,18 @@ export MYSQL_PASSWORD="$MYSQL_PWD"
 # 设置完整的DATABASE_URL，支持自定义主机名
 export DATABASE_URL="mysql://$MYSQL_USER:$MYSQL_PWD@${MYSQL_HOST:-mysql}:3306/$MYSQL_DATABASE?ssl=false"
 
+# 添加客户端可访问的环境变量
+export NEXT_PUBLIC_APP_URL="${NEXTAUTH_URL}"
+export NEXT_PUBLIC_API_URL="${NEXTAUTH_URL}/api"
+
+# 打印关键环境变量用于调试
+echo "======== 关键环境变量 ========"
+echo "NEXTAUTH_URL: ${NEXTAUTH_URL}"
+echo "NEXTAUTH_URL_INTERNAL: ${NEXTAUTH_URL_INTERNAL}"
+echo "NEXTAUTH_TRUSTED_HOSTS: ${NEXTAUTH_TRUSTED_HOSTS}"
+echo "NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}"
 echo "DATABASE_URL: ${DATABASE_URL}"
+echo "============================="
 
 echo "等待数据库就绪..."
 MAX_RETRIES=30
@@ -136,8 +147,20 @@ NODE_OPTIONS="--max-old-space-size=3072" npx prisma migrate deploy --schema=./pr
 # 检查并安装必要的工具
 echo "安装 tsx 和 ESM 支持..."
 if ! command -v tsx > /dev/null 2>&1; then
-  echo "tsx命令不可用，尝试安装..."
-  npm install -g tsx typescript @types/node
+  echo "tsx命令不可用，设置镜像并安装..."
+  # 设置镜像源
+  npm config set registry https://registry.npmmirror.com
+  # 尝试使用不同方式安装
+  npm install -g tsx typescript @types/node || \
+  (mkdir -p ~/.npm && npm install -g tsx typescript @types/node) || \
+  (sudo npm install -g tsx typescript @types/node)
+  
+  # 验证安装结果
+  if ! command -v tsx > /dev/null 2>&1; then
+    echo "警告: tsx安装失败，某些功能可能无法使用"
+  else
+    echo "tsx安装成功!"
+  fi
 fi
 # 添加对.ts文件的特殊处理
 export NODE_OPTIONS="--max-old-space-size=3072 --experimental-specifier-resolution=node --experimental-modules"
@@ -161,5 +184,18 @@ else
   echo "已检测到种子数据初始化标记，跳过初始化步骤"
 fi
 
+# 确保API环境变量设置正确
+echo "确保API环境变量设置正确..."
+export OPEN_API_URL=${OPEN_API_URL:-"https://test-ua-gw.tec-develop.cn/uni-agency"}
+export OPEN_API_URL_TEST=${OPEN_API_URL_TEST:-"https://test-ua-gw.tec-develop.cn/uni-agency"}
+export ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:-"ad776656d49f4adb840ef6187115fb8b"}
+export ACCESS_TOKEN_SECRET_TEST=${ACCESS_TOKEN_SECRET_TEST:-"ad776656d49f4adb840ef6187115fb8b"}
+
+echo "环境变量状态检查:"
+echo "NODE_ENV: $NODE_ENV"
+echo "OPEN_API_URL: $OPEN_API_URL"
+echo "OPEN_API_URL_TEST: $OPEN_API_URL_TEST"
+echo "ACCESS_TOKEN_SECRET: $ACCESS_TOKEN_SECRET"
+echo "ACCESS_TOKEN_SECRET_TEST: $ACCESS_TOKEN_SECRET_TEST"
 echo "启动应用服务器..."
 exec pnpm start 

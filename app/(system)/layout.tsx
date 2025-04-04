@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import React from 'react'
-import { Layout, ConfigProvider } from 'antd'
+import { ConfigProvider } from 'antd'
+import Layout from 'antd/es/layout'
+import { Header } from 'antd/es/layout/layout'
+import Sider from 'antd/es/layout/Sider'
 import MenuComponent from '@/components/layout/menu'
 import zhCN from 'antd/locale/zh_CN'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
-
-const { Header, Content, Sider } = Layout
 
 if (typeof window !== 'undefined') {
     dayjs.locale('zh-cn')
@@ -69,7 +70,7 @@ export default async function RootLayout({
                                         ]}
                                         style={{ margin: '16px 0' }}
                                     /> */}
-                        <Content
+                        <Layout.Content
                             style={{
                                 padding: '24px 24px',
                                 margin: 0,
@@ -81,7 +82,7 @@ export default async function RootLayout({
                             }}
                         >
                             {children}
-                        </Content>
+                        </Layout.Content>
                     </Layout>
                 </Layout>
             </Layout>

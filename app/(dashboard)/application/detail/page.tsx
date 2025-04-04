@@ -18,14 +18,14 @@ import {
     Tabs,
     ConfigProvider
 } from 'antd'
+import Title from 'antd/es/typography/Title'
+import Text from 'antd/es/typography/Text'
 import { StyleProvider } from '@ant-design/cssinjs'
 // import { getGoogleApplyRecord } from '@/app/actions/workorder/google-account-application'
 import { useRouter } from 'next/navigation'
 // import type { GoogleAccountWithCompany } from '@/schemas/google-account'
 // import Image from 'next/image'
 import { getAccountApplicationRecord } from '@/app/actions/workorder/account-application'
-
-const { Title, Text } = Typography
 
 // 状态映射，与列表页保持一致
 const statusMap: Record<number, { color: string; text: string }> = {

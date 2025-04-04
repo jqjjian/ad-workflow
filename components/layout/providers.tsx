@@ -17,7 +17,7 @@ export default function Providers({
                 {/* <ThemeProvider attribute="class" defaultTheme="system" enableSystem> */}
                 <SessionProvider
                     session={session}
-                    refetchInterval={300} // 每5分钟刷新会话
+                    refetchInterval={5 * 60} // 每5分钟刷新会话
                     refetchOnWindowFocus={true} // 窗口聚焦时刷新会话
                     refetchWhenOffline={false} // 离线时不刷新会话
                 >

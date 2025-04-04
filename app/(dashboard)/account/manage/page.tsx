@@ -9,9 +9,7 @@ import {
     Form as AntdForm,
     Descriptions,
     Switch,
-    Radio
-} from 'antd'
-import {
+    Radio,
     Select,
     Input,
     DatePicker,

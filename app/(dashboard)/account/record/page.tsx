@@ -14,12 +14,13 @@ import {
     Input,
     Select,
     Descriptions,
-    Typography,
+    // Typography,
+    type TableColumnsType,
     Tag,
     Flex,
     InputNumber
 } from 'antd'
-import type { TableColumnsType } from 'antd'
+import Title from 'antd/es/typography/Title'
 import { StyleProvider } from '@ant-design/cssinjs'
 import { ConfigProvider } from 'antd'
 import {
@@ -30,7 +31,6 @@ import { updateDepositWorkOrder } from '@/app/actions/workorder/account-manageme
 import { updateWithdrawalWorkOrder } from '@/app/actions/workorder/account-management/withdrawal'
 import { getWorkOrders } from '@/app/actions/workorder/common'
 
-const { Title } = Typography
 const { RangePicker } = DatePicker
 
 // 申请记录

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useTransition, useRef } from 'react'
 import {
     Card,
     Row,
@@ -14,10 +14,10 @@ import {
     Input,
     Upload,
     // type FormProps,
-    UploadFile
+    UploadFile,
+    ConfigProvider
 } from 'antd'
 import { InfoCircleOutlined, UploadOutlined } from '@ant-design/icons'
-import { ConfigProvider } from 'antd'
 import { StyleProvider } from '@ant-design/cssinjs'
 import {
     getDictionaryItems,
@@ -50,6 +50,7 @@ import {
 } from '@ant-design/icons'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { type Rule } from 'antd/es/form'
+import { Session } from 'next-auth'
 const { Title } = Typography
 const { Item: FormItem, List } = Form
 // const url = 'https://test-ua-gw.tec-develop.cn/uni-agency'
@@ -74,13 +75,14 @@ export default function Page() {
     const { data: session, status } = useSession()
     const router = useRouter()
 
-    // Early check for authentication status
-    useEffect(() => {
-        if (status === 'unauthenticated') {
-            message.error('请先登录')
-            router.push('/login')
-        }
-    }, [status, router])
+    // 会话状态参考
+    const [loginChecked, setLoginChecked] = useState(false)
+    // 标记是否已显示了登录提示，避免重复提示
+    const hasShownLoginMessage = useRef(false)
+    const [dataInitialized, setDataInitialized] = useState(false)
+
+    // 防止请求时序问题，使用ref记录是否已经开始初始化
+    const isInitializing = useRef(false)
 
     const userId = session?.user?.id
     // console.log('userId', userId)
@@ -219,6 +221,11 @@ export default function Page() {
     ]
 
     const getDicData = async () => {
+        if (!session?.user?.id) {
+            console.log('未获取到用户ID，不请求字典数据')
+            return
+        }
+
         try {
             // 获取产品类型字典
             const productTypeRes = await getDictionaryItems(
@@ -254,6 +261,9 @@ export default function Page() {
     const [isPending, startTransition] = useTransition()
     const [form] = Form.useForm()
     const handleSubmit = async (values: any) => {
+        // 移除重复的登录检查，已由中间件处理
+        // 只检查业务字段验证
+
         // 简单的手动验证
         const requiredFields = [
             { key: 'name', msg: '账户名称不能为空' },
@@ -304,9 +314,11 @@ export default function Page() {
         // 验证通过，继续处理提交...
         console.log('提交的表单值:', JSON.stringify(values, null, 2))
 
-        // 确保所有必要值都存在
+        // 确保用户ID存在
+        const userSession = session as Session | null
+        const userId = userSession?.user?.id
         if (!values || !userId) {
-            message.error('表单数据不完整')
+            message.error('表单数据不完整或无法获取用户ID')
             return
         }
 
@@ -600,10 +612,14 @@ export default function Page() {
     }
 
     const fetchTaskDetail = async () => {
-        if (!taskId || !userId) return
+        if (!taskId || !session?.user?.id) {
+            console.log('未获取到用户ID或无taskId，不请求任务详情')
+            return
+        }
 
         setLoading(true)
         try {
+            const userId = session.user?.id
             const response = await getGoogleApplyRecord(taskId)
 
             if (
@@ -748,32 +764,72 @@ export default function Page() {
         }
     }, [initialData, form])
 
+    // 数据初始化逻辑，在会话状态可用后初始化
     useEffect(() => {
-        // 检查登录状态
-        // console.log('status', status)
-        if (status === 'unauthenticated') {
-            message.error('请先登录')
+        // 如果会话正在加载，等待
+        if (status === 'loading') {
+            console.log('会话状态加载中，等待...')
             return
         }
 
-        getDicData()
-        if (isEdit) {
-            fetchTaskDetail()
-        } else {
-            // 只设置默认的位置ID为中国大陆
-            setLocationId(1)
+        // 如果已经初始化过，不要重复初始化
+        if (isInitializing.current) {
+            return
         }
-    }, [taskId, status, form])
 
-    // If still loading session, show a proper loading state
-    if (status === 'loading') {
+        // 如果未登录，不进行数据初始化
+        if (status === 'unauthenticated') {
+            console.log('未登录状态，不初始化数据')
+            return
+        }
+
+        // 确认已登录且有用户ID，开始初始化数据
+        const userSession = session as Session | null
+        if (userSession?.user?.id) {
+            console.log('开始初始化数据, 用户ID:', userSession.user.id)
+            isInitializing.current = true
+            setDataInitialized(true)
+            setLoginChecked(true)
+
+            // 设置默认位置ID
+            setLocationId(1)
+
+            // 获取字典数据
+            getDicData()
+
+            // 如果是编辑模式，获取任务详情
+            if (isEdit) {
+                fetchTaskDetail()
+            }
+        }
+    }, [status, session, isEdit])
+
+    // 如果正在加载会话状态或数据，显示加载中
+    if (
+        status === 'loading' ||
+        (status === 'authenticated' && !dataInitialized)
+    ) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <div className="text-center">
                     <div className="text-lg">加载中...</div>
-                    <div className="text-sm text-gray-500">
-                        正在验证登录信息
+                    <div className="mb-4 text-sm text-gray-500">
+                        正在加载页面数据
                     </div>
+                    <div className="mb-2 text-xs text-gray-500">
+                        如果长时间未加载，请尝试
+                    </div>
+                    <Button
+                        onClick={() => {
+                            setLoginChecked(true)
+                            setDataInitialized(true)
+                            // 尝试手动初始化数据
+                            getDicData()
+                            if (isEdit) fetchTaskDetail()
+                        }}
+                    >
+                        手动继续
+                    </Button>
                 </div>
             </div>
         )
@@ -1263,6 +1319,7 @@ export default function Page() {
         message.success('已填入随机测试数据，请检查并提交')
     }
 
+    // 正常渲染页面内容
     return (
         <StyleProvider layer>
             <ConfigProvider>

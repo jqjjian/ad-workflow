@@ -129,6 +129,10 @@ RUN echo "构建Next.js应用..." && \
     NODE_ENV=production \
     npm run build -- --no-lint --no-mangling))
 
+# 设置npm镜像
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm install -g tsx typescript @types/node
+
 # Stage 4: 生产运行
 FROM base AS runner
 WORKDIR /app
@@ -141,6 +145,14 @@ ENV PRISMA_ENGINE_PROTOCOL="json"
 ENV PRISMA_CLI_QUERY_ENGINE_TYPE="library"
 ENV PRISMA_CLIENT_ENGINE_TYPE="library"
 ENV PRISMA_CLI_JS_ONLY="true"
+# 确保auth环境变量一致
+ENV NEXTAUTH_TRUST_HOST="true"
+
+# 显式设置API环境变量
+ENV OPEN_API_URL="https://test-ua-gw.tec-develop.cn/uni-agency"
+ENV OPEN_API_URL_TEST="https://test-ua-gw.tec-develop.cn/uni-agency"
+ENV ACCESS_TOKEN_SECRET="ad776656d49f4adb840ef6187115fb8b"
+ENV ACCESS_TOKEN_SECRET_TEST="ad776656d49f4adb840ef6187115fb8b"
 
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs nextjs
@@ -214,6 +226,13 @@ RUN mkdir -p /home/nextjs/.prisma /home/nextjs/.cache && \
 RUN mkdir -p /home/nextjs/.npm-global/lib /home/nextjs/.npm-global/bin \
     && chmod -R 755 /home/nextjs/.npm-global \
     && chown -R nextjs:nodejs /home/nextjs/.npm-global
+
+# 安装全局依赖
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm install -g tsx typescript @types/node && \
+    # 确保nextjs用户有权限
+    mkdir -p /home/nextjs/.npm && \
+    chown -R nextjs:nodejs /home/nextjs/.npm
 
 EXPOSE 3000
 # 修改为使用启动脚本
