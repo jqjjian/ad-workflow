@@ -84,7 +84,7 @@ export default function UserRegisterForm() {
 
     const validatePhoneNumber = (phoneNumber: string) => {
         console.log('phoneNumber', phoneNumber)
-        const phoneNumberObj = parsePhoneNumberFromString(phoneNumber)
+        const phoneNumberObj = parsePhoneNumberFromString(phoneNumber, { defaultCountry: 'CN' })
         return phoneNumberObj ? phoneNumberObj.isValid() : false
     }
 
@@ -155,10 +155,10 @@ export default function UserRegisterForm() {
                         placeholder="请选择"
                         options={[
                             { label: '+86 中国', value: '86' },
-                            { label: '+87 美国', value: '87' },
-                            { label: '+88 英国', value: '88' },
-                            { label: '+89 加拿大', value: '89' },
-                            { label: '+90 澳大利亚', value: '90' }
+                            // { label: '+87 美国', value: '87' },
+                            // { label: '+88 英国', value: '88' },
+                            // { label: '+89 加拿大', value: '89' },
+                            // { label: '+90 澳大利亚', value: '90' }
                         ]}
                     />
                 </Item>
@@ -190,16 +190,16 @@ export default function UserRegisterForm() {
                         }
                         placeholder="请输入手机号"
                         style={{ height: 40, fontSize: 16, width: '482px' }}
-                        // {...register('username')}
+                    // {...register('username')}
                     />
                 </Item>
             </div>
             <Item
                 name="verifyCode"
                 rules={[rule]}
-                // validateStatus={errors.username ? 'error' : ''}
-                // help={errors.username?.message}
-                // rules={[{ required: true, message: '验证码为能为空' }]}
+            // validateStatus={errors.username ? 'error' : ''}
+            // help={errors.username?.message}
+            // rules={[{ required: true, message: '验证码为能为空' }]}
             >
                 <Input
                     prefix={
@@ -223,10 +223,10 @@ export default function UserRegisterForm() {
             <Item
                 name="password"
                 rules={[rule]}
-                // validateStatus={errors.password ? 'error' : ''}
-                // help={errors.password?.message}
-                // name="password"
-                // rules={[{ required: true, message: '请输入密码!' }]}
+            // validateStatus={errors.password ? 'error' : ''}
+            // help={errors.password?.message}
+            // name="password"
+            // rules={[{ required: true, message: '请输入密码!' }]}
             >
                 <Password
                     prefix={
@@ -241,15 +241,15 @@ export default function UserRegisterForm() {
                             <EyeInvisibleOutlined style={{ fontSize: 20 }} />
                         )
                     }
-                    // {...register('password')}
+                // {...register('password')}
                 />
             </Item>
             <Item
                 name="name"
                 rules={[rule]}
-                // validateStatus={errors.username ? 'error' : ''}
-                // help={errors.username?.message}
-                // rules={[{ required: true, message: '请输入登陆账号!' }]}
+            // validateStatus={errors.username ? 'error' : ''}
+            // help={errors.username?.message}
+            // rules={[{ required: true, message: '请输入登陆账号!' }]}
             >
                 <Input
                     placeholder="请输入用户名"
@@ -261,9 +261,9 @@ export default function UserRegisterForm() {
             <Item
                 name="companyName"
                 rules={[rule]}
-                // validateStatus={errors.username ? 'error' : ''}
-                // help={errors.username?.message}
-                // rules={[{ required: true, message: '请输入登陆账号!' }]}
+            // validateStatus={errors.username ? 'error' : ''}
+            // help={errors.username?.message}
+            // rules={[{ required: true, message: '请输入登陆账号!' }]}
             >
                 <Input
                     prefix={
@@ -278,9 +278,9 @@ export default function UserRegisterForm() {
             <Item
                 name="email"
                 rules={[rule]}
-                // validateStatus={errors.username ? 'error' : ''}
-                // help={errors.username?.message}
-                // rules={[{ required: true, message: '请输入登陆账号!' }]}
+            // validateStatus={errors.username ? 'error' : ''}
+            // help={errors.username?.message}
+            // rules={[{ required: true, message: '请输入登陆账号!' }]}
             >
                 <Input
                     prefix={

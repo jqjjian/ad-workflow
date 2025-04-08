@@ -361,6 +361,24 @@ export async function googleApply(
             return await db.$transaction(async (tx) => {
                 // 1. 先创建工单记录，不设置rawDataId
                 logDebug('创建工单记录')
+                const metadataObj = {
+                    platform: 'GOOGLE',
+                    hasCompanyInfo: companyInfo !== null,
+                    mediaAccountName: validatedData.name,
+                    mediaPlatform: 'GOOGLE',
+                    mediaPlatformNumber: 2,
+                    // 确保所有申请人相关字段都有值，增加字段冗余以确保前端可以获取
+                    createdBy: session?.user?.name || userId,
+                    creator: session?.user?.name || userId,
+                    applicant: session?.user?.name || userId,
+                    userName: session?.user?.name || userId,
+                    displayName: session?.user?.name || userId
+                }
+                console.log(
+                    '正在创建工单，使用的metadata:',
+                    JSON.stringify(metadataObj, null, 2)
+                )
+
                 const workOrder = await tx.tecdo_work_orders.create({
                     data: {
                         taskNumber,
@@ -369,17 +387,7 @@ export async function googleApply(
                         workOrderType: WorkOrderType.ACCOUNT_APPLICATION,
                         workOrderSubtype: WorkOrderSubtype.GOOGLE_ACCOUNT,
                         status: WorkOrderStatus.PENDING,
-                        metadata: {
-                            platform: 'GOOGLE',
-                            hasCompanyInfo: companyInfo !== null,
-                            mediaAccountName: validatedData.name,
-                            mediaPlatform: 'GOOGLE',
-                            mediaPlatformNumber: 2,
-                            createdBy: session?.user?.name || userId,
-                            creator: session?.user?.name || userId,
-                            applicant: session?.user?.name || userId,
-                            userName: session?.user?.name || userId
-                        }
+                        metadata: metadataObj
                     }
                 })
                 logDebug('工单记录创建成功', { workOrderId: workOrder.id })
@@ -675,11 +683,7 @@ export async function googleApply(
                                 taskNumber,
                                 accountName: validatedData.name,
                                 hasCompanyInfo: companyInfo !== null,
-                                applicant: session?.user?.name || userId,
-                                mediaPlatform: 'GOOGLE',
-                                mediaPlatformNumber: 2,
-                                currency: validatedData.currencyCode,
-                                timezone: validatedData.timezone
+                                mediaPlatform: 'GOOGLE'
                             }),
                             createdAt: new Date()
                         }
@@ -789,14 +793,6 @@ export async function updateGoogleApply(
         if (!existingWorkOrder) {
             return ApiResponseBuilder.error('404', '找不到对应的工单')
         }
-
-        // 检查工单状态是否允许修改
-        // if (
-        //     existingWorkOrder.status !== WorkOrderStatus.PENDING &&
-        //     existingWorkOrder.status !== WorkOrderStatus.FAILED
-        // ) {
-        //     return ApiResponseBuilder.error('403', '当前工单状态不允许修改')
-        // }
 
         // 使用事务处理整个流程
         return await db.$transaction(async (tx) => {

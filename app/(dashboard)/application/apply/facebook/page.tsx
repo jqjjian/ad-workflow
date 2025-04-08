@@ -15,7 +15,8 @@ import {
     Upload,
     type FormProps,
     UploadFile,
-    ConfigProvider
+    ConfigProvider,
+    Modal
 } from 'antd'
 import { InfoCircleOutlined, UploadOutlined } from '@ant-design/icons'
 import { StyleProvider } from '@ant-design/cssinjs'
@@ -119,12 +120,16 @@ export default function Page() {
     const [fileList, setFileList] = useState<UploadFile[]>([])
     const [addressData, setAddressData] = useState<any>(null)
     const [authEmailList, setAuthEmailList] = useState<string[]>([])
-    const [authRoleList, setAuthRoleList] = useState<string[]>([])
+    const [authRoleList, setAuthRoleList] = useState<{ label: string; value: number }[]>([])
     const [promotionLinks, setPromotionLinks] = useState<string[]>([])
     const [redirectToMyAccount, setRedirectToMyAccount] = useState(false)
     const [initialData, setInitialData] = useState<any>(null)
     const [showRedirectButton, setShowRedirectButton] = useState(false)
     const [workOrderId, setWorkOrderId] = useState('')
+    const [idTypeOptions, setIdTypeOptions] = useState<{ label: string; value: number }[]>([
+        { label: '身份证', value: 1 },
+        { label: '护照', value: 2 }
+    ])
     // const authRule = createSchemaFieldRule(AuthItemSchema)
 
     // 邮箱验证规则
@@ -234,10 +239,57 @@ export default function Page() {
                 ])
             }
 
-            // 对于Facebook页面，可以使用Google的时区（如果没有专门的Facebook时区字典）
+            // 获取时区字典 - 目前只支持GOOGLE和TIKTOK类型
             const timezoneRes = await getTimezoneDictionary('GOOGLE')
             if (timezoneRes && timezoneRes.length > 0) {
                 setTimezoneOptions(timezoneRes)
+            }
+
+            // 获取授权角色字典
+            try {
+                const authRolesRes = await getDictionaryItems(
+                    'BUSINESS',
+                    'AUTH_ROLE'
+                )
+                if (authRolesRes?.items && authRolesRes.items.length > 0) {
+                    const roleOptions = authRolesRes.items.map((item) => ({
+                        label: item.itemName,
+                        value: Number(item.itemValue)
+                    }))
+                    setAuthRoleList(roleOptions)
+                } else {
+                    // 设置默认的角色选项
+                    setAuthRoleList([
+                        { label: '标准授权', value: AuthRoleEnum.STANDARD },
+                        { label: '管理员授权', value: AuthRoleEnum.ADMIN },
+                        { label: '只读授权', value: AuthRoleEnum.READONLY }
+                    ])
+                }
+            } catch (error) {
+                console.error('获取授权角色字典失败:', error)
+                // 设置默认的角色选项
+                setAuthRoleList([
+                    { label: '标准授权', value: AuthRoleEnum.STANDARD },
+                    { label: '管理员授权', value: AuthRoleEnum.ADMIN },
+                    { label: '只读授权', value: AuthRoleEnum.READONLY }
+                ])
+            }
+
+            // 获取证件类型字典
+            try {
+                const idTypeRes = await getDictionaryItems(
+                    'BUSINESS',
+                    'ID_TYPE'
+                )
+                if (idTypeRes?.items && idTypeRes.items.length > 0) {
+                    const idTypeList = idTypeRes.items.map((item) => ({
+                        label: item.itemName,
+                        value: Number(item.itemValue)
+                    }))
+                    setIdTypeOptions(idTypeList)
+                }
+            } catch (error) {
+                console.error('获取证件类型字典失败:', error)
             }
         } catch (error) {
             console.error('获取字典数据失败:', error)
@@ -490,14 +542,14 @@ export default function Page() {
                 // 授权信息 - 过滤掉空值
                 auths: Array.isArray(values.auths)
                     ? values.auths
-                          .filter(
-                              (auth: any) =>
-                                  auth !== null && (auth.role || auth.value)
-                          )
-                          .map((auth: any) => ({
-                              role: Number(auth?.role) || 1,
-                              value: auth?.value || ''
-                          }))
+                        .filter(
+                            (auth: any) =>
+                                auth !== null && (auth.role || auth.value)
+                        )
+                        .map((auth: any) => ({
+                            role: Number(auth?.role) || 1,
+                            value: auth?.value || ''
+                        }))
                     : [],
 
                 // 添加公司信息，确保所有字段格式正确
@@ -511,21 +563,21 @@ export default function Page() {
                     // 仅当位置ID为1（中国大陆）时才填充这些字段
                     ...(locationId === 1
                         ? {
-                              legalRepName:
-                                  values.registrationDetails?.legalRepName ||
-                                  '',
-                              idType:
-                                  Number(values.registrationDetails?.idType) ||
-                                  1,
-                              idNumber:
-                                  values.registrationDetails?.idNumber || '',
-                              legalRepPhone:
-                                  values.registrationDetails?.legalRepPhone ||
-                                  '',
-                              legalRepBankCard:
-                                  values.registrationDetails
-                                      ?.legalRepBankCard || ''
-                          }
+                            legalRepName:
+                                values.registrationDetails?.legalRepName ||
+                                '',
+                            idType:
+                                Number(values.registrationDetails?.idType) ||
+                                1,
+                            idNumber:
+                                values.registrationDetails?.idNumber || '',
+                            legalRepPhone:
+                                values.registrationDetails?.legalRepPhone ||
+                                '',
+                            legalRepBankCard:
+                                values.registrationDetails
+                                    ?.legalRepBankCard || ''
+                        }
                         : {}),
 
                     // 设置附件
@@ -573,12 +625,31 @@ export default function Page() {
                         router.push('/application/record')
                     }, 1500)
                 } else {
+                    // 保存返回的工单ID
+                    if (res.data && res.data.workOrderId) {
+                        setWorkOrderId(res.data.workOrderId)
+                    }
+
+                    // 显示成功弹窗，并提供跳转链接
+                    Modal.success({
+                        title: '申请已提交成功',
+                        content: (
+                            <div>
+                                <p>请点击下方按钮完成Facebook开户的剩余申请流程</p>
+                                <p>系统将跳转到Facebook官方申请页面</p>
+                            </div>
+                        ),
+                        okText: '前往Facebook继续申请',
+                        onOk: () => {
+                            // 跳转到Facebook开户申请链接
+                            window.open('https://www.facebook.com/chinabusinesses/onboarding/261607794910821/?token=1805737306827191', '_blank')
+                        }
+                    })
+
                     // 如果是新建模式，重置表单
                     form.resetFields()
                     // 清空文件上传列表
                     setFileList([])
-                    // 也可以重置其他状态
-                    message.info('表单已重置，可以继续提交新申请')
                 }
             } else {
                 console.error('API调用失败:', res.message)
@@ -628,9 +699,9 @@ export default function Page() {
                     auths: mediaAccountInfo.auths?.map((auth: any) =>
                         auth
                             ? {
-                                  role: Number(auth.role),
-                                  value: auth.value
-                              }
+                                role: Number(auth.role),
+                                value: auth.value
+                            }
                             : null
                     ) || [null],
                     // 设置企业信息数据
@@ -647,19 +718,19 @@ export default function Page() {
                     // 处理附件
                     businessLicenseAttachment:
                         company.attachments &&
-                        Array.isArray(company.attachments) &&
-                        company.attachments[0] &&
-                        company.attachments[0].fileUrl
+                            Array.isArray(company.attachments) &&
+                            company.attachments[0] &&
+                            company.attachments[0].fileUrl
                             ? [
-                                  {
-                                      uid: '-1',
-                                      name:
-                                          company.attachments[0].fileName ||
-                                          'business_license.jpg',
-                                      status: 'done',
-                                      url: company.attachments[0].fileUrl
-                                  }
-                              ]
+                                {
+                                    uid: '-1',
+                                    name:
+                                        company.attachments[0].fileName ||
+                                        'business_license.jpg',
+                                    status: 'done',
+                                    url: company.attachments[0].fileUrl
+                                }
+                            ]
                             : []
                 }
 
@@ -982,15 +1053,13 @@ export default function Page() {
             '智能',
             '科学'
         ]
-        const randomCompanyName = `${
-            companyNamePrefixes[
-                Math.floor(Math.random() * companyNamePrefixes.length)
+        const randomCompanyName = `${companyNamePrefixes[
+            Math.floor(Math.random() * companyNamePrefixes.length)
+        ]
+            }${companyNameSuffixes[
+            Math.floor(Math.random() * companyNameSuffixes.length)
             ]
-        }${
-            companyNameSuffixes[
-                Math.floor(Math.random() * companyNameSuffixes.length)
-            ]
-        }有限公司`
+            }有限公司`
 
         // 随机英文公司名称
         const engCompanyPrefixes = [
@@ -1012,15 +1081,13 @@ export default function Page() {
             'Systems',
             'Solutions'
         ]
-        const randomEngCompanyName = `${
-            engCompanyPrefixes[
-                Math.floor(Math.random() * engCompanyPrefixes.length)
+        const randomEngCompanyName = `${engCompanyPrefixes[
+            Math.floor(Math.random() * engCompanyPrefixes.length)
+        ]
+            } ${engCompanySuffixes[
+            Math.floor(Math.random() * engCompanySuffixes.length)
             ]
-        } ${
-            engCompanySuffixes[
-                Math.floor(Math.random() * engCompanySuffixes.length)
-            ]
-        } Co., Ltd.`
+            } Co., Ltd.`
 
         // 标准统一社会信用代码格式（18位）
         const generateValidCode = () => {
@@ -1057,9 +1124,8 @@ export default function Page() {
             '秀',
             '磊'
         ]
-        const randomName = `${
-            firstNames[Math.floor(Math.random() * firstNames.length)]
-        }${lastNames[Math.floor(Math.random() * lastNames.length)]}`
+        const randomName = `${firstNames[Math.floor(Math.random() * firstNames.length)]
+            }${lastNames[Math.floor(Math.random() * lastNames.length)]}`
 
         // 有效的身份证号（18位）
         const generateValidID = () => {
@@ -1129,9 +1195,8 @@ export default function Page() {
         // 随机账户名称
         const accountPrefixes = ['广告', '营销', '推广', '品牌', '销售']
         const accountSuffixes = ['账户', '平台', '中心', '服务', '渠道']
-        const randomAccountName = `${
-            accountPrefixes[Math.floor(Math.random() * accountPrefixes.length)]
-        }${accountSuffixes[Math.floor(Math.random() * accountSuffixes.length)]}`
+        const randomAccountName = `${accountPrefixes[Math.floor(Math.random() * accountPrefixes.length)]
+            }${accountSuffixes[Math.floor(Math.random() * accountSuffixes.length)]}`
 
         // 确保产品类型有效
         let randomProductType
@@ -1163,9 +1228,8 @@ export default function Page() {
                 'business.org',
                 'enterprise.co'
             ]
-            return `${names[Math.floor(Math.random() * names.length)]}@${
-                domains[Math.floor(Math.random() * domains.length)]
-            }`
+            return `${names[Math.floor(Math.random() * names.length)]}@${domains[Math.floor(Math.random() * domains.length)]
+                }`
         }
 
         // 有效的URL（确保包含https://）
@@ -1185,9 +1249,8 @@ export default function Page() {
                 'landing',
                 'promo'
             ]
-            return `https://www.${
-                domains[Math.floor(Math.random() * domains.length)]
-            }/${paths[Math.floor(Math.random() * paths.length)]}`
+            return `https://www.${domains[Math.floor(Math.random() * domains.length)]
+                }/${paths[Math.floor(Math.random() * paths.length)]}`
         }
 
         // 设置表单数据
@@ -1451,16 +1514,7 @@ export default function Page() {
                                             >
                                                 <Select
                                                     placeholder="请选择证件类型"
-                                                    options={[
-                                                        {
-                                                            label: '身份证',
-                                                            value: 1
-                                                        },
-                                                        {
-                                                            label: '护照',
-                                                            value: 2
-                                                        }
-                                                    ]}
+                                                    options={idTypeOptions}
                                                 />
                                             </FormItem>
                                         </Col>
@@ -1657,24 +1711,24 @@ export default function Page() {
                                                                                     <Input placeholder="请输入推广链接" />
                                                                                     {fields.length >
                                                                                         1 && (
-                                                                                        <DeleteOutlined
-                                                                                            style={{
-                                                                                                color: 'red',
-                                                                                                fontSize:
-                                                                                                    '16px',
-                                                                                                cursor: 'pointer',
-                                                                                                position:
-                                                                                                    'absolute',
-                                                                                                right: '-24px',
-                                                                                                bottom: '8px'
-                                                                                            }}
-                                                                                            onClick={() =>
-                                                                                                remove(
-                                                                                                    field.name
-                                                                                                )
-                                                                                            }
-                                                                                        />
-                                                                                    )}
+                                                                                            <DeleteOutlined
+                                                                                                style={{
+                                                                                                    color: 'red',
+                                                                                                    fontSize:
+                                                                                                        '16px',
+                                                                                                    cursor: 'pointer',
+                                                                                                    position:
+                                                                                                        'absolute',
+                                                                                                    right: '-24px',
+                                                                                                    bottom: '8px'
+                                                                                                }}
+                                                                                                onClick={() =>
+                                                                                                    remove(
+                                                                                                        field.name
+                                                                                                    )
+                                                                                                }
+                                                                                            />
+                                                                                        )}
                                                                                 </FormItem>
                                                                             </Col>
                                                                         </Row>
@@ -1759,44 +1813,34 @@ export default function Page() {
                                                                             position:
                                                                                 'relative'
                                                                         }}
+                                                                        rules={roleValidateRule(
+                                                                            field
+                                                                        )}
                                                                     >
                                                                         <Select
                                                                             placeholder="请选择权限"
-                                                                            options={[
-                                                                                {
-                                                                                    label: '标准',
-                                                                                    value: AuthRoleEnum.STANDARD
-                                                                                },
-                                                                                {
-                                                                                    label: '管理员',
-                                                                                    value: AuthRoleEnum.ADMIN
-                                                                                },
-                                                                                {
-                                                                                    label: '只读',
-                                                                                    value: AuthRoleEnum.READONLY
-                                                                                }
-                                                                            ]}
+                                                                            options={authRoleList}
                                                                         />
                                                                         {fields.length >
                                                                             1 && (
-                                                                            <DeleteOutlined
-                                                                                style={{
-                                                                                    color: 'red',
-                                                                                    fontSize:
-                                                                                        '16px',
-                                                                                    cursor: 'pointer',
-                                                                                    position:
-                                                                                        'absolute',
-                                                                                    right: '-24px',
-                                                                                    bottom: '8px'
-                                                                                }}
-                                                                                onClick={() =>
-                                                                                    remove(
-                                                                                        field.name
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                        )}
+                                                                                <DeleteOutlined
+                                                                                    style={{
+                                                                                        color: 'red',
+                                                                                        fontSize:
+                                                                                            '16px',
+                                                                                        cursor: 'pointer',
+                                                                                        position:
+                                                                                            'absolute',
+                                                                                        right: '-24px',
+                                                                                        bottom: '8px'
+                                                                                    }}
+                                                                                    onClick={() =>
+                                                                                        remove(
+                                                                                            field.name
+                                                                                        )
+                                                                                    }
+                                                                                />
+                                                                            )}
                                                                     </FormItem>
                                                                 </Col>
                                                             </Row>
@@ -1950,7 +1994,7 @@ export default function Page() {
                                                 } else {
                                                     message.error(
                                                         res.message ||
-                                                            '绑定失败'
+                                                        '绑定失败'
                                                     )
                                                 }
                                             } catch (error) {

@@ -290,7 +290,8 @@ export default function AdminWorkOrdersPage() {
                     extRecord.metadata?.createdBy ||
                     extRecord.metadata?.creator ||
                     extRecord.metadata?.applicant ||
-                    extRecord.metadata?.userName;
+                    extRecord.metadata?.userName ||
+                    extRecord.metadata?.displayName;
                 return creator || '-';
             }
         },
@@ -497,6 +498,7 @@ export default function AdminWorkOrdersPage() {
                             // 从metadata中提取信息
                             const metadata = parseMeta(item)
                             console.log('工单ID:', item.id, '元数据:', metadata)
+                            console.log('原始item数据:', JSON.stringify(item, null, 2))
 
                             // 优先使用数字形式，其次尝试转换
                             let mediaPlatform = metadata.mediaPlatformNumber
@@ -533,11 +535,22 @@ export default function AdminWorkOrdersPage() {
                                     ? Number(item.amount)
                                     : undefined
 
+                            // 提取申请人信息
+                            const createdBy =
+                                item.createdBy ||
+                                metadata.createdBy ||
+                                metadata.creator ||
+                                metadata.applicant ||
+                                metadata.userName ||
+                                metadata.displayName ||
+                                '未知'
+
                             console.log('处理工单:', {
                                 id: item.id,
                                 mediaPlatform,
                                 mediaAccountName,
-                                amount
+                                amount,
+                                createdBy
                             })
 
                             return {
@@ -577,7 +590,7 @@ export default function AdminWorkOrdersPage() {
                                 updatedAt: new Date(
                                     item.updatedAt
                                 ).toLocaleString(),
-                                createdBy: item.createdBy || '未知',
+                                createdBy,
                                 updatedBy: item.updatedBy || '未知',
                                 mediaAccountId: item.mediaAccountId || '',
                                 mediaAccountName: mediaAccountName || '',
@@ -595,7 +608,8 @@ export default function AdminWorkOrdersPage() {
                                 remarks: item.remark || '',
                                 taskId: item.taskId || item.thirdPartyTaskId,
                                 reason: item.failureReason,
-                                thirdPartyResponse: item.thirdPartyResponse
+                                thirdPartyResponse: item.thirdPartyResponse,
+                                metadata: metadata // 添加元数据字段到工单对象
                             }
                         } catch (err) {
                             console.error('处理工单数据错误:', err, item)
@@ -1068,9 +1082,23 @@ export default function AdminWorkOrdersPage() {
                     <Card style={{ marginTop: 16 }}>
                         <details>
                             <summary>调试信息</summary>
+                            <p><strong>第一个工单信息：</strong></p>
                             <pre style={{ maxHeight: 300, overflow: 'auto' }}>
                                 {JSON.stringify(data[0], null, 2)}
                             </pre>
+                            <p><strong>第一个工单的metadata：</strong></p>
+                            <pre style={{ maxHeight: 300, overflow: 'auto' }}>
+                                {JSON.stringify(data[0]?.metadata || {}, null, 2)}
+                            </pre>
+                            <p><strong>申请人字段提取路径：</strong></p>
+                            <ul>
+                                <li>直接createdBy: {data[0]?.createdBy}</li>
+                                <li>metadata.createdBy: {data[0]?.metadata?.createdBy}</li>
+                                <li>metadata.creator: {data[0]?.metadata?.creator}</li>
+                                <li>metadata.applicant: {data[0]?.metadata?.applicant}</li>
+                                <li>metadata.userName: {data[0]?.metadata?.userName}</li>
+                                <li>metadata.displayName: {data[0]?.metadata?.displayName}</li>
+                            </ul>
                         </details>
                     </Card>
                 )}

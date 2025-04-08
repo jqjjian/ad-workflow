@@ -215,7 +215,8 @@ export async function getAccountApplicationRecords(
         }
 
         const userId = session.user.id
-        Logger.info(`用户ID: ${userId}`)
+        const userRole = session.user.role
+        Logger.info(`用户ID: ${userId}, 角色: ${userRole}`)
 
         // 默认分页参数
         const page = query.page || 1
@@ -223,9 +224,15 @@ export async function getAccountApplicationRecords(
 
         // 构建查询条件
         const where: any = {
-            userId,
             isDeleted: false,
             workOrderType: WorkOrderType.ACCOUNT_APPLICATION
+        }
+
+        // 只有管理员和超级管理员可以查询所有用户的工单
+        const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
+        if (!isAdmin) {
+            // 非管理员只能查询自己的工单
+            where.userId = userId
         }
 
         // 自动排除失败的工单（状态为4），除非明确要求包含它们

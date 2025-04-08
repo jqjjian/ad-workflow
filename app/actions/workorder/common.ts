@@ -157,8 +157,28 @@ export async function getWorkOrders(
         taskNumber
     } = params
 
+    // 获取当前用户会话
+    const session = await auth()
+    if (!session || !session.user) {
+        return {
+            code: '401',
+            success: false,
+            message: '未登录'
+        }
+    }
+
+    const userId = session.user.id
+    const userRole = session.user.role
+
     // 构建查询条件
     const whereClause: any = { isDeleted: false }
+
+    // 只有管理员和超级管理员可以查询所有用户的工单
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
+    if (!isAdmin) {
+        // 非管理员只能查询自己的工单
+        whereClause.userId = userId
+    }
 
     // 处理工单类型筛选逻辑
     if (excludeWorkOrderType) {
@@ -210,10 +230,25 @@ export async function getWorkOrders(
         take: pageSize
     })
 
+    // 确保返回的metadata是一个对象而不是字符串
+    const processedWorkOrders = workOrders.map((order) => {
+        try {
+            // 如果metadata是字符串，尝试解析它
+            if (typeof order.metadata === 'string') {
+                order.metadata = JSON.parse(order.metadata)
+            }
+        } catch (error) {
+            // 如果解析失败，至少确保它是一个对象
+            console.error(`解析工单${order.id}的metadata失败:`, error)
+            order.metadata = {}
+        }
+        return order
+    })
+
     return {
         code: '0',
         success: true,
-        data: { total, items: workOrders }
+        data: { total, items: processedWorkOrders }
     }
 }
 
@@ -447,37 +482,67 @@ export async function getWorkOrderDetailById(workOrderId: string): Promise<{
     data?: WorkOrderDetail
 }> {
     try {
-        // 实现获取工单详情的逻辑
-        // 这是一个示例，实际项目中需要替换为真实的数据查询
+        // 获取当前用户会话
+        const session = await auth()
+        if (!session || !session.user) {
+            return {
+                success: false,
+                message: '未登录或会话已过期'
+            }
+        }
 
-        // 返回结果
+        const userId = session.user.id
+        const userRole = session.user.role
+        const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
+
+        // 查询工单，管理员可以查看所有工单
+        const whereClause: any = { id: workOrderId }
+
+        // 非管理员只能查看自己的工单
+        if (!isAdmin) {
+            whereClause.userId = userId
+        }
+
+        // 查询实际工单数据
+        const workOrder = await db.tecdo_work_orders.findFirst({
+            where: whereClause,
+            include: {
+                tecdo_deposit_business_data: true,
+                tecdo_workorder_company_info: true
+            }
+        })
+
+        if (!workOrder) {
+            return {
+                success: false,
+                message: '工单不存在或无权查看'
+            }
+        }
+
+        // 转换为前端需要的格式
+        const workOrderDetail: WorkOrderDetail = {
+            id: workOrder.id,
+            workOrderId: workOrder.id,
+            workOrderType: workOrder.workOrderType,
+            mediaPlatform: (workOrder as any).mediaPlatform || undefined,
+            mediaAccountId: (workOrder as any).mediaAccountId || undefined,
+            mediaAccountName: (workOrder as any).mediaAccountName || undefined,
+            companyName:
+                (workOrder.tecdo_workorder_company_info as any)
+                    ?.companyNameCN || undefined,
+            amount:
+                (workOrder.tecdo_deposit_business_data as any)?.amount ||
+                undefined,
+            systemStatus: workOrder.status,
+            createdAt: workOrder.createdAt?.toISOString(),
+            createdBy: (workOrder as any).createdBy || undefined,
+            remarks: (workOrder as any).remarks || undefined,
+            workOrderParams: {}
+        }
+
         return {
             success: true,
-            data: {
-                id: workOrderId,
-                workOrderId: `WO-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
-                workOrderType: 'DEPOSIT',
-                mediaPlatform: 1,
-                mediaAccountId: `ACC-${Math.random().toString(36).substr(2, 8)}`,
-                mediaAccountName: '示例账户',
-                companyName: '示例公司',
-                amount: 1000,
-                systemStatus: 'PENDING',
-                createdAt: new Date().toISOString(),
-                createdBy: '系统管理员',
-                remarks: '这是一个示例工单',
-                workOrderParams: {},
-                workOrderLogs: [
-                    {
-                        id: `LOG-${Math.random().toString(36).substr(2, 8)}`,
-                        workOrderId,
-                        timestamp: new Date().toISOString(),
-                        action: '创建工单',
-                        operator: '系统管理员',
-                        details: '工单已创建，等待审核'
-                    }
-                ]
-            }
+            data: workOrderDetail
         }
     } catch (error) {
         console.error('获取工单详情出错:', error)
