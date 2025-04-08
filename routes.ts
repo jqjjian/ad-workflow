@@ -27,7 +27,7 @@ export const apiAuthPrefix = '/api/auth'
  * 用户登录后默认重定向的路由
  * @type {string}
  */
-export const DEFAULT_LOGIN_REDIRECT = '/dashboard'
+export const DEFAULT_LOGIN_REDIRECT = '/application/apply'
 
 /**
  * 一个只有管理员身份才能访问的跌幅数组

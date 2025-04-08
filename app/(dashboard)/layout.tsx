@@ -9,7 +9,8 @@ import zhCN from 'antd/locale/zh_CN'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 import AuthCheck from '@/components/auth/auth-check'
-
+import logo from '@/public/images/web_logo.png'
+import Image from 'next/image'
 if (typeof window !== 'undefined') {
     dayjs.locale('zh-cn')
 } else {
@@ -37,7 +38,9 @@ export default function RootLayout({
                             justifyContent: 'space-between'
                         }}
                     >
-                        <div className="text-white">logo</div>
+                        <div className="text-white flex items-center">
+                            <Image src={logo} alt="logo" width={50} height={50} />
+                        </div>
                         {/* <Menu
                                     theme="dark"
                                     mode="horizontal"

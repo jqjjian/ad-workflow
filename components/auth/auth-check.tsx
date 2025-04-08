@@ -9,6 +9,9 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
     const router = useRouter()
     const pathname = usePathname()
     const [isChecked, setIsChecked] = useState(false)
+    // 添加淡入淡出控制状态
+    const [showLoading, setShowLoading] = useState(false)
+    const [contentOpacity, setContentOpacity] = useState(0)
 
     // 增加一个锁，防止多次重定向
     const [isRedirecting, setIsRedirecting] = useState(false)
@@ -19,10 +22,46 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
 
     // 添加强制超时计时器，避免永久卡在加载状态
     const loadingTimer = useRef<NodeJS.Timeout | null>(null)
+    const loadingDelayTimer = useRef<NodeJS.Timeout | null>(null)
     const forceTimeoutRef = useRef(false)
 
     // 跳过中间件已处理的路径
     const isAuthPath = pathname === '/login' || pathname === '/auth/signin'
+
+    // 延迟显示加载状态，避免闪烁
+    useEffect(() => {
+        if (status === 'loading' && !isChecked) {
+            // 清除之前的延迟计时器
+            if (loadingDelayTimer.current) {
+                clearTimeout(loadingDelayTimer.current)
+            }
+
+            // 延迟800ms后显示加载状态，避免短暂的加载过程显示加载界面
+            loadingDelayTimer.current = setTimeout(() => {
+                if (status === 'loading' && !isChecked) {
+                    setShowLoading(true)
+                }
+            }, 800)
+        } else {
+            // 如果状态不是加载或已检查完成，则隐藏加载状态
+            if (loadingDelayTimer.current) {
+                clearTimeout(loadingDelayTimer.current)
+            }
+
+            // 使用淡出效果
+            if (showLoading) {
+                setShowLoading(false)
+                // 内容以淡入方式显示
+                setContentOpacity(1)
+            }
+        }
+
+        return () => {
+            if (loadingDelayTimer.current) {
+                clearTimeout(loadingDelayTimer.current)
+            }
+        }
+    }, [status, isChecked, showLoading])
 
     // 初始化时设置一个最大加载时间，避免永久卡在加载状态
     useEffect(() => {
@@ -32,6 +71,8 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
                 clearTimeout(loadingTimer.current)
                 loadingTimer.current = null
             }
+            // 确保内容显示
+            setContentOpacity(1)
             return
         }
 
@@ -41,6 +82,8 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
                 console.warn('认证检查强制超时，允许渲染页面内容')
                 forceTimeoutRef.current = true
                 setIsChecked(true)
+                setShowLoading(false)
+                setContentOpacity(1)
             }
         }, 5000)
 
@@ -82,6 +125,9 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
                 setIsChecked(true)
                 setIsRedirecting(false)
                 forceTimeoutRef.current = false
+                // 确保内容显示
+                setShowLoading(false)
+                setContentOpacity(1)
             }
 
             // 当直接进入authenticated状态，且justLoggedIn为true时，可能是登录后刷新页面
@@ -92,6 +138,8 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
                 console.log('检测到登录后刷新状态')
                 // 此时应该直接显示内容，不做任何重定向
                 setIsChecked(true)
+                setShowLoading(false)
+                setContentOpacity(1)
                 // 但是保留标记，以便页面初始化时使用
             }
 
@@ -121,14 +169,43 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
             // 清除标记，仅对当前导航有效
             sessionStorage.removeItem('justLoggedIn')
             setIsChecked(true)
+            setShowLoading(false)
+            setContentOpacity(1)
             return
         }
 
         // 检查是否刚退出登录
-        const justLoggedOut = sessionStorage.getItem('justLoggedOut') === 'true'
-        if (justLoggedOut && !isAuthPath) {
+        const getCookie = (name: string) => {
+            const value = `; ${document.cookie}`
+            const parts = value.split(`; ${name}=`)
+            if (parts.length === 2) return parts.pop()?.split(';').shift()
+            return null
+        }
+
+        const justLoggedOutCookie = getCookie('justLoggedOut')
+        const justLoggedOutSession =
+            sessionStorage.getItem('justLoggedOut') === 'true'
+
+        if (
+            (justLoggedOutCookie === 'true' || justLoggedOutSession) &&
+            !isAuthPath
+        ) {
             console.log('检测到刚退出登录，强制重定向到登录页')
+            // 清除所有标记
             sessionStorage.removeItem('justLoggedOut')
+            document.cookie =
+                'justLoggedOut=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+
+            // 强制清除所有认证相关cookie
+            document.cookie =
+                'next-auth.session-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie =
+                'next-auth.csrf-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie =
+                'next-auth.callback-url=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie =
+                'userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+
             setIsRedirecting(true)
             router.push('/login')
             return
@@ -150,12 +227,16 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
             sessionStorage.removeItem('redirectSource')
             sessionStorage.removeItem('lastRedirectTime')
             setIsChecked(true)
+            setShowLoading(false)
+            setContentOpacity(1)
             return
         }
 
         // 避免在登录页面上检查认证状态
         if (isAuthPath) {
             setIsChecked(true)
+            setShowLoading(false)
+            setContentOpacity(1)
             return
         }
 
@@ -180,9 +261,13 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
         } else if (status === 'authenticated') {
             // 确认已登录，立即设置检查完成
             setIsChecked(true)
+            setShowLoading(false)
+            setContentOpacity(1)
         } else if (status !== 'loading' && !isChecked) {
             // 其他非加载状态也设置检查完成
             setIsChecked(true)
+            setShowLoading(false)
+            setContentOpacity(1)
         }
     }, [
         status,
@@ -201,35 +286,56 @@ export default function AuthCheck({ children }: { children: React.ReactNode }) {
 
     // 如果强制超时或已检查完成且不再加载状态，显示内容
     if (forceTimeoutRef.current || (isChecked && status !== 'loading')) {
-        return <>{children}</>
-    }
-
-    // 显示加载状态
-    if (status === 'loading' || !isChecked) {
         return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <div className="text-center">
-                    <div className="text-lg">加载中...</div>
-                    <div className="text-sm text-gray-500">
-                        正在验证登录信息
-                    </div>
-                    <div className="mt-2 text-xs text-gray-400">
-                        如果长时间未加载，请尝试
-                        <button
-                            onClick={() => {
-                                forceTimeoutRef.current = true
-                                setIsChecked(true)
-                            }}
-                            className="ml-1 text-blue-500 underline"
-                        >
-                            点击继续
-                        </button>
-                    </div>
-                </div>
+            <div
+                style={{
+                    transition: 'opacity 0.3s ease-in-out',
+                    opacity: contentOpacity
+                }}
+                onTransitionEnd={() => {
+                    // 确保过渡效果结束后完全可见
+                    if (contentOpacity < 1) {
+                        setContentOpacity(1)
+                    }
+                }}
+            >
+                {children}
             </div>
         )
     }
 
-    // 已认证或在登录页面，正常显示内容
-    return <>{children}</>
+    // 显示加载状态 - 使用淡入淡出效果
+    return (
+        <>
+            {/* 加载状态 - 带淡入淡出效果 */}
+            <div
+                className="fixed inset-0 flex items-center justify-center bg-white/90 z-50"
+                style={{
+                    opacity: showLoading ? 1 : 0,
+                    visibility: showLoading ? 'visible' : 'hidden',
+                    transition: 'opacity 0.3s ease-in-out, visibility 0.3s ease-in-out'
+                }}
+            >
+                <div className="text-center">
+                    <div className="flex flex-col items-center justify-center">
+                        {/* 简单的加载动画 */}
+                        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-blue-500 mb-3"></div>
+                        <div className="text-sm text-gray-500 font-light animate-pulse">
+                            验证权限中
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 预加载内容，但不显示 */}
+            <div
+                style={{
+                    opacity: contentOpacity,
+                    transition: 'opacity 0.3s ease-in-out'
+                }}
+            >
+                {children}
+            </div>
+        </>
+    )
 }

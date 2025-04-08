@@ -371,7 +371,14 @@ export async function googleApply(
                         status: WorkOrderStatus.PENDING,
                         metadata: {
                             platform: 'GOOGLE',
-                            hasCompanyInfo: companyInfo !== null
+                            hasCompanyInfo: companyInfo !== null,
+                            mediaAccountName: validatedData.name,
+                            mediaPlatform: 'GOOGLE',
+                            mediaPlatformNumber: 2,
+                            createdBy: session?.user?.name || userId,
+                            creator: session?.user?.name || userId,
+                            applicant: session?.user?.name || userId,
+                            userName: session?.user?.name || userId
                         }
                     }
                 })
@@ -560,88 +567,157 @@ export async function googleApply(
                     payload: JSON.stringify(apiPayload)
                 })
 
-                const response = await callExternalApi<{ taskId: number }>({
+                // 详细记录请求参数
+                console.log('API请求详细参数:', {
                     url: `${API_BASE_URL}/openApi/v1/mediaAccountApplication/google/create`,
-                    body: apiPayload
+                    method: 'POST',
+                    headers: '包含授权信息',
+                    body: JSON.stringify(apiPayload, null, 2)
                 })
-                logDebug('第三方接口响应', { response })
 
                 // 8. 更新工单状态和原始数据
-                if (response.code === '0' && response.data?.taskId) {
-                    logDebug('第三方接口调用成功', {
-                        externalTaskId: response.data.taskId
-                    })
-                    await tx.tecdo_work_orders.update({
-                        where: { id: workOrder.id },
-                        data: {
-                            taskId: response.data.taskId.toString(),
-                            status: WorkOrderStatus.PROCESSING
-                        }
+                let apiResponse
+                try {
+                    // 记录API_BASE_URL
+                    console.log('API基础URL:', API_BASE_URL)
+                    console.log(
+                        '完整请求URL:',
+                        `${API_BASE_URL}/openApi/v1/mediaAccountApplication/google/create`
+                    )
+
+                    apiResponse = await callExternalApi<{ taskId: number }>({
+                        url: `${API_BASE_URL}/openApi/v1/mediaAccountApplication/google/create`,
+                        body: apiPayload
                     })
 
-                    await tx.tecdo_raw_data.update({
-                        where: { id: rawData.id },
-                        data: {
-                            responseData: JSON.stringify(response),
-                            syncStatus: 'SUCCESS',
-                            lastSyncTime: new Date()
-                        }
-                    })
-                    logDebug('工单状态和原始数据更新成功 - 处理中')
-                } else {
-                    logDebug('第三方接口调用失败', {
-                        code: response.code,
-                        message: response.message
-                    })
-                    await tx.tecdo_work_orders.update({
-                        where: { id: workOrder.id },
-                        data: {
-                            status: WorkOrderStatus.FAILED
-                        }
-                    })
+                    // 详细记录响应
+                    console.log(
+                        'API响应状态:',
+                        apiResponse ? '成功' : '响应为空'
+                    )
+                    console.log('API响应内容类型:', typeof apiResponse)
+                    console.log(
+                        'API完整响应:',
+                        JSON.stringify(apiResponse, null, 2)
+                    )
 
-                    await tx.tecdo_raw_data.update({
-                        where: { id: rawData.id },
-                        data: {
-                            responseData: JSON.stringify(response),
-                            syncStatus: 'FAILED',
-                            syncError: response.message || '第三方接口调用失败',
-                            lastSyncTime: new Date()
-                        }
-                    })
-                    logDebug('工单状态和原始数据更新成功 - 失败')
-                }
+                    logDebug('第三方接口响应', { response: apiResponse })
 
-                // 9. 记录审计日志
-                logDebug('记录审计日志')
-                await tx.tecdo_audit_logs.create({
-                    data: {
-                        entityType: 'GOOGLE_ACCOUNT_APPLICATION',
-                        entityId: workOrder.id,
-                        action: 'CREATE',
-                        performedBy: userId,
-                        newValue: JSON.stringify({
-                            taskNumber,
-                            accountName: validatedData.name,
-                            hasCompanyInfo: companyInfo !== null
-                        }),
-                        createdAt: new Date()
+                    // 验证响应格式
+                    if (!apiResponse || typeof apiResponse !== 'object') {
+                        throw new Error(
+                            'API响应格式无效，未接收到对象类型的响应'
+                        )
                     }
-                })
-                logDebug('审计日志记录成功')
 
-                logDebug('Google账号申请流程完成', {
-                    taskId: response.data?.taskId,
-                    taskNumber,
-                    workOrderId: workOrder.id,
-                    success: response.code === '0'
-                })
+                    if (apiResponse.code !== '0' && !apiResponse.success) {
+                        throw new Error(
+                            `API调用失败: ${apiResponse.message || '未知错误'}`
+                        )
+                    }
 
-                return ApiResponseBuilder.success({
-                    taskId: response.data?.taskId,
-                    taskNumber,
-                    workOrderId: workOrder.id
-                })
+                    // 处理成功响应
+                    if (apiResponse.code === '0' && apiResponse.data?.taskId) {
+                        logDebug('第三方接口调用成功', {
+                            externalTaskId: apiResponse.data.taskId
+                        })
+                        await tx.tecdo_work_orders.update({
+                            where: { id: workOrder.id },
+                            data: {
+                                taskId: apiResponse.data.taskId.toString(),
+                                status: WorkOrderStatus.PROCESSING
+                            }
+                        })
+
+                        await tx.tecdo_raw_data.update({
+                            where: { id: rawData.id },
+                            data: {
+                                responseData: JSON.stringify(apiResponse),
+                                syncStatus: 'SUCCESS',
+                                lastSyncTime: new Date()
+                            }
+                        })
+                        logDebug('工单状态和原始数据更新成功 - 处理中')
+                    } else {
+                        logDebug('第三方接口调用失败', {
+                            code: apiResponse.code,
+                            message: apiResponse.message
+                        })
+                        await tx.tecdo_work_orders.update({
+                            where: { id: workOrder.id },
+                            data: {
+                                status: WorkOrderStatus.FAILED
+                            }
+                        })
+
+                        await tx.tecdo_raw_data.update({
+                            where: { id: rawData.id },
+                            data: {
+                                responseData: JSON.stringify(apiResponse),
+                                syncStatus: 'FAILED',
+                                syncError:
+                                    apiResponse.message || '第三方接口调用失败',
+                                lastSyncTime: new Date()
+                            }
+                        })
+                        logDebug('工单状态和原始数据更新成功 - 失败')
+                    }
+
+                    // 9. 记录审计日志
+                    logDebug('记录审计日志')
+                    await tx.tecdo_audit_logs.create({
+                        data: {
+                            entityType: 'GOOGLE_ACCOUNT_APPLICATION',
+                            entityId: workOrder.id,
+                            action: 'CREATE',
+                            performedBy: userId,
+                            newValue: JSON.stringify({
+                                taskNumber,
+                                accountName: validatedData.name,
+                                hasCompanyInfo: companyInfo !== null,
+                                applicant: session?.user?.name || userId,
+                                mediaPlatform: 'GOOGLE',
+                                mediaPlatformNumber: 2,
+                                currency: validatedData.currencyCode,
+                                timezone: validatedData.timezone
+                            }),
+                            createdAt: new Date()
+                        }
+                    })
+                    logDebug('审计日志记录成功')
+
+                    logDebug('Google账号申请流程完成', {
+                        taskId: apiResponse.data?.taskId,
+                        taskNumber,
+                        workOrderId: workOrder.id,
+                        success: apiResponse.code === '0'
+                    })
+
+                    return ApiResponseBuilder.success({
+                        taskId: apiResponse.data?.taskId,
+                        taskNumber,
+                        workOrderId: workOrder.id
+                    })
+                } catch (apiError) {
+                    // 增强的错误日志记录
+                    console.error('API调用异常详情:', apiError)
+                    if (apiError instanceof Error) {
+                        console.error('错误消息:', apiError.message)
+                        console.error('错误堆栈:', apiError.stack)
+                    }
+
+                    // 尝试解析响应内容
+                    if (
+                        apiError instanceof SyntaxError &&
+                        apiError.message.includes('Unexpected token')
+                    ) {
+                        console.error('JSON解析错误，可能收到了非JSON响应')
+                        // 记录原始响应 - 这需要修改callExternalApi函数才能实现
+                    }
+
+                    logError('Google账号申请处理过程中发生错误', apiError)
+                    throw apiError // 重新抛出错误，让事务处理捕获
+                }
             })
         } catch (error) {
             logError('Google账号申请处理过程中发生错误', error)

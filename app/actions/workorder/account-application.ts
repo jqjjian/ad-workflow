@@ -296,7 +296,16 @@ export async function getAccountApplicationRecords(
                 .map((id) => id.trim())
                 .filter(Boolean)
             if (taskIdArray.length > 0) {
-                where.taskId = { in: taskIdArray }
+                // 替换精确匹配为模糊查询，使用OR条件连接多个taskId条件
+                if (taskIdArray.length === 1) {
+                    // 单个taskId的情况，直接使用contains
+                    where.taskId = { contains: taskIdArray[0] }
+                } else {
+                    // 多个taskId的情况，使用OR条件
+                    where.OR = taskIdArray.map((id) => ({
+                        taskId: { contains: id }
+                    }))
+                }
             }
         }
 

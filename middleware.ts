@@ -84,14 +84,33 @@ export default auth((req) => {
         return prepareRedirect('/login')
     }
 
+    // 检查是否刚退出登录（通过cookie）- 确保这个检查在未登录检查之前
+    const justLoggedOut = req.cookies.get('justLoggedOut')?.value === 'true'
+    if (justLoggedOut) {
+        console.log('服务器端检测到退出登录状态，强制重定向到登录页')
+        // 创建重定向响应
+        const redirectResponse = NextResponse.redirect(
+            new URL('/login', nextUrl)
+        )
+        // 清除justLoggedOut cookie
+        redirectResponse.cookies.delete('justLoggedOut')
+        // 清除认证相关cookie
+        redirectResponse.cookies.delete('next-auth.session-token')
+        redirectResponse.cookies.delete('next-auth.csrf-token')
+        redirectResponse.cookies.delete('next-auth.callback-url')
+        redirectResponse.cookies.delete('userRole')
+        return redirectResponse
+    }
+
     // 4. 未登录用户重定向到登录页
     if (!isLoggedIn) {
+        console.log('未登录用户，重定向到登录页')
         const returnUrl = encodeURIComponent(nextUrl.pathname)
         return prepareRedirect(`/login?returnUrl=${returnUrl}`)
     }
 
-    // 5. 管理员路由权限判断
-    console.log('检查是否管理员路由:', {
+    // 5. 管理员路由权限判断 - 确保这个检查在判断用户已登录之后
+    console.log('已登录用户，检查是否管理员路由:', {
         path: nextUrl.pathname,
         adminRoutes,
         isMatched: adminRoutes.some((route) =>
@@ -130,12 +149,12 @@ export default auth((req) => {
         console.log('角色检查结果:', { role, sessionRole, isAdmin })
 
         if (!isAdmin) {
-            console.log('拒绝访问管理员路由')
-            return prepareRedirect('/dashboard')
+            console.log('拒绝访问管理员路由，重定向到dashboard')
+            return prepareRedirect('/application/apply')
         }
     }
 
-    // 5. 特殊处理会话请求
+    // 特殊处理会话请求
     if (nextUrl.pathname === '/api/auth/session') {
         console.log('处理会话请求:', {
             cookies: req.cookies,
@@ -159,6 +178,8 @@ export const config = {
         '/system',
         '/system/:path*',
         '/login',
-        '/register'
+        '/register',
+        '/admin',
+        '/admin/:path*'
     ]
 }

@@ -1,21 +1,13 @@
 'use client'
-import { Metadata } from 'next'
 import { useRouter } from 'next/navigation'
-// import Image from 'next/image'
-// import { Layout, Button } from 'antd'
-// import { Content } from 'antd/es/layout/layout'
-// import Paragraph from 'antd/es/typography/Paragraph'
 import Image from 'next/image'
-import UserAuthForm from '@/app/(auth)/_components/user-login-form'
 import { Button, Typography } from 'antd'
 import logo from '@/public/images/web_logo.png'
-const { Title } = Typography
-export const metadata: Metadata = {
-    title: 'Ad-Workflow | Sign In',
-    description: 'Sign In page for Ad-Workflow.'
-}
+import ForgotPasswordForm from './forgot-password-form'
 
-export default function Page() {
+const { Title } = Typography
+
+export default function ForgotPasswordView() {
     const router = useRouter()
     return (
         <>
@@ -38,14 +30,14 @@ export default function Page() {
                     }}
                 >
                     <Title level={5} style={{ color: '#1699ff', margin: 0 }}>
-                        还没有账号？
+                        记起密码了？
                     </Title>
                     <Button
                         shape="round"
                         style={{ width: '98px', height: '36px' }}
-                        onClick={() => router.push('/register')}
+                        onClick={() => router.push('/login')}
                     >
-                        注册
+                        登录
                     </Button>
                 </div>
             </div>
@@ -59,11 +51,11 @@ export default function Page() {
                 >
                     <Image src={logo} alt="logo" width={100} height={100} />
                 </div>
-                <Title level={1} style={{ margin: '48px 0  24px' }}>
-                    欢迎使用
+                <Title level={1} style={{ margin: '48px 0 24px' }}>
+                    找回密码
                 </Title>
             </div>
-            <UserAuthForm />
+            <ForgotPasswordForm />
         </>
     )
-}
+} 

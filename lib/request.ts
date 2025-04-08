@@ -61,16 +61,61 @@ export async function callExternalApi<T>(params: {
             body: params.body ? JSON.stringify(params.body) : undefined
         })
 
-        const data: ApiResponse<T> = await response.json()
-        // console.log('data', data)
-        return {
-            ...data,
-            data: data.data || null
+        // 输出HTTP响应状态和头信息
+        console.log(`HTTP响应状态: ${response.status} ${response.statusText}`)
+
+        // 以兼容方式获取响应头
+        const headers: Record<string, string> = {}
+        response.headers.forEach((value, key) => {
+            headers[key] = value
+        })
+        console.log('响应头:', headers)
+
+        // 检查响应类型
+        const contentType = response.headers.get('content-type') || ''
+        console.log('响应Content-Type:', contentType)
+
+        if (!contentType.includes('application/json')) {
+            console.error('警告: 响应不是JSON格式', contentType)
+            // 获取响应文本用于调试
+            const text = await response.text()
+            console.error('非JSON响应内容:', text)
+            throw new Error(
+                `服务器返回了非JSON响应: ${contentType}, 响应内容: ${text.substring(0, 200)}...`
+            )
+        }
+
+        // 克隆响应以避免"已使用的响应体"错误
+        const responseClone = response.clone()
+
+        try {
+            const data: ApiResponse<T> = await response.json()
+            console.log('响应数据结构:', {
+                code: data.code,
+                success: data.success,
+                hasMessage: !!data.message,
+                hasData: data.data !== null && data.data !== undefined
+            })
+            return {
+                ...data,
+                data: data.data || null
+            }
+        } catch (jsonError) {
+            // JSON解析失败，尝试读取原始文本
+            const text = await responseClone.text()
+            console.error('JSON解析失败, 原始响应:', text)
+            throw new Error(
+                `解析JSON响应失败: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}, 原始响应: ${text.substring(0, 200)}...`
+            )
         }
     } catch (error) {
         if (error instanceof z.ZodError) {
             throw new Error(`请求参数验证失败: ${error.message}`)
         }
-        throw error // 其他错误直接抛出
+        console.error('API请求失败:', error)
+        // 重新包装错误，确保它包含调用信息
+        throw error instanceof Error
+            ? error
+            : new Error(`API请求失败: ${String(error)}`)
     }
 }

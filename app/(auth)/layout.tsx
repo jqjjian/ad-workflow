@@ -26,7 +26,7 @@ export default function Page({
                 <div
                     style={{
                         width: '40%',
-                        padding: '50px',
+                        padding: '64px',
                         // position: 'relative'
                         // background: '#f0f2f5'
                         backgroundImage:
@@ -35,12 +35,32 @@ export default function Page({
                         backgroundPosition: 'center'
                     }}
                 >
-                    <Title level={2} style={{ color: '#fff' }}>
+                    {/* <Title level={2} style={{ color: '#fff' }}>
                         欢迎来到 Ad-Workflow
-                    </Title>
-                    <Paragraph style={{ color: '#fff' }}>
+                    </Title> */}
+                    <div style={{ maxWidth: '450px', marginTop: '100px', lineHeight: '21px' }}>
+                        <Title
+                            level={1}
+                            style={{
+                                color: '#fff',
+                                fontSize: '48px',
+                                letterSpacing: '2px'
+                            }}
+                        >
+                            出海营销全栈式智能服务平台
+                        </Title>
+                        <Title
+                            level={5}
+                            style={{ color: '#fff', fontSize: '21px', fontWeight: 'normal' }}
+                        >
+                            出海跨媒体营销<span style={{ color: '#71a0fe' }}>一站式智能服务平台</span>
+                            <br />
+                            整合全球营销资源与商业智能赋能
+                        </Title>
+                    </div>
+                    {/* <Paragraph style={{ color: '#fff' }}>
                         这里是平台的描述。您可以在这里管理广告工作流，提升工作效率。
-                    </Paragraph>
+                    </Paragraph> */}
                     {/* <Image
                         src="/images/ef9caf13-3e4a-44c6-a297-bf1dbd731bfa.png"
                         alt="Ad-Workflow"

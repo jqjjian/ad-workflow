@@ -175,9 +175,9 @@ export default function Page() {
                         </Card>
                     </Col>
                     <Col span={6}>
-                        <Card title="常见问题">
-                            {/* <Title level={3}>开户申请</Title> */}
-                        </Card>
+                        {/* <Card title="常见问题"> */}
+                        {/* <Title level={3}>开户申请</Title> */}
+                        {/* </Card> */}
                     </Col>
                 </Row>
             </ConfigProvider>

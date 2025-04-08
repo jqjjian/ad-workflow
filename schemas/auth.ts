@@ -25,5 +25,32 @@ export const RegisterSchema = z.object({
     areaCode: z.string({ required_error: '区号不能为空' })
 })
 
+export const ForgotPasswordSchema = z
+    .object({
+        phoneNumber: z
+            .string({ required_error: '手机号不能为空' })
+            .regex(/^1[3-9]\d{9}$/, { message: '请输入有效的手机号' }),
+        verificationCode: z
+            .string({ required_error: '验证码不能为空' })
+            .length(6, { message: '验证码长度应为6位' }),
+        newPassword: z
+            .string({ required_error: '新密码不能为空' })
+            .min(8, { message: '密码长度至少8位' })
+            .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, {
+                message: '密码必须包含大小写字母和数字'
+            }),
+        confirmPassword: z.string({ required_error: '确认密码不能为空' })
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+        message: '两次输入的密码不一致',
+        path: ['confirmPassword']
+    })
+
+export const VerificationCodeSchema = z.object({
+    phoneNumber: z
+        .string({ required_error: '手机号不能为空' })
+        .regex(/^1[3-9]\d{9}$/, { message: '请输入有效的手机号' })
+})
+
 export type LoginDto = z.infer<typeof LoginSchema>
 export type RegisterDto = z.infer<typeof RegisterSchema>

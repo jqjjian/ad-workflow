@@ -231,8 +231,8 @@ export default function Page() {
                 platform === 2
                     ? '/application/apply/google'
                     : platform === 5
-                      ? '/application/apply/tiktok'
-                      : '/application/apply/facebook'
+                        ? '/application/apply/tiktok'
+                        : '/application/apply/facebook'
             router.push(`${path}?taskId=${record.taskId}`)
             return
         }
@@ -258,8 +258,8 @@ export default function Page() {
             platform === 2
                 ? '/application/apply/google'
                 : platform === 5
-                  ? '/application/apply/tiktok'
-                  : '/application/apply/facebook'
+                    ? '/application/apply/tiktok'
+                    : '/application/apply/facebook'
         router.push(`${path}?taskId=${record.taskId}`)
     }
 
@@ -573,6 +573,7 @@ export default function Page() {
                                     title: '开户主体',
                                     dataIndex: ['company', 'name'],
                                     key: 'companyName',
+                                    width: 200,
                                     ellipsis: true
                                 },
                                 {
@@ -659,6 +660,7 @@ export default function Page() {
                                     title: '推广链接',
                                     dataIndex: 'mediaAccountInfos',
                                     key: 'mediaAccountInfos',
+                                    width: 250,
                                     ellipsis: true,
                                     render: (
                                         mediaAccountInfos: MediaAccountInfo
@@ -732,17 +734,17 @@ export default function Page() {
                                                             (record.mediaPlatform ===
                                                                 5 ||
                                                                 record.mediaPlatform ===
-                                                                    1) &&
+                                                                1) &&
                                                             record.taskId ===
-                                                                record.taskNumber
+                                                            record.taskNumber
                                                         ))
                                                 }
                                                 title={
                                                     record.status === 30
                                                         ? '已通过的申请不能修改'
                                                         : record.status === 10
-                                                          ? '审核中的申请不能修改'
-                                                          : ''
+                                                            ? '审核中的申请不能修改'
+                                                            : ''
                                                 }
                                             >
                                                 修改
@@ -750,7 +752,7 @@ export default function Page() {
 
                                             {/* 处理绑定ID和复制ID按钮逻辑 */}
                                             {!record.taskId ||
-                                            record.taskId ===
+                                                record.taskId ===
                                                 record.taskNumber ? (
                                                 <Button
                                                     type="link"
@@ -857,21 +859,21 @@ export default function Page() {
     )
 }
 
-;<style jsx global>{`
-    .compact-form .ant-form-item-label {
-        padding-bottom: 4px;
-    }
+// ;<style jsx global>{`
+//     .compact-form .ant-form-item-label {
+//         padding-bottom: 4px;
+//     }
 
-    .compact-form .ant-form-item {
-        margin-bottom: 8px;
-    }
+//     .compact-form .ant-form-item {
+//         margin-bottom: 8px;
+//     }
 
-    .compact-form .ant-form-item-label > label {
-        height: 20px;
-        font-size: 13px;
-    }
+//     .compact-form .ant-form-item-label > label {
+//         height: 20px;
+//         font-size: 13px;
+//     }
 
-    .compact-form .ant-card-body {
-        padding: 12px;
-    }
-`}</style>
+//     .compact-form .ant-card-body {
+//         padding: 12px;
+//     }
+// `}</style>

@@ -51,6 +51,12 @@ import {
 // import { WorkOrderSubtype } from '@prisma/client'
 import type { WorkOrder } from '@/app/actions/workorder/account-management/types'
 
+// 扩展WorkOrder类型，添加metadata和workOrderSubtype字段
+interface ExtendedWorkOrder extends WorkOrder {
+    metadata?: Record<string, any>;
+    workOrderSubtype?: string;
+}
+
 const { Title } = Typography
 const { RangePicker } = DatePicker
 
@@ -69,12 +75,12 @@ interface SearchForm {
 export default function AdminWorkOrdersPage() {
     const [form] = Form.useForm<SearchForm>()
     const [loading, setLoading] = useState(false)
-    const [data, setData] = useState<WorkOrder[]>([])
+    const [data, setData] = useState<ExtendedWorkOrder[]>([])
     const [total, setTotal] = useState(0)
     const [currentPage, setCurrentPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
     const [detailVisible, setDetailVisible] = useState(false)
-    const [currentWorkOrder, setCurrentWorkOrder] = useState<WorkOrder | null>(
+    const [currentWorkOrder, setCurrentWorkOrder] = useState<ExtendedWorkOrder | null>(
         null
     )
     const [actionLoading, setActionLoading] = useState(false)
@@ -89,6 +95,7 @@ export default function AdminWorkOrdersPage() {
                 page: 1,
                 pageSize: 1
             })
+            console.log('获取待处理工单数量:', response)
             if (response.success && response.data) {
                 setPendingCount(response.data.total)
             }
@@ -103,7 +110,7 @@ export default function AdminWorkOrdersPage() {
     }, [])
 
     // 表格列定义
-    const columns: TableColumnsType<WorkOrder> = [
+    const columns: TableColumnsType<ExtendedWorkOrder> = [
         {
             title: '工单ID',
             dataIndex: 'id',
@@ -116,12 +123,18 @@ export default function AdminWorkOrdersPage() {
             key: 'type',
             width: 100,
             render: (type) => {
+                // 完善工单类型映射
                 const typeMap = {
                     [WorkOrderType.DEPOSIT]: { text: '充值', color: 'blue' },
                     [WorkOrderType.DEDUCTION]: { text: '减款', color: 'red' },
                     [WorkOrderType.TRANSFER]: { text: '转账', color: 'green' },
                     [WorkOrderType.BIND]: { text: '绑定', color: 'purple' },
-                    // 添加对其他可能类型的支持
+                    // 补充更多类型映射
+                    ZEROING: { text: '清零', color: 'orange' },
+                    BIND_ACCOUNT: { text: '绑定账户', color: 'purple' },
+                    BIND_EMAIL: { text: '绑定邮箱', color: 'purple' },
+                    BIND_PIXEL: { text: '绑定Pixel', color: 'purple' },
+                    ACCOUNT_APPLICATION: { text: '开户申请', color: 'cyan' },
                     ACCOUNT_MANAGEMENT: { text: '账户管理', color: 'blue' }
                 }
 
@@ -136,15 +149,18 @@ export default function AdminWorkOrdersPage() {
                     BIND_ACCOUNT: { text: '绑定账户', color: 'purple' },
                     BIND_EMAIL: { text: '绑定邮箱', color: 'purple' },
                     BIND_PIXEL: { text: '绑定Pixel', color: 'purple' },
-                    ZEROING: { text: '清零', color: 'orange' }
+                    ZEROING: { text: '清零', color: 'orange' },
+                    GOOGLE_ACCOUNT: { text: 'Google开户', color: 'cyan' },
+                    FACEBOOK_ACCOUNT: { text: 'Facebook开户', color: 'blue' },
+                    TIKTOK_ACCOUNT: { text: 'TikTok开户', color: 'black' }
                 }
 
                 // 先从主映射表查找，再从扩展映射表查找
                 const typeInfo = typeMap[type as WorkOrderType] ||
                     extendedTypeMap[type as string] || {
-                        text: type || '未知类型',
-                        color: 'default'
-                    }
+                    text: type || '未知类型',
+                    color: 'default'
+                }
                 return <Tag color={typeInfo.color}>{typeInfo.text}</Tag>
             },
             filters: [
@@ -160,28 +176,50 @@ export default function AdminWorkOrdersPage() {
             title: '账户名称',
             dataIndex: 'mediaAccountName',
             key: 'mediaAccountName',
-            width: 140
+            width: 140,
+            render: (text, record) => text || (record as ExtendedWorkOrder).metadata?.mediaAccountName || '-'
         },
         {
             title: '媒体平台',
             dataIndex: 'mediaPlatform',
             key: 'mediaPlatform',
             width: 100,
-            render: (platform) => {
+            render: (platform, record) => {
+                // 平台映射表
                 const platformMap = {
                     1: { name: 'Facebook', color: '#1877F2' },
                     2: { name: 'Google', color: '#4285F4' },
                     3: { name: 'Meta', color: '#0081FB' },
                     5: { name: 'TikTok', color: '#000000' }
                 }
+
+                // 尝试从多个来源获取平台值
+                let platformValue = platform;
+                const extRecord = record as ExtendedWorkOrder;
+                if (!platformValue && extRecord.metadata) {
+                    // 尝试从metadata中获取
+                    platformValue = extRecord.metadata.mediaPlatform ||
+                        extRecord.metadata.mediaPlatformNumber ||
+                        extRecord.metadata.platformType;
+                }
+
+                // 如果是工单子类型，也可以推断平台
+                if (!platformValue && extRecord.workOrderSubtype) {
+                    if (extRecord.workOrderSubtype === 'GOOGLE_ACCOUNT') platformValue = 2;
+                    else if (extRecord.workOrderSubtype === 'FACEBOOK_ACCOUNT') platformValue = 1;
+                    else if (extRecord.workOrderSubtype === 'TIKTOK_ACCOUNT') platformValue = 5;
+                }
+
                 // 确保平台值为数字
-                const platformValue = Number(platform)
+                platformValue = Number(platformValue);
+
                 const platformInfo =
-                    platformMap[platformValue as keyof typeof platformMap]
+                    platformMap[platformValue as keyof typeof platformMap];
+
                 return platformInfo ? (
                     <Tag color={platformInfo.color}>{platformInfo.name}</Tag>
                 ) : (
-                    <span>{platform || '未知'}</span>
+                    <span>{platform || '-'}</span>
                 )
             }
         },
@@ -244,7 +282,17 @@ export default function AdminWorkOrdersPage() {
             title: '申请人',
             dataIndex: 'createdBy',
             key: 'createdBy',
-            width: 100
+            width: 100,
+            render: (text, record) => {
+                // 从多个可能的源获取申请人信息
+                const extRecord = record as ExtendedWorkOrder;
+                const creator = text ||
+                    extRecord.metadata?.createdBy ||
+                    extRecord.metadata?.creator ||
+                    extRecord.metadata?.applicant ||
+                    extRecord.metadata?.userName;
+                return creator || '-';
+            }
         },
         {
             title: '创建时间',
@@ -443,7 +491,7 @@ export default function AdminWorkOrdersPage() {
                 }
 
                 // 转换数据结构以匹配WorkOrder接口
-                const workOrders: WorkOrder[] = response.data.items.map(
+                const workOrders: ExtendedWorkOrder[] = response.data.items.map(
                     (item: any) => {
                         try {
                             // 从metadata中提取信息
@@ -482,8 +530,8 @@ export default function AdminWorkOrdersPage() {
                             const amount = metadata.amount
                                 ? Number(metadata.amount)
                                 : item.amount
-                                  ? Number(item.amount)
-                                  : undefined
+                                    ? Number(item.amount)
+                                    : undefined
 
                             console.log('处理工单:', {
                                 id: item.id,
@@ -595,13 +643,13 @@ export default function AdminWorkOrdersPage() {
     }
 
     // 查看详情
-    const handleViewDetail = (record: WorkOrder) => {
+    const handleViewDetail = (record: ExtendedWorkOrder) => {
         setCurrentWorkOrder(record)
         setDetailVisible(true)
     }
 
     // 批准工单
-    const handleApprove = (record: WorkOrder) => {
+    const handleApprove = (record: ExtendedWorkOrder) => {
         Modal.confirm({
             title: '确认审批',
             content: '确定要通过此工单吗？',
@@ -703,7 +751,7 @@ export default function AdminWorkOrdersPage() {
     }
 
     // 拒绝工单
-    const handleReject = (record: WorkOrder) => {
+    const handleReject = (record: ExtendedWorkOrder) => {
         Modal.confirm({
             title: '确认拒绝',
             content: (
@@ -909,9 +957,9 @@ export default function AdminWorkOrdersPage() {
                                     <Select.Option value={2}>
                                         Google
                                     </Select.Option>
-                                    <Select.Option value={3}>
+                                    {/* <Select.Option value={3}>
                                         Meta
-                                    </Select.Option>
+                                    </Select.Option> */}
                                     <Select.Option value={5}>
                                         TikTok
                                     </Select.Option>
@@ -1058,7 +1106,7 @@ export default function AdminWorkOrdersPage() {
                             关闭
                         </Button>,
                         currentWorkOrder?.status ===
-                            WorkOrderStatus.PENDING && (
+                        WorkOrderStatus.PENDING && (
                             <>
                                 <Button
                                     key="reject"
@@ -1138,7 +1186,7 @@ export default function AdminWorkOrdersPage() {
                                     }
                                     return (
                                         platformMap[
-                                            currentWorkOrder.mediaPlatform as keyof typeof platformMap
+                                        currentWorkOrder.mediaPlatform as keyof typeof platformMap
                                         ] || '未知'
                                     )
                                 })()}

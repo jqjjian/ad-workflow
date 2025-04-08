@@ -243,8 +243,39 @@ const authConfig = {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
+                // 在开发环境或HTTP下设置secure为false
                 secure: false,
-                domain: undefined
+                // secure:
+                //     process.env.NODE_ENV === 'production' &&
+                //     process.env.NEXTAUTH_URL?.startsWith('https'),
+                // 不设置domain，让浏览器自动处理
+                domain: undefined,
+                // 设置较短的过期时间，减少持久会话问题
+                maxAge: 8 * 60 * 60 // 8小时
+            }
+        },
+        callbackUrl: {
+            name: 'next-auth.callback-url',
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure:
+                    process.env.NODE_ENV === 'production' &&
+                    process.env.NEXTAUTH_URL?.startsWith('https'),
+                maxAge: 8 * 60 * 60
+            }
+        },
+        csrfToken: {
+            name: 'next-auth.csrf-token',
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure:
+                    process.env.NODE_ENV === 'production' &&
+                    process.env.NEXTAUTH_URL?.startsWith('https'),
+                maxAge: 8 * 60 * 60
             }
         }
     }

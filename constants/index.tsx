@@ -6,12 +6,22 @@ import {
     // LaptopOutlined,
     // NotificationOutlined
 } from '@ant-design/icons'
-export const menuItems = [
-    {
-        key: 'dashboard',
-        label: '概览',
-        icon: <HomeOutlined />
-    },
+
+// 定义菜单项类型，包含isAdmin属性
+export interface MenuItem {
+    key: string;
+    label: string;
+    icon?: React.ReactNode;
+    children?: MenuItem[];
+    isAdmin?: boolean; // 标记是否需要管理员权限
+}
+
+export const menuItems: MenuItem[] = [
+    // {
+    //     key: 'dashboard',
+    //     label: '概览',
+    //     icon: <HomeOutlined />
+    // },
     {
         key: 'application',
         label: '开户管理',
@@ -54,6 +64,7 @@ export const menuItems = [
         key: 'admin',
         label: '管理',
         icon: <UserOutlined />,
+        isAdmin: true, // 标记为管理员菜单
         children: [
             {
                 key: 'workorders',
@@ -63,15 +74,15 @@ export const menuItems = [
         ]
     },
 
-    {
-        key: 'system',
-        label: '系统设置',
-        icon: <FileOutlined />,
-        children: [
-            {
-                key: 'dictionary-manage',
-                label: '字典管理'
-            }
-        ]
-    }
+    // {
+    //     key: 'system',
+    //     label: '系统设置',
+    //     icon: <FileOutlined />,
+    //     children: [
+    //         {
+    //             key: 'dictionary-manage',
+    //             label: '字典管理'
+    //         }
+    //     ]
+    // }
 ]

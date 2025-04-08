@@ -21,25 +21,53 @@ export default function UserAvatar() {
             sessionStorage.removeItem('justLoggedIn')
             sessionStorage.removeItem('redirectSource')
             sessionStorage.removeItem('lastRedirectTime')
+            localStorage.removeItem('justLoggedIn')
 
             // 清除加载状态相关的标记
             sessionStorage.removeItem('loadingState')
 
             // 设置登出标记，让AuthCheck知道用户刚刚登出
+            // 同时使用cookie和sessionStorage标记退出状态，确保服务器也能识别
             sessionStorage.setItem('justLoggedOut', 'true')
 
-            console.log('准备退出登录，已设置justLoggedOut标记')
+            // 添加cookie，确保服务器能识别退出状态
+            document.cookie = `justLoggedOut=true; path=/; max-age=3600`
 
-            // 使用强制选项确保完全登出，并重定向到登录页面
+            // 强制清除所有认证相关的cookie
+            document.cookie =
+                'next-auth.session-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie =
+                'next-auth.csrf-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie =
+                'next-auth.callback-url=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie =
+                'userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+
+            console.log(
+                '准备退出登录，已设置justLoggedOut标记和清除所有认证cookie'
+            )
+
+            // 使用强制选项确保完全登出，并强制跳转到登录页面
             await signOut({
                 callbackUrl: '/login',
                 redirect: true
             })
+
+            // 确保重定向已完成，额外检查并强制重定向
+            setTimeout(() => {
+                if (window.location.pathname !== '/login') {
+                    console.log('检测到退出后未正确重定向，强制跳转到登录页')
+                    window.location.href = '/login'
+                }
+            }, 500)
         } catch (error) {
             console.error('登出失败:', error)
             // 登出失败也重置标记
             sessionStorage.removeItem('justLoggedOut')
             setIsLoggingOut(false)
+
+            // 失败时也尝试强制重定向
+            window.location.href = '/login'
         }
     }
 

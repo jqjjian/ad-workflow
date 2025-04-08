@@ -4,7 +4,7 @@ import authConfig from '@/auth.config'
 export const { auth, handlers, signOut, signIn } = NextAuth({
     ...authConfig,
     trustHost: true,
-    debug: true,
+    debug: process.env.NODE_ENV !== 'production',
     cookies: {
         ...authConfig.cookies,
         csrfToken: {
@@ -15,6 +15,13 @@ export const { auth, handlers, signOut, signIn } = NextAuth({
                 path: '/',
                 secure: process.env.NODE_ENV === 'production'
             }
+        }
+    },
+    events: {
+        ...authConfig.events,
+        signOut: async (message) => {
+            console.log('用户登出事件触发', message)
+            // 可以在这里添加登出相关的清理逻辑
         }
     }
 })

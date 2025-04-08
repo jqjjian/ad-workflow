@@ -14,11 +14,14 @@ import * as z from 'zod'
 import { createSchemaFieldRule } from 'antd-zod'
 import { login } from '@/app/actions/login'
 import useMessage from '@/app/hooks/messages'
+import { useRouter } from 'next/navigation'
 const { Title } = Typography
+
 const { Item } = Form
 type UserFormValue = z.infer<typeof LoginSchema>
 
 export default function UserLoginForm() {
+    const router = useRouter()
     const [isPending, startTransition] = useTransition()
     const { showMessage } = useMessage()
     const { update } = useSession()
@@ -29,8 +32,8 @@ export default function UserLoginForm() {
     const rule = createSchemaFieldRule(LoginSchema)
 
     const defaultValues = {
-        username: '15977716954',
-        password: 'Aa123123'
+        username: '',
+        password: ''
     }
     // const {
     //     // control,
@@ -109,7 +112,7 @@ export default function UserLoginForm() {
                             window.location.search
                         )
                         const returnUrl =
-                            urlParams.get('returnUrl') || '/dashboard'
+                            urlParams.get('returnUrl') || '/application/apply'
                         console.log('登录成功，准备重定向到', returnUrl)
 
                         // 强制全页面刷新而不是客户端路由
@@ -122,7 +125,7 @@ export default function UserLoginForm() {
                         const returnUrl =
                             new URLSearchParams(window.location.search).get(
                                 'returnUrl'
-                            ) || '/dashboard'
+                            ) || '/application/apply'
                         forceRedirect(returnUrl)
                     }
                 } else {
@@ -197,24 +200,24 @@ export default function UserLoginForm() {
             <Item
                 name="username"
                 rules={[rule]}
-                // validateStatus={errors.username ? 'error' : ''}
-                // help={errors.username?.message}
-                // rules={[{ required: true, message: '请输入登陆账号!' }]}
+            // validateStatus={errors.username ? 'error' : ''}
+            // help={errors.username?.message}
+            // rules={[{ required: true, message: '请输入登陆账号!' }]}
             >
                 <Input
                     placeholder="请输入登录账号"
                     style={{ height: 52, fontSize: 16 }}
-                    // {...register('username')}
+                // {...register('username')}
                 />
             </Item>
 
             <Item
                 name="password"
                 rules={[rule]}
-                // validateStatus={errors.password ? 'error' : ''}
-                // help={errors.password?.message}
-                // name="password"
-                // rules={[{ required: true, message: '请输入密码!' }]}
+            // validateStatus={errors.password ? 'error' : ''}
+            // help={errors.password?.message}
+            // name="password"
+            // rules={[{ required: true, message: '请输入密码!' }]}
             >
                 <Password
                     style={{ height: 52, fontSize: 16 }}
@@ -226,7 +229,7 @@ export default function UserLoginForm() {
                             <EyeInvisibleOutlined style={{ fontSize: 20 }} />
                         )
                     }
-                    // {...register('password')}
+                // {...register('password')}
                 />
             </Item>
 
@@ -265,7 +268,11 @@ export default function UserLoginForm() {
 
             <Item>
                 <Flex justify="end">
-                    <Button type="link" style={{ padding: 0 }}>
+                    <Button
+                        type="link"
+                        style={{ padding: 0 }}
+                        onClick={() => router.push('/forgot-password')}
+                    >
                         忘记密码？
                     </Button>
                 </Flex>
