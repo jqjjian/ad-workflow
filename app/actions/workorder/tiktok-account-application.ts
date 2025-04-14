@@ -180,7 +180,16 @@ export async function tiktokApply(
                         status: WorkOrderStatus.PENDING,
                         metadata: {
                             platform: 'TIKTOK',
-                            hasCompanyInfo: companyInfo !== null
+                            hasCompanyInfo: companyInfo !== null,
+                            mediaAccountName: validatedData.name,
+                            mediaPlatform: 'TIKTOK',
+                            mediaPlatformNumber: 3,
+                            // 确保所有申请人相关字段都有值，增加字段冗余以确保前端可以获取
+                            createdBy: session?.user?.name || userId,
+                            creator: session?.user?.name || userId,
+                            applicant: session?.user?.name || userId,
+                            userName: session?.user?.name || userId,
+                            displayName: session?.user?.name || userId
                         }
                     }
                 })

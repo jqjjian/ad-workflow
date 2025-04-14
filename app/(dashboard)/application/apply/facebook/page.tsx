@@ -52,6 +52,9 @@ import {
 } from '@ant-design/icons'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { type Rule } from 'antd/es/form'
+import { Session } from 'next-auth'
+import { SSOService } from '@/lib/sso-service'
+import { FileUploadUtil, UploadType } from '@/utils/file-upload'
 const { Text, Title } = Typography
 const { Item: FormItem, List } = Form
 // const url = 'https://test-ua-gw.tec-develop.cn/uni-agency'
@@ -178,6 +181,86 @@ export default function Page() {
             }
         }
     ]
+
+    // 添加自定义上传组件
+    const customUpload = async (options: any) => {
+        const { file, onSuccess, onError, onProgress } = options;
+
+        try {
+            onProgress({ percent: 10 });
+
+            // 不再检查全局初始化状态，在每次上传时创建新的SSOService实例
+            console.log('开始上传文件:', file.name);
+            onProgress({ percent: 20 });
+
+            // 1. 创建SSO服务实例
+            const ssoService = new SSOService();
+
+            // 2. 获取token
+            try {
+                await ssoService.getToken('13268125705', 'aa123456');
+                console.log('获取SSO Token成功');
+                onProgress({ percent: 30 });
+            } catch (tokenError) {
+                console.error('获取Token失败:', tokenError);
+                message.error('获取授权失败，请稍后重试');
+                onError();
+                return;
+            }
+
+            // 3. 获取SSO配置
+            try {
+                await ssoService.getSSOConfig();
+                console.log('获取SSO配置成功');
+                onProgress({ percent: 50 });
+            } catch (configError) {
+                console.error('获取SSO配置失败:', configError);
+                message.error('获取配置失败，请稍后重试');
+                onError();
+                return;
+            }
+
+            // 4. 上传文件
+            let result;
+            try {
+                // 构建上传路径
+                const userId = 'user_' + Math.floor(Math.random() * 1000000);
+                const date = new Date().toISOString().split('T')[0];
+                const directory = `account-application/${userId}/${date}`;
+
+                // 执行上传
+                result = await ssoService.uploadFile(file, directory);
+                console.log('文件上传成功:', result);
+                onProgress({ percent: 100 });
+            } catch (uploadError) {
+                console.error('文件上传失败:', uploadError);
+                message.error('文件上传失败，请稍后重试');
+                onError();
+                return;
+            }
+
+            // 5. 返回上传结果
+            if (result) {
+                onSuccess({
+                    url: result.fileUrl,
+                    name: result.fileName,
+                    response: {
+                        url: result.fileUrl,
+                        name: result.fileName
+                    }
+                });
+
+                message.success('文件上传成功');
+            } else {
+                message.error('文件上传失败，未获取到结果');
+                onError();
+            }
+        } catch (error) {
+            console.error('文件上传过程中发生错误:', error);
+            message.error('文件上传失败: ' + (error instanceof Error ? error.message : '未知错误'));
+            onError();
+        }
+    };
 
     // 推广链接验证规则
     const urlValidateRule = (): Rule[] => [
@@ -421,109 +504,6 @@ export default function Page() {
                 return
             }
 
-            // A. 处理营业执照附件
-            const attachments = []
-            const attachment = values.businessLicenseAttachment
-            console.log('营业执照附件原始数据:', attachment)
-
-            try {
-                // 确保提交数据的格式正确
-                if (
-                    attachment &&
-                    Array.isArray(attachment) &&
-                    attachment.length > 0
-                ) {
-                    // 判断附件数据格式
-                    const file = attachment[0]
-
-                    if (file.response) {
-                        // 新上传的附件
-                        console.log('处理新上传的附件', file.response)
-                        const url =
-                            file.response.url ||
-                            (file.response.data && file.response.data.url) ||
-                            file.url ||
-                            'https://example.com/default-license.jpg'
-
-                        attachments.push({
-                            fileName: file.name || 'business_license.jpg',
-                            fileType: file.type || 'image/jpeg',
-                            fileSize: file.size || 1024,
-                            filePath:
-                                'licenses/' +
-                                (file.name || 'business_license.jpg'),
-                            ossObjectKey: 'licenses/key-' + Date.now(),
-                            fileUrl: url,
-                            description: '营业执照'
-                        })
-                    } else if (file.url) {
-                        // 已有的附件
-                        console.log('处理已有的附件', file)
-                        attachments.push({
-                            fileName: file.name || 'business_license.jpg',
-                            fileType: file.type || 'image/jpeg',
-                            fileSize: file.size || 1024,
-                            filePath:
-                                'licenses/' +
-                                (file.name || 'business_license.jpg'),
-                            ossObjectKey: 'licenses/key-' + Date.now(),
-                            fileUrl: file.url,
-                            description: '营业执照'
-                        })
-                    } else {
-                        // 尝试其他可能的格式
-                        console.log('尝试其他格式解析附件:', file)
-                        attachments.push({
-                            fileName: 'default-license.jpg',
-                            fileType: 'image/jpeg',
-                            fileSize: 1024,
-                            filePath: 'licenses/default-license.jpg',
-                            ossObjectKey: 'licenses/key-' + Date.now(),
-                            fileUrl: 'https://example.com/default-license.jpg',
-                            description: '营业执照'
-                        })
-                    }
-                } else {
-                    // 设置默认图片，方便测试
-                    console.log('未找到有效附件，使用默认图片')
-                    attachments.push({
-                        fileName: 'default-license.jpg',
-                        fileType: 'image/jpeg',
-                        fileSize: 1024,
-                        filePath: 'licenses/default-license.jpg',
-                        ossObjectKey: 'licenses/key-' + Date.now(),
-                        fileUrl: 'https://example.com/default-license.jpg',
-                        description: '营业执照'
-                    })
-                }
-            } catch (error) {
-                console.error('附件处理错误:', error)
-                // 出错时使用默认图片避免整个表单提交失败
-                attachments.push({
-                    fileName: 'default-license.jpg',
-                    fileType: 'image/jpeg',
-                    fileSize: 1024,
-                    filePath: 'licenses/default-license.jpg',
-                    ossObjectKey: 'licenses/error-key-' + Date.now(),
-                    fileUrl: 'https://example.com/default-license.jpg',
-                    description: '营业执照'
-                })
-            }
-
-            console.log('处理后的附件数据:', attachments)
-
-            // 设置附件到公司信息中
-            const companyInfo = {
-                ...values.registrationDetails,
-                companyNameCN: values.registrationDetails?.companyName || '',
-                companyNameEN: values.companyNameEN || '',
-                businessLicenseNo: values.businessLicenseNo,
-                location: locationId, // 使用所选的位置ID
-                attachments: attachments
-            }
-
-            console.log('处理后的公司信息:', companyInfo)
-
             // 构建要提交的数据
             const formData: any = {
                 // 账户基本信息
@@ -550,39 +530,78 @@ export default function Page() {
                             role: Number(auth?.role) || 1,
                             value: auth?.value || ''
                         }))
-                    : [],
+                    : []
+            }
 
-                // 添加公司信息，确保所有字段格式正确
-                companyInfo: {
-                    companyNameCN:
-                        values.registrationDetails?.companyName || '',
+            // 如果文件已上传，准备公司信息和附件数据
+            if (fileList && fileList.length > 0) {
+                try {
+                    // 准备附件数据
+                    const attachmentRecords = fileList.map(file => {
+                        // 从上传结果中提取关键字段
+                        const ssoResponse = file.response || {};
+                        const fileName = ssoResponse.name || file.name || '';
+                        const fileUrl = ssoResponse.url || file.url || '';
+                        const fileSize = file.size || 0;
+                        const fileType = file.type || '';
+
+                        return {
+                            fileName,
+                            fileType,
+                            fileSize,
+                            filePath: `licenses/${fileName}`,
+                            ossObjectKey: fileName,
+                            fileUrl,
+                            description: '营业执照'
+                        };
+                    });
+
+                    // 设置公司信息，包含附件信息，但不再创建数据库记录
+                    formData.companyInfo = {
+                        companyNameCN: values.registrationDetails.companyName || '',
+                        companyNameEN: values.companyNameEN || '',
+                        businessLicenseNo: values.businessLicenseNo || '',
+                        location: locationId,
+
+                        // 仅当位置ID为1（中国大陆）时才填充这些字段
+                        ...(locationId === 1
+                            ? {
+                                legalRepName: values.registrationDetails?.legalRepName || '',
+                                idType: Number(values.registrationDetails?.idType) || 1,
+                                idNumber: values.registrationDetails?.idNumber || '',
+                                legalRepPhone: values.registrationDetails?.legalRepPhone || '',
+                                legalRepBankCard: values.registrationDetails?.legalRepBankCard || ''
+                            }
+                            : {}),
+
+                        // 设置附件信息
+                        attachments: attachmentRecords
+                    };
+                } catch (error) {
+                    console.error('准备附件数据失败:', error);
+                    message.error('准备附件数据失败，请稍后重试');
+                    setLoading(false);
+                    return;
+                }
+            } else {
+                // 没有文件上传，只设置基本公司信息
+                formData.companyInfo = {
+                    companyNameCN: values.registrationDetails?.companyName || '',
                     companyNameEN: values.companyNameEN || '',
                     businessLicenseNo: values.businessLicenseNo || '',
-                    location: locationId, // 使用所选的位置ID
+                    location: locationId,
 
                     // 仅当位置ID为1（中国大陆）时才填充这些字段
                     ...(locationId === 1
                         ? {
-                            legalRepName:
-                                values.registrationDetails?.legalRepName ||
-                                '',
-                            idType:
-                                Number(values.registrationDetails?.idType) ||
-                                1,
-                            idNumber:
-                                values.registrationDetails?.idNumber || '',
-                            legalRepPhone:
-                                values.registrationDetails?.legalRepPhone ||
-                                '',
-                            legalRepBankCard:
-                                values.registrationDetails
-                                    ?.legalRepBankCard || ''
+                            legalRepName: values.registrationDetails?.legalRepName || '',
+                            idType: Number(values.registrationDetails?.idType) || 1,
+                            idNumber: values.registrationDetails?.idNumber || '',
+                            legalRepPhone: values.registrationDetails?.legalRepPhone || '',
+                            legalRepBankCard: values.registrationDetails?.legalRepBankCard || ''
                         }
-                        : {}),
-
-                    // 设置附件
-                    attachments: attachments
-                }
+                        : {})
+                };
             }
 
             // 确保公司名称被正确设置
@@ -1421,13 +1440,13 @@ export default function Page() {
                                             <Upload
                                                 name="file"
                                                 accept="image/*,.pdf"
-                                                action="/api/upload"
                                                 headers={{
                                                     authorization:
                                                         'authorization-text'
                                                 }}
                                                 listType="picture"
                                                 fileList={fileList}
+                                                customRequest={customUpload}
                                                 onChange={({
                                                     fileList: newFileList
                                                 }) => {
@@ -1883,12 +1902,12 @@ export default function Page() {
                                         >
                                             重置
                                         </Button>
-                                        <Button
+                                        {/* <Button
                                             type="default"
                                             onClick={generateTestData}
                                         >
                                             填入测试数据
-                                        </Button>
+                                        </Button> */}
                                         <Button
                                             type="primary"
                                             onClick={() => {

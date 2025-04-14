@@ -26,6 +26,7 @@ export interface UploadResult {
 export class FileUploadUtil {
     private static ssoService: SSOService | null = null
     private static isInitialized = false
+    private static readonly STORAGE_KEY = 'sso_initialized_state'
 
     /**
      * 初始化SSO服务
@@ -37,20 +38,85 @@ export class FileUploadUtil {
         account: string = DEFAULT_SSO_ACCOUNT,
         password: string = DEFAULT_SSO_PASSWORD
     ): Promise<void> {
+        // 检查是否已经初始化
         if (this.isInitialized) {
+            console.log('SSO服务已初始化，无需重复初始化')
             return
         }
 
+        // 尝试从sessionStorage恢复状态
         try {
+            const storedState = sessionStorage.getItem(this.STORAGE_KEY)
+            if (storedState === 'true') {
+                console.log('从sessionStorage恢复SSO初始化状态')
+                this.isInitialized = true
+
+                // 即使从存储恢复了状态，仍然需要重新创建服务实例
+                this.ssoService = new SSOService()
+
+                // 尝试恢复Token和配置
+                try {
+                    await this.ssoService.getToken(account, password)
+                    await this.ssoService.getSSOConfig()
+                    console.log('成功恢复SSO服务状态')
+                    return
+                } catch (restoreError) {
+                    console.warn('恢复SSO状态失败，将重新初始化:', restoreError)
+                    this.isInitialized = false
+                    sessionStorage.removeItem(this.STORAGE_KEY)
+                }
+            }
+        } catch (storageError) {
+            console.warn('读取sessionStorage失败:', storageError)
+        }
+
+        // 正常初始化流程
+        try {
+            console.log('开始初始化SSO服务...')
             this.ssoService = new SSOService()
             await this.ssoService.getToken(account, password)
             await this.ssoService.getSSOConfig()
             this.isInitialized = true
+
+            // 保存初始化状态到sessionStorage
+            try {
+                sessionStorage.setItem(this.STORAGE_KEY, 'true')
+                console.log('SSO初始化状态已保存到sessionStorage')
+            } catch (storageError) {
+                console.warn('保存到sessionStorage失败:', storageError)
+            }
+
+            console.log('SSO服务初始化完成')
         } catch (error) {
             console.error('初始化SSO服务失败:', error)
+            this.isInitialized = false
+
+            // 清除可能存在的错误状态
+            try {
+                sessionStorage.removeItem(this.STORAGE_KEY)
+            } catch (e) {
+                /* 忽略清除错误 */
+            }
+
             throw new Error(
                 `初始化SSO服务失败: ${error instanceof Error ? error.message : '未知错误'}`
             )
+        }
+    }
+
+    /**
+     * 重置初始化状态
+     * 当出现问题需要强制重新初始化时使用
+     */
+    public static resetInitializationState(): void {
+        this.isInitialized = false
+        this.ssoService = null
+
+        try {
+            sessionStorage.removeItem(this.STORAGE_KEY)
+            console.log('SSO初始化状态已重置')
+        } catch (e) {
+            console.warn('清除sessionStorage状态失败:', e)
         }
     }
 
@@ -131,6 +197,31 @@ export class FileUploadUtil {
             this.uploadFile(file, type, customPath)
         )
         return await Promise.all(uploadPromises)
+    }
+
+    /**
+     * 格式化上传结果为Antd UploadFile格式
+     * @param files 上传结果
+     * @returns UploadFile格式的文件列表
+     */
+    public static formatToUploadFileList(files: UploadResult[] | any[]): any[] {
+        return files.map((file) => {
+            const fileUrl = file.fileUrl || file.url || file.response?.url
+            const fileName =
+                file.fileName ||
+                file.name ||
+                file.response?.fileName ||
+                'file.jpg'
+
+            return {
+                uid: fileUrl || `-${Date.now()}`,
+                name: fileName,
+                status: 'done',
+                url: fileUrl,
+                type: file.fileType || file.type,
+                size: file.fileSize || file.size
+            }
+        })
     }
 }
 

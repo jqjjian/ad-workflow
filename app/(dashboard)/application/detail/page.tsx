@@ -152,8 +152,8 @@ export default function WorkOrderDetail() {
             platform === 2
                 ? '/application/apply/google'
                 : platform === 5
-                  ? '/application/apply/tiktok'
-                  : '/application/apply/facebook'
+                    ? '/application/apply/tiktok'
+                    : '/application/apply/facebook'
         router.push(`${path}?taskId=${detail.taskId}`)
     }
 
@@ -165,8 +165,8 @@ export default function WorkOrderDetail() {
             platform === 2
                 ? '/application/apply/google'
                 : platform === 5
-                  ? '/application/apply/tiktok'
-                  : '/application/apply/facebook'
+                    ? '/application/apply/tiktok'
+                    : '/application/apply/facebook'
         router.push(`${path}?copy=true&taskId=${detail.taskId}`)
     }
 
@@ -372,8 +372,8 @@ export default function WorkOrderDetail() {
                                         detail.status === 20
                                             ? 'error'
                                             : detail.status === 40
-                                              ? 'error'
-                                              : undefined
+                                                ? 'error'
+                                                : undefined
                                 },
                                 {
                                     title: '申请完成',
@@ -420,8 +420,8 @@ export default function WorkOrderDetail() {
                                                         ? 'Google'
                                                         : detail.mediaPlatform ===
                                                             5
-                                                          ? 'TikTok'
-                                                          : 'Facebook'}
+                                                            ? 'TikTok'
+                                                            : 'Facebook'}
                                                 </Descriptions.Item>
                                                 <Descriptions.Item label="工单状态">
                                                     <Tag
@@ -440,17 +440,17 @@ export default function WorkOrderDetail() {
                                                 <Descriptions.Item label="创建时间">
                                                     {detail.createdTimestamp
                                                         ? new Date(
-                                                              Number(
-                                                                  detail.createdTimestamp
-                                                              ) * 1000
-                                                          ).toLocaleString(
-                                                              'zh-CN',
-                                                              {
-                                                                  hour12: false
-                                                              }
-                                                          )
+                                                            Number(
+                                                                detail.createdTimestamp
+                                                            ) * 1000
+                                                        ).toLocaleString(
+                                                            'zh-CN',
+                                                            {
+                                                                hour12: false
+                                                            }
+                                                        )
                                                         : detail.createdAt
-                                                          ? new Date(
+                                                            ? new Date(
                                                                 detail.createdAt
                                                             ).toLocaleString(
                                                                 'zh-CN',
@@ -458,34 +458,34 @@ export default function WorkOrderDetail() {
                                                                     hour12: false
                                                                 }
                                                             )
-                                                          : '-'}
+                                                            : '-'}
                                                 </Descriptions.Item>
                                                 <Descriptions.Item label="更新时间">
                                                     {detail.updatedAt
                                                         ? typeof detail.updatedAt ===
-                                                          'number'
+                                                            'number'
                                                             ? new Date(
-                                                                  detail.updatedAt <
-                                                                  10000000000
-                                                                      ? detail.updatedAt *
-                                                                        1000
-                                                                      : detail.updatedAt
-                                                              ).toLocaleString(
-                                                                  'zh-CN',
-                                                                  {
-                                                                      hour12: false
-                                                                  }
-                                                              )
+                                                                detail.updatedAt <
+                                                                    10000000000
+                                                                    ? detail.updatedAt *
+                                                                    1000
+                                                                    : detail.updatedAt
+                                                            ).toLocaleString(
+                                                                'zh-CN',
+                                                                {
+                                                                    hour12: false
+                                                                }
+                                                            )
                                                             : new Date(
-                                                                  Number(
-                                                                      detail.updatedAt
-                                                                  ) * 1000
-                                                              ).toLocaleString(
-                                                                  'zh-CN',
-                                                                  {
-                                                                      hour12: false
-                                                                  }
-                                                              )
+                                                                Number(
+                                                                    detail.updatedAt
+                                                                ) * 1000
+                                                            ).toLocaleString(
+                                                                'zh-CN',
+                                                                {
+                                                                    hour12: false
+                                                                }
+                                                            )
                                                         : '-'}
                                                 </Descriptions.Item>
                                                 {detail.feedback && (
@@ -517,8 +517,8 @@ export default function WorkOrderDetail() {
                                                 </Descriptions.Item>
                                                 <Descriptions.Item label="开户状态">
                                                     {detail &&
-                                                    detail.status &&
-                                                    statusMap[detail.status] ? (
+                                                        detail.status &&
+                                                        statusMap[detail.status] ? (
                                                         <Tag
                                                             color={
                                                                 statusMap[
@@ -587,31 +587,31 @@ export default function WorkOrderDetail() {
                                                 </Descriptions.Item>
                                                 {mediaAccountInfo.auths
                                                     ?.length > 0 && (
-                                                    <Descriptions.Item
-                                                        label="账户授权"
-                                                        span={3}
-                                                    >
-                                                        {mediaAccountInfo.auths.map(
-                                                            (
-                                                                auth: any,
-                                                                index: number
-                                                            ) => (
-                                                                <div
-                                                                    key={index}
-                                                                >
-                                                                    角色:{' '}
-                                                                    {roleMap[
-                                                                        auth
-                                                                            .role
-                                                                    ] ||
-                                                                        `未知(${auth.role})`}
-                                                                    , 邮箱:{' '}
-                                                                    {auth.value}
-                                                                </div>
-                                                            )
-                                                        )}
-                                                    </Descriptions.Item>
-                                                )}
+                                                        <Descriptions.Item
+                                                            label="账户授权"
+                                                            span={3}
+                                                        >
+                                                            {mediaAccountInfo.auths.map(
+                                                                (
+                                                                    auth: any,
+                                                                    index: number
+                                                                ) => (
+                                                                    <div
+                                                                        key={index}
+                                                                    >
+                                                                        角色:{' '}
+                                                                        {roleMap[
+                                                                            auth
+                                                                                .role
+                                                                        ] ||
+                                                                            `未知(${auth.role})`}
+                                                                        , 邮箱:{' '}
+                                                                        {auth.value}
+                                                                    </div>
+                                                                )
+                                                            )}
+                                                        </Descriptions.Item>
+                                                    )}
                                             </Descriptions>
                                         </Card>
                                     </>
@@ -665,11 +665,11 @@ export default function WorkOrderDetail() {
                                                     <Descriptions.Item label="证件类型">
                                                         {detail.company
                                                             .idType ===
-                                                        'ID_CARD'
+                                                            'ID_CARD'
                                                             ? '身份证'
                                                             : detail.company
-                                                                  .idType ||
-                                                              '-'}
+                                                                .idType ||
+                                                            '-'}
                                                     </Descriptions.Item>
                                                     <Descriptions.Item label="证件号码">
                                                         {detail.company
@@ -718,7 +718,7 @@ export default function WorkOrderDetail() {
                                                                 const hasValidUrl =
                                                                     attachment.fileUrl &&
                                                                     typeof attachment.fileUrl ===
-                                                                        'string' &&
+                                                                    'string' &&
                                                                     (attachment.fileUrl.startsWith(
                                                                         'http://'
                                                                     ) ||
@@ -740,7 +740,7 @@ export default function WorkOrderDetail() {
                                                                 const safeFileSize =
                                                                     typeof attachment.fileSize ===
                                                                         'number' &&
-                                                                    attachment.fileSize >
+                                                                        attachment.fileSize >
                                                                         0
                                                                         ? attachment.fileSize
                                                                         : 0
@@ -808,13 +808,14 @@ export default function WorkOrderDetail() {
                                                                                                 onError={(
                                                                                                     e
                                                                                                 ) => {
+                                                                                                    console.log('图片加载失败:', e)
                                                                                                     // 图片加载失败时显示替代内容
-                                                                                                    const target =
-                                                                                                        e.target as HTMLImageElement
-                                                                                                    target.onerror =
-                                                                                                        null // 防止循环错误
-                                                                                                    target.src =
-                                                                                                        defaultImgUrl
+                                                                                                    // const target =
+                                                                                                    //     e.target as HTMLImageElement
+                                                                                                    // target.onerror =
+                                                                                                    //     null // 防止循环错误
+                                                                                                    // target.src =
+                                                                                                    //     defaultImgUrl
                                                                                                     // 替代方案：可以完全移除并显示文本
                                                                                                     // target.style.display = 'none';
                                                                                                     // target.parentElement!.innerHTML = '图片加载失败';
@@ -872,7 +873,7 @@ export default function WorkOrderDetail() {
                                                                                     </Text>
                                                                                     <Text type="secondary">
                                                                                         {safeFileSize >
-                                                                                        0
+                                                                                            0
                                                                                             ? `${Math.round(safeFileSize / 1024)} KB`
                                                                                             : '大小未知'}
                                                                                     </Text>

@@ -68,108 +68,8 @@ type AccountSearchForm = {
     pageSize?: number
 }
 
-// 测试数据
-const mockData = {
-    mediaAccounts: [
-        {
-            uniqueId: generateUniqueId(),
-            mediaAccountId: '74596062746538148011',
-            mediaAccountName: 'yaochuhai',
-            mediaPlatform: 5,
-            companyName: '要出海（广州）科技管理有限公司',
-            status: 2,
-            balance: '0.00',
-            deductibleAmount: null,
-            currency: 'USD',
-            grantBalance: '0',
-            validGrantBalance: '0.00',
-            minDailyBudget: null,
-            disableReason: null,
-            consumeAmount: '120.50',
-            conversionAmount: '45',
-            conversionRate: '37.5'
-        },
-        {
-            uniqueId: generateUniqueId(),
-            mediaAccountId: '74596062746538148011',
-            mediaAccountName: 'globalreach',
-            mediaPlatform: 1,
-            companyName: '要出海（广州）科技管理有限公司',
-            status: 2,
-            balance: '1500.00',
-            deductibleAmount: null,
-            currency: 'USD',
-            grantBalance: '200',
-            validGrantBalance: '200.00',
-            minDailyBudget: null,
-            disableReason: null,
-            consumeAmount: '750.25',
-            conversionAmount: '180',
-            conversionRate: '24.0'
-        },
-        {
-            uniqueId: generateUniqueId(),
-            mediaAccountId: '74596062746538148011',
-            mediaAccountName: 'adstechasia',
-            mediaPlatform: 2,
-            companyName: '广州科技有限公司',
-            status: 1,
-            balance: '2500.00',
-            deductibleAmount: null,
-            currency: 'USD',
-            grantBalance: '500',
-            validGrantBalance: '500.00',
-            minDailyBudget: null,
-            disableReason: null,
-            consumeAmount: '0.00',
-            conversionAmount: '0',
-            conversionRate: '0'
-        },
-        {
-            uniqueId: generateUniqueId(),
-            mediaAccountId: '74596062746538148011',
-            mediaAccountName: 'marketexpand',
-            mediaPlatform: 3,
-            companyName: '广州科技有限公司',
-            status: 3,
-            balance: '0.00',
-            deductibleAmount: null,
-            currency: 'USD',
-            grantBalance: '0',
-            validGrantBalance: '0.00',
-            minDailyBudget: null,
-            disableReason: '违反平台规则',
-            consumeAmount: '3200.75',
-            conversionAmount: '850',
-            conversionRate: '26.5'
-        },
-        {
-            uniqueId: generateUniqueId(),
-            mediaAccountId: '74596062746538148011',
-            mediaAccountName: 'digitalpromo',
-            mediaPlatform: 5,
-            companyName: '深圳数字推广有限公司',
-            status: 4,
-            balance: '0.00',
-            deductibleAmount: null,
-            currency: 'USD',
-            grantBalance: '0',
-            validGrantBalance: '0.00',
-            minDailyBudget: null,
-            disableReason: '账户到期',
-            consumeAmount: '1850.50',
-            conversionAmount: '420',
-            conversionRate: '22.7'
-        }
-    ],
-    pageSize: 10,
-    total: 5,
-    pages: 1,
-    pageNumber: 1
-}
-
 // 是否使用测试数据
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 export default function AccountManagePage() {
     const [form] = Form.useForm<AccountSearchForm>()
@@ -372,85 +272,13 @@ export default function AccountManagePage() {
         setLoading(true)
         try {
             if (USE_MOCK_DATA) {
-                // 使用模拟数据进行过滤
+                // 使用模拟数据部分已被禁用，返回空数据
                 setTimeout(() => {
-                    let filteredData = [...mockData.mediaAccounts]
-
-                    // 根据查询条件进行过滤
-                    if (values.mediaAccountId) {
-                        filteredData = filteredData.filter((account) =>
-                            account.mediaAccountId.includes(
-                                values.mediaAccountId || ''
-                            )
-                        )
-                    }
-
-                    if (values.mediaAccountName) {
-                        filteredData = filteredData.filter((account) =>
-                            account.mediaAccountName.includes(
-                                values.mediaAccountName || ''
-                            )
-                        )
-                    }
-
-                    if (values.mediaPlatform) {
-                        filteredData = filteredData.filter(
-                            (account) =>
-                                account.mediaPlatform === values.mediaPlatform
-                        )
-                    }
-
-                    if (values.companyName) {
-                        filteredData = filteredData.filter((account) =>
-                            account.companyName.includes(
-                                values.companyName || ''
-                            )
-                        )
-                    }
-
-                    if (values.status) {
-                        filteredData = filteredData.filter(
-                            (account) => account.status === values.status
-                        )
-                    }
-
-                    // 处理分页
-                    const pageSize = values.pageSize || 10
-                    const pageNumber = values.pageNumber || 1
-                    const startIndex = (pageNumber - 1) * pageSize
-                    const endIndex = Math.min(
-                        startIndex + pageSize,
-                        filteredData.length
-                    )
-                    const paginatedData = filteredData.slice(
-                        startIndex,
-                        endIndex
-                    )
-
-                    // 数据格式化处理
-                    const processedData = paginatedData.map((account) => ({
-                        ...account,
-                        balance: parseFloat(account.balance?.toString() || '0'),
-                        grantBalance: parseFloat(
-                            account.grantBalance?.toString() || '0'
-                        ),
-                        consumeAmount: parseFloat(
-                            account.consumeAmount?.toString() || '0'
-                        ),
-                        conversionAmount: parseFloat(
-                            account.conversionAmount?.toString() || '0'
-                        ),
-                        conversionRate: account.conversionRate
-                            ? parseFloat(account.conversionRate.toString())
-                            : 0
-                    })) as EnhancedMediaAccount[]
-
-                    setData(processedData)
-                    setTotal(filteredData.length)
-                    setLoading(false)
-                }, 500) // 模拟网络延迟
-
-                return
+                    setData([]);
+                    setTotal(0);
+                    setLoading(false);
+                }, 500);
+                return;
             }
 
             // 处理查询参数
@@ -461,8 +289,7 @@ export default function AccountManagePage() {
                 companyName: values.companyName,
                 status: values.status || 2, // 默认查询"生效中"的记录
                 pageNumber: values.pageNumber || 1,
-                pageSize: values.pageSize || 10,
-                createTimeRange: values.createTimeRange
+                pageSize: values.pageSize || 10
             }
 
             // 处理日期范围
@@ -521,9 +348,7 @@ export default function AccountManagePage() {
             setData([])
             setTotal(0)
         } finally {
-            if (!USE_MOCK_DATA) {
-                setLoading(false)
-            }
+            setLoading(false)
         }
     }
 
@@ -1129,7 +954,7 @@ export default function AccountManagePage() {
                                         }
                                         return (
                                             platforms[
-                                                currentAccount.mediaPlatform as keyof typeof platforms
+                                            currentAccount.mediaPlatform as keyof typeof platforms
                                             ] || '未知'
                                         )
                                     })()}
@@ -1244,7 +1069,7 @@ export default function AccountManagePage() {
                                         }
                                         return (
                                             platformMap[
-                                                currentAccount.mediaPlatform as keyof typeof platformMap
+                                            currentAccount.mediaPlatform as keyof typeof platformMap
                                             ] || '未知'
                                         )
                                     })()}
@@ -1347,7 +1172,7 @@ export default function AccountManagePage() {
                                         }
                                         return (
                                             platformMap[
-                                                currentAccount.mediaPlatform as keyof typeof platformMap
+                                            currentAccount.mediaPlatform as keyof typeof platformMap
                                             ] || '未知'
                                         )
                                     })()}
@@ -1526,8 +1351,8 @@ export default function AccountManagePage() {
                                         }
                                         return (
                                             platformMap[
-                                                bindingModalData.record
-                                                    .mediaPlatform as keyof typeof platformMap
+                                            bindingModalData.record
+                                                .mediaPlatform as keyof typeof platformMap
                                             ] || '未知'
                                         )
                                     })()}
@@ -1716,7 +1541,7 @@ export default function AccountManagePage() {
                                                         </Select.Option>
                                                     </>
                                                 ) : bindingModalData.record
-                                                      ?.mediaPlatform === 2 ? (
+                                                    ?.mediaPlatform === 2 ? (
                                                     <Select.Option value={10}>
                                                         标准
                                                     </Select.Option>

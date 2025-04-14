@@ -10,7 +10,11 @@ const nextConfig = {
         // 添加 RSC 编译缓存配置（提升构建速度）
         incrementalPackageCache: true,
         // 禁用 barrel optimizations
-        optimizePackageImports: []
+        optimizePackageImports: [],
+        serverActions: {
+            allowedOrigins: ["myad.shopwis.cn", "localhost", "127.0.0.1", '*'],
+            allowedForwardedHosts: ["myad.shopwis.cn", "localhost", "127.0.0.1", '*']
+        },
     },
 
     // 添加打包优化配置
@@ -19,7 +23,7 @@ const nextConfig = {
 
     // 确保环境变量在构建时被正确处理
     env: {
-        OPEN_API_URL: process.env.OPEN_API_URL || 'https://test-ua-gw.tec-develop.cn/uni-agency',
+        OPEN_API_URL: process.env.OPEN_API_URL || 'https://business.uniagency.net/uni-agency',
         OPEN_API_URL_TEST: process.env.OPEN_API_URL_TEST || 'https://test-ua-gw.tec-develop.cn/uni-agency',
         ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET || 'ad776656d49f4adb840ef6187115fb8b',
         ACCESS_TOKEN_SECRET_TEST: process.env.ACCESS_TOKEN_SECRET_TEST || 'ad776656d49f4adb840ef6187115fb8b'

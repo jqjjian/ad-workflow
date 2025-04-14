@@ -16,58 +16,40 @@ export default function UserAvatar() {
 
     const confirmLogout = async () => {
         try {
-            setIsLoggingOut(true)
-            // 清除所有导致重定向问题的会话存储
-            sessionStorage.removeItem('justLoggedIn')
-            sessionStorage.removeItem('redirectSource')
-            sessionStorage.removeItem('lastRedirectTime')
-            localStorage.removeItem('justLoggedIn')
+            setIsLoggingOut(true);
 
-            // 清除加载状态相关的标记
-            sessionStorage.removeItem('loadingState')
+            // 获取当前主机信息
+            const currentHost = window.location.host;
+            const protocol = window.location.protocol;
 
-            // 设置登出标记，让AuthCheck知道用户刚刚登出
-            // 同时使用cookie和sessionStorage标记退出状态，确保服务器也能识别
-            sessionStorage.setItem('justLoggedOut', 'true')
+            // 设置登出标记
+            document.cookie = "justLoggedOut=true; path=/; max-age=30";
 
-            // 添加cookie，确保服务器能识别退出状态
-            document.cookie = `justLoggedOut=true; path=/; max-age=3600`
+            // 强制清除所有认证相关cookie
+            document.cookie = "next-auth.csrf-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+            document.cookie = "next-auth.session-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+            document.cookie = "authjs.session-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+            document.cookie = "next-auth.callback-url=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+            document.cookie = "userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
 
-            // 强制清除所有认证相关的cookie
-            document.cookie =
-                'next-auth.session-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
-            document.cookie =
-                'next-auth.csrf-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
-            document.cookie =
-                'next-auth.callback-url=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
-            document.cookie =
-                'userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            console.log("正在登出系统...");
 
-            console.log(
-                '准备退出登录，已设置justLoggedOut标记和清除所有认证cookie'
-            )
-
-            // 使用强制选项确保完全登出，并强制跳转到登录页面
+            // 直接通过signOut函数退出并重定向
             await signOut({
-                callbackUrl: '/login',
+                callbackUrl: `${protocol}//${currentHost}/login`,
                 redirect: true
-            })
+            });
 
-            // 确保重定向已完成，额外检查并强制重定向
+            // 如果signOut的重定向失败，则使用备用方法
             setTimeout(() => {
-                if (window.location.pathname !== '/login') {
-                    console.log('检测到退出后未正确重定向，强制跳转到登录页')
-                    window.location.href = '/login'
-                }
-            }, 500)
+                window.location.href = `${protocol}//${currentHost}/login`;
+            }, 1000);
         } catch (error) {
-            console.error('登出失败:', error)
-            // 登出失败也重置标记
-            sessionStorage.removeItem('justLoggedOut')
-            setIsLoggingOut(false)
-
-            // 失败时也尝试强制重定向
-            window.location.href = '/login'
+            console.error('登出失败:', error);
+            // 兜底方案
+            window.location.href = '/login';
+        } finally {
+            setIsLoggingOut(false);
         }
     }
 

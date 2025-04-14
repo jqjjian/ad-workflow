@@ -6,7 +6,13 @@
 export const publicRoutes = [
     '/auth/new-verification',
     '/auth/error',
-    '/error/redirect-loop'
+    '/error/redirect-loop',
+    '/api/health', // 健康检查API
+    '/_next/static', // 静态资源路径
+    '/_next/image', // 图片资源路径
+    '/favicon.ico', // favicon
+    '/api/auth/csrf', // CSRF令牌API
+    '/api/auth/clear-session' // 清理会话API
 ]
 
 /**

@@ -1,6 +1,7 @@
 'use server'
 import { signIn } from '@/auth'
 import { getUserbyUsername } from '@/data/user'
+import { db } from '@/lib/db'
 // import { sendVerificationEmail } from '@/lib/mail'
 // import { generateVerificationToken } from '@/lib/tokens'
 import { DEFAULT_LOGIN_REDIRECT } from '@/routes'
@@ -48,6 +49,27 @@ export const login = async (values: z.infer<typeof LoginSchema>) => {
             redirect: false
         })
         console.log('登录响应:', res)
+
+        // 更新用户最后登录时间和登录次数
+        if (res?.ok) {
+            try {
+                await db.tecdo_users.update({
+                    where: { id: existingUser.id },
+                    data: {
+                        lastLoginAt: new Date(),
+                        loginCount: {
+                            increment: 1
+                        },
+                        updatedAt: new Date()
+                    }
+                })
+                console.log('已更新用户登录信息')
+            } catch (updateError) {
+                console.error('更新用户登录信息失败:', updateError)
+                // 不影响登录流程，仅记录错误
+            }
+        }
+
         return {
             success: '登录成功',
             user: {

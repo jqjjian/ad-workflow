@@ -92,6 +92,10 @@ export interface ThirdPartyMediaAccountApplication {
     }[]
     createdTimestamp: number
     updatedAt: number
+    // 添加可选用户信息字段，便于未来API升级
+    createdBy?: string
+    userId?: string
+    metadata?: any
 }
 
 // 合并后的媒体账户申请数据
@@ -100,6 +104,9 @@ export interface MergedMediaAccountApplication
     // 可以添加本地数据库特有的字段
     internalStatus?: string
     workOrderId?: string // 添加系统工单ID字段
+    createdBy?: string // 创建者/申请人
+    userId?: string // 用户ID
+    metadata?: any // 存储完整的元数据
 }
 
 // 添加 ApplyRecordData 接口定义
@@ -498,6 +505,15 @@ export async function getAccountApplicationRecords(
                 `处理工单 ${order.taskId}: 内部状态=${order.status}, 第三方状态=${thirdPartyData?.status || '未找到'}, taskId类型=${typeof order.taskId}`
             )
 
+            // 添加日志，查看当前记录的metadata中的用户信息
+            console.log(
+                `工单${order.taskId}的metadata: `,
+                JSON.stringify(order.metadata, null, 2)
+            )
+            console.log(
+                `工单${order.taskId}的用户信息: createdBy=${metadata.createdBy}, creator=${metadata.creator}, applicant=${metadata.applicant}, userName=${metadata.userName}`
+            )
+
             // 构建基础应用记录对象
             const baseApplication: MergedMediaAccountApplication = {
                 taskNumber: order.taskNumber || '',
@@ -508,6 +524,16 @@ export async function getAccountApplicationRecords(
                 // 修改这里：不再尝试映射内部状态，而是使用一个特殊值表示未知第三方状态
                 status: thirdPartyData?.status || -1, // 使用-1表示未知状态
                 feedback: thirdPartyData?.feedback || metadata.feedback || '',
+                // 添加用户信息字段
+                createdBy:
+                    metadata.createdBy ||
+                    metadata.creator ||
+                    metadata.applicant ||
+                    metadata.userName ||
+                    '',
+                userId: order.userId || '',
+                // 保留完整metadata以便前端可以提取更多信息
+                metadata: order.metadata || {},
                 company: {
                     name: companyInfo.companyNameCN || '',
                     companyNameCN: companyInfo.companyNameCN || '',
@@ -555,6 +581,17 @@ export async function getAccountApplicationRecords(
                     ...thirdPartyData,
                     workOrderId: order.id || '', // 添加系统工单ID
                     internalStatus: order.status as string,
+                    // 保留用户信息，优先使用本地数据
+                    createdBy:
+                        metadata.createdBy ||
+                        metadata.creator ||
+                        metadata.applicant ||
+                        metadata.userName ||
+                        thirdPartyData.createdBy ||
+                        '',
+                    userId: order.userId || thirdPartyData.userId || '',
+                    // 保留metadata以便前端提取更多信息
+                    metadata: order.metadata || thirdPartyData.metadata || {},
                     // 如果第三方数据中company为null，则使用本地数据
                     company: thirdPartyData.company || baseApplication.company,
                     // 确保mediaAccountInfos有效

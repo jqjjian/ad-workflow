@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清除会话 - 解决登录问题</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        .card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background-color: #4a6cf7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .success {
+            color: #198754;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>会话清理工具</h1>
+        <p>如果您在登录时遇到问题或看到空白页面，通常是由于会话信息不一致导致的。这个工具可以帮您清除浏览器中保存的会话信息，解决该问题。</p>
+        
+        <div id="status"></div>
+        
+        <div style="margin-top: 20px;">
+            <button id="clearBtn" class="btn">清除会话数据</button>
+            <button id="clearAllBtn" class="btn btn-danger">清除所有Cookie</button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button id="goLoginBtn" class="btn">前往登录页</button>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>问题解释</h2>
+        <p>服务器更新后，新系统可能无法识别旧的会话信息，导致"no matching decryption secret"错误。清除浏览器Cookie可以解决该问题。</p>
+    </div>
+    
+    <script>
+        // 页面加载时自动清理
+        window.addEventListener('DOMContentLoaded', async () => {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<p>正在自动清理会话数据...</p>`;
+            
+            try {
+                const response = await fetch('/api/auth/clear-session');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `<p class="success">✓ 会话数据已自动清除！可以继续登录。</p>`;
+                } else {
+                    statusDiv.innerHTML = `<p class="error">× 自动清除失败: ${data.message || '未知错误'}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="error">× 自动清理失败: ${error.message}</p>`;
+            }
+        });
+        
+        document.getElementById('clearBtn').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('status');
+            try {
+                const response = await fetch('/api/auth/clear-session');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `<p class="success">✓ 会话数据已清除！请尝试重新登录。</p>`;
+                } else {
+                    statusDiv.innerHTML = `<p class="error">× 清除失败: ${data.message || '未知错误'}</p>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="error">× 操作失败: ${error.message}</p>`;
+            }
+        });
+        
+        document.getElementById('clearAllBtn').addEventListener('click', () => {
+            const statusDiv = document.getElementById('status');
+            try {
+                // 获取所有cookie
+                const cookies = document.cookie.split(';');
+                
+                // 删除每个cookie
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i];
+                    const eqPos = cookie.indexOf('=');
+                    const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+                    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+                }
+                
+                statusDiv.innerHTML = `<p class="success">✓ 所有Cookie已清除！请尝试重新登录。</p>`;
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="error">× 清除失败: ${error.message}</p>`;
+            }
+        });
+        
+        document.getElementById('goLoginBtn').addEventListener('click', () => {
+            window.location.href = '/login';
+        });
+    </script>
+</body>
+</html> 

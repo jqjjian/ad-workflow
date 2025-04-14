@@ -19,29 +19,35 @@ export default auth((req) => {
     const { nextUrl } = req
     const isLoggedIn = !!req.auth
 
-    // 中间件最开始添加
-    console.log(
-        '所有请求cookies:',
-        Object.fromEntries(req.cookies.getAll().map((c) => [c.name, c.value]))
-    )
-    console.log('AUTH对象完整内容:', JSON.stringify(req.auth, null, 2))
+    // 完善日志，帮助调试
+    try {
+        console.log('中间件环境信息:', {
+            nodeEnv: process.env.NODE_ENV || 'unknown',
+            nextAuthUrl: process.env.NEXTAUTH_URL || 'not-set',
+            host: req.headers.get('host') || 'unknown',
+            url: nextUrl.toString(),
+            isLoggedIn
+        })
 
-    // 添加详细日志
-    console.log('中间件处理请求:', {
-        url: nextUrl.pathname,
-        isLoggedIn,
-        sessionData: req.auth ? '有效' : '无效',
-        headers: Object.fromEntries(req.headers)
-    })
+        console.log(
+            '请求cookies:',
+            Object.fromEntries(
+                req.cookies.getAll().map((c) => [c.name, c.value])
+            )
+        )
+        console.log('认证状态:', JSON.stringify(req.auth, null, 2))
+    } catch (error) {
+        console.error('日志记录错误:', error)
+    }
 
-    // 检测是否可能存在重定向循环
+    // 检测重定向循环
     const redirectCount = parseInt(req.headers.get('x-redirect-count') || '0')
     if (redirectCount > 3) {
-        console.error('检测到可能的重定向循环，返回400错误')
+        console.error('检测到循环重定向，中止')
         return new NextResponse('检测到循环重定向', { status: 400 })
     }
 
-    // 添加缓存控制头
+    // 为所有响应添加缓存控制头
     const response = NextResponse.next()
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     response.headers.set('Pragma', 'no-cache')
@@ -49,7 +55,14 @@ export default auth((req) => {
 
     // 设置公共函数用于准备重定向响应
     const prepareRedirect = (url: string) => {
-        const redirectResponse = NextResponse.redirect(new URL(url, nextUrl))
+        // 直接使用原始请求的主机和协议
+        const host = req.headers.get('host') || '47.113.103.64:3000'
+        const protocol = req.headers.get('x-forwarded-proto') || 'http'
+
+        const fullUrl = `${protocol}://${host}${url.startsWith('/') ? url : `/${url}`}`
+        console.log('准备重定向到:', fullUrl)
+
+        const redirectResponse = NextResponse.redirect(fullUrl)
         redirectResponse.headers.set(
             'Cache-Control',
             'no-store, no-cache, must-revalidate'
@@ -58,15 +71,16 @@ export default auth((req) => {
             'x-redirect-count',
             (redirectCount + 1).toString()
         )
+
         return redirectResponse
     }
 
-    // 1. API 认证路由直接放行
+    // 1. API路由处理
     if (nextUrl.pathname.startsWith(apiAuthPrefix)) {
         return response
     }
 
-    // 2. 如果是认证相关路由（登录、注册等）
+    // 2. 认证路由处理
     if (authRoutes.includes(nextUrl.pathname)) {
         if (isLoggedIn) {
             return prepareRedirect(DEFAULT_LOGIN_REDIRECT)
@@ -74,95 +88,80 @@ export default auth((req) => {
         return response
     }
 
-    // 3. 如果是公开路由
+    // 3. 公开路由处理
     if (publicRoutes.includes(nextUrl.pathname)) {
         return response
     }
 
-    // 处理根路径 - App Router模式下无页面
+    // 4. 根路径重定向处理
     if (nextUrl.pathname === '/') {
+        if (isLoggedIn) {
+            return prepareRedirect(DEFAULT_LOGIN_REDIRECT)
+        }
         return prepareRedirect('/login')
     }
 
     // 检查是否刚退出登录（通过cookie）- 确保这个检查在未登录检查之前
     const justLoggedOut = req.cookies.get('justLoggedOut')?.value === 'true'
     if (justLoggedOut) {
-        console.log('服务器端检测到退出登录状态，强制重定向到登录页')
-        // 创建重定向响应
-        const redirectResponse = NextResponse.redirect(
-            new URL('/login', nextUrl)
-        )
-        // 清除justLoggedOut cookie
+        console.log('检测到退出登录状态，重定向到登录页面并清除cookie')
+
+        // 使用prepareRedirect函数构建URL
+        const redirectResponse = prepareRedirect('/login')
+
+        // 重要：清除justLoggedOut cookie，防止重定向循环
         redirectResponse.cookies.delete('justLoggedOut')
-        // 清除认证相关cookie
-        redirectResponse.cookies.delete('next-auth.session-token')
-        redirectResponse.cookies.delete('next-auth.csrf-token')
-        redirectResponse.cookies.delete('next-auth.callback-url')
+
+        // 同时清除其他可能导致问题的cookie
         redirectResponse.cookies.delete('userRole')
+        // 可能需要清除的其他cookie...
+
         return redirectResponse
     }
 
-    // 4. 未登录用户重定向到登录页
-    if (!isLoggedIn) {
-        console.log('未登录用户，重定向到登录页')
-        const returnUrl = encodeURIComponent(nextUrl.pathname)
-        return prepareRedirect(`/login?returnUrl=${returnUrl}`)
+    // 禁用旧会话检测，避免误判导致循环
+    /*
+    const isLegacySession = req.cookies
+        .get('next-auth.session-token')
+        ?.value?.startsWith('eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2Q0JDL')
+    if (isLegacySession) {
+        console.log('检测到旧会话格式，强制清除...')
+        return prepareRedirect('/api/auth/clear-session?then=/login')
+    }
+    */
+
+    // 仅在特殊情况下才清除会话
+    const hasSessionTokenButNoAuth =
+        !!req.cookies.get('next-auth.session-token')?.value &&
+        !req.auth &&
+        redirectCount === 0 // 严格限制只重定向一次
+
+    if (hasSessionTokenButNoAuth) {
+        console.log('检测到会话token但用户未认证，尝试清除会话...')
+        return prepareRedirect('/api/auth/clear-session?then=/login')
     }
 
-    // 5. 管理员路由权限判断 - 确保这个检查在判断用户已登录之后
-    console.log('已登录用户，检查是否管理员路由:', {
-        path: nextUrl.pathname,
-        adminRoutes,
-        isMatched: adminRoutes.some((route) =>
-            nextUrl.pathname.startsWith(route)
-        )
-    })
-
-    // 使用前缀匹配而不是精确匹配
+    // 8. 管理员路径权限控制
     if (adminRoutes.some((route) => nextUrl.pathname.startsWith(route))) {
-        console.log('触发管理员权限检查:', nextUrl.pathname)
-
-        // 访问管理员路由，完整认证信息
-        console.log(
-            '认证信息:',
-            JSON.stringify(
-                {
-                    auth: req.auth,
-                    role: req.auth?.user?.role
-                },
-                null,
-                2
-            )
-        )
+        console.log('检查管理员权限:', nextUrl.pathname)
 
         const role = req.auth?.user?.role
         const sessionRole = req.cookies.get('userRole')?.value
 
+        // 更严格的角色检查
         const isAdmin =
-            role === 'ADMIN' ||
-            role === 'SUPER_ADMIN' ||
-            String(role).toUpperCase() === 'ADMIN' ||
-            String(role).toUpperCase() === 'SUPER_ADMIN' ||
-            sessionRole === 'ADMIN' ||
-            sessionRole === 'SUPER_ADMIN'
+            ['ADMIN', 'SUPER_ADMIN'].includes(role?.toUpperCase() || '') ||
+            ['ADMIN', 'SUPER_ADMIN'].includes(sessionRole?.toUpperCase() || '')
 
-        console.log('角色检查结果:', { role, sessionRole, isAdmin })
+        console.log('角色检查:', { role, sessionRole, isAdmin })
 
         if (!isAdmin) {
-            console.log('拒绝访问管理员路由，重定向到dashboard')
+            console.log('用户无管理员权限，重定向')
             return prepareRedirect('/application/apply')
         }
     }
 
-    // 特殊处理会话请求
-    if (nextUrl.pathname === '/api/auth/session') {
-        console.log('处理会话请求:', {
-            cookies: req.cookies,
-            headers: Object.fromEntries(req.headers)
-        })
-    }
-
-    // 其他情况放行
+    // 放行其他请求
     return response
 })
 

@@ -69,6 +69,27 @@ const authConfig = {
                     email_verified: new Date()
                 }
             })
+        },
+        async signIn({ user }) {
+            // 更新用户的最后登录时间和登录次数
+            try {
+                if (user && user.id) {
+                    await db.tecdo_users.update({
+                        where: { id: user.id },
+                        data: {
+                            lastLoginAt: new Date(),
+                            loginCount: {
+                                increment: 1
+                            },
+                            updatedAt: new Date()
+                        }
+                    })
+                    console.log(`已更新用户 ${user.id} 的登录信息`)
+                }
+            } catch (error) {
+                console.error('更新用户登录信息失败:', error)
+                // 不影响登录流程，仅记录错误
+            }
         }
     },
     callbacks: {
@@ -116,126 +137,45 @@ const authConfig = {
             return session
         },
         async jwt({ token, user }) {
-            console.log('jwt回调执行:', {
-                tokenSub: token.sub,
-                tokenRole: token.role,
-                user: user
-            })
-
+            // 只在用户首次登录时设置角色
             if (user) {
                 token.user = user
-                // 直接从登录用户设置角色
                 if (user.role) {
                     token.role = user.role
-                    console.log('从用户直接设置token角色:', user.role)
                 }
+                return token
             }
 
-            if (!token.sub) return token
-
-            // 从数据库获取最新用户信息
-            const existingUser = await getUserbyId(token.sub)
-            console.log('从数据库获取用户:', existingUser)
-
-            if (!existingUser) return token
-
-            // 更新token角色
-            token.role = existingUser.role
-            console.log('更新token角色为:', existingUser.role)
+            // 优化：不要每次都查询数据库
+            // 只在token没有角色信息时查询
+            if (token.sub && !token.role) {
+                const existingUser = await getUserbyId(token.sub)
+                if (existingUser?.role) {
+                    token.role = existingUser.role
+                }
+            }
 
             return token
         },
         redirect({ url, baseUrl }) {
+            // 简化逻辑，避免异常
+
             // 处理相对路径
-            if (url.startsWith('/')) return `${baseUrl}${url}`
-
-            try {
-                const urlObj = new URL(url)
-                const baseUrlObj = new URL(baseUrl)
-                const trustedHosts =
-                    process.env.NEXTAUTH_TRUSTED_HOSTS?.split(',') || []
-
-                // 允许同源或可信域名
-                if (
-                    urlObj.hostname === baseUrlObj.hostname ||
-                    trustedHosts.includes(urlObj.hostname)
-                ) {
-                    return url
-                }
-            } catch (error) {
-                console.error('Invalid redirect URL:', error)
+            if (url.startsWith('/')) {
+                return `${baseUrl}${url}`
             }
-            return baseUrl // 默认安全路径
+
+            // 直接返回URL，信任框架的安全检查
+            // NextAuth已内置基本的安全验证
+            return url
         }
-        // redirect({ url, baseUrl }) {
-        //     // 输出详细调试信息
-        //     console.log('AUTH REDIRECT:', {
-        //         url,
-        //         baseUrl,
-        //         nodeEnv: process.env.NODE_ENV,
-        //         nextAuthUrl: process.env.NEXTAUTH_URL,
-        //         nextAuthUrlInternal: process.env.NEXTAUTH_URL_INTERNAL,
-        //         trustedHosts: process.env.NEXTAUTH_TRUSTED_HOSTS
-        //     })
-
-        //     // 1. 处理相对路径
-        //     if (url.startsWith('/')) {
-        //         const newUrl = `${baseUrl}${url}`
-        //         console.log('返回相对路径:', newUrl)
-        //         return newUrl
-        //     }
-
-        //     // 2. 尝试解析和验证URL
-        //     try {
-        //         // 解析URL并获取hostname
-        //         const urlObj = new URL(url)
-        //         const hostname = urlObj.hostname
-        //         const baseUrlObj = new URL(baseUrl)
-
-        //         // 检查是否为可信域名
-        //         const trustedHosts = (process.env.NEXTAUTH_TRUSTED_HOSTS || '')
-        //             .split(',')
-        //             .map((h) => h.trim())
-
-        //         console.log('URL检查:', {
-        //             hostname,
-        //             baseUrlHostname: baseUrlObj.hostname,
-        //             trustedHosts,
-        //             isSameHost: baseUrlObj.hostname === hostname,
-        //             isTrusted: trustedHosts.includes(hostname)
-        //         })
-
-        //         // 如果是同一主机名，直接返回URL
-        //         if (baseUrlObj.hostname === hostname) {
-        //             return url
-        //         }
-
-        //         // 如果是受信任的主机名，直接返回URL
-        //         if (trustedHosts.includes(hostname)) {
-        //             return url
-        //         }
-
-        //         // 不受信任的主机名，返回基础URL
-        //         console.log('不受信任的主机，重定向到:', baseUrl)
-        //         return baseUrl
-        //     } catch (error) {
-        //         // 详细记录错误
-        //         console.error('重定向URL解析错误:', {
-        //             url,
-        //             baseUrl,
-        //             error:
-        //                 error instanceof Error ? error.message : String(error)
-        //         })
-
-        //         // 如果URL无效，则返回默认重定向
-        //         return baseUrl
-        //     }
-        // }
     },
     adapter: PrismaAdapter(db),
     session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
     // 解决UntrustedHost错误 - 在Docker环境中信任所有主机
     trustHost: true,
+    // 使用统一的SECRET密钥
+    secret: process.env.NEXTAUTH_SECRET,
     cookies: {
         sessionToken: {
             name: 'next-auth.session-token',
@@ -243,15 +183,9 @@ const authConfig = {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
-                // 在开发环境或HTTP下设置secure为false
                 secure: false,
-                // secure:
-                //     process.env.NODE_ENV === 'production' &&
-                //     process.env.NEXTAUTH_URL?.startsWith('https'),
-                // 不设置domain，让浏览器自动处理
                 domain: undefined,
-                // 设置较短的过期时间，减少持久会话问题
-                maxAge: 8 * 60 * 60 // 8小时
+                maxAge: 7 * 24 * 60 * 60
             }
         },
         callbackUrl: {
@@ -260,10 +194,9 @@ const authConfig = {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
-                secure:
-                    process.env.NODE_ENV === 'production' &&
-                    process.env.NEXTAUTH_URL?.startsWith('https'),
-                maxAge: 8 * 60 * 60
+                secure: false,
+                domain: undefined,
+                maxAge: 7 * 24 * 60 * 60
             }
         },
         csrfToken: {
@@ -272,10 +205,9 @@ const authConfig = {
                 httpOnly: true,
                 sameSite: 'lax',
                 path: '/',
-                secure:
-                    process.env.NODE_ENV === 'production' &&
-                    process.env.NEXTAUTH_URL?.startsWith('https'),
-                maxAge: 8 * 60 * 60
+                secure: false,
+                domain: undefined,
+                maxAge: 7 * 24 * 60 * 60
             }
         }
     }

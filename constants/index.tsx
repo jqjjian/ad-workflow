@@ -2,7 +2,8 @@ import {
     HomeOutlined,
     UserAddOutlined,
     UserOutlined,
-    FileOutlined
+    FileOutlined,
+    TeamOutlined
     // LaptopOutlined,
     // NotificationOutlined
 } from '@ant-design/icons'
@@ -70,6 +71,12 @@ export const menuItems: MenuItem[] = [
                 key: 'workorders',
                 label: '工单管理',
                 icon: <FileOutlined />
+            },
+            {
+                key: 'users',
+                label: '账户管理',
+                icon: <TeamOutlined />,
+                isAdmin: true // 只有超级管理员可见
             }
         ]
     },

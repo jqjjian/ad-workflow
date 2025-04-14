@@ -51,6 +51,11 @@ import {
 import { useSearchParams, useRouter } from 'next/navigation'
 import { type Rule } from 'antd/es/form'
 import { Session } from 'next-auth'
+import { AttachmentService } from '@/lib/attachment-service'
+import { UploadResult } from '@/utils/file-upload'
+import { SSOService } from '@/lib/sso-service'
+import { FileUploadUtil, UploadType } from '@/utils/file-upload'
+
 const { Title } = Typography
 const { Item: FormItem, List } = Form
 // const url = 'https://test-ua-gw.tec-develop.cn/uni-agency'
@@ -96,27 +101,27 @@ export default function Page() {
         { label: '(GMT+0:00) 伦敦', value: 'Europe/London' },
         { label: '(GMT-5:00) 纽约', value: 'America/New_York' }
     ])
-    const [googleAccount, setGoogleAccount] =
-        useState<GoogleAccountApplication>({
-            productType: undefined,
-            currencyCode: '',
-            timezone: '',
-            promotionLinks: [''],
-            name: '',
-            rechargeAmount: '',
-            auths: [null],
-            businessLicenseNo: '',
-            businessLicenseAttachment: [],
-            companyNameEN: '',
-            registrationDetails: {
-                companyName: '',
-                legalRepName: '',
-                idType: undefined,
-                idNumber: '',
-                legalRepPhone: '',
-                legalRepBankCard: ''
-            }
-        })
+    // const [googleAccount, setGoogleAccount] =
+    //     useState<GoogleAccountApplication>({
+    //         productType: undefined,
+    //         currencyCode: '',
+    //         timezone: '',
+    //         promotionLinks: [''],
+    //         name: '',
+    //         rechargeAmount: '',
+    //         auths: [null],
+    //         businessLicenseNo: '',
+    //         businessLicenseAttachment: [],
+    //         companyNameEN: '',
+    //         registrationDetails: {
+    //             companyName: '',
+    //             legalRepName: '',
+    //             idType: undefined,
+    //             idNumber: '',
+    //             legalRepPhone: '',
+    //             legalRepBankCard: ''
+    //         }
+    //     })
     const searchParams = useSearchParams()
     const taskId = searchParams.get('taskId')
     const isCopy = searchParams.get('copy') === 'true'
@@ -135,6 +140,9 @@ export default function Page() {
     const [initialData, setInitialData] = useState<any>(null)
     const [showRedirectButton, setShowRedirectButton] = useState(false)
     // const authRule = createSchemaFieldRule(AuthItemSchema)
+    const [attachmentService] = useState(() => new AttachmentService())
+    const [ssoService] = useState(() => new SSOService())
+    const [ossConfig, setOssConfig] = useState<any>(null)
 
     // 邮箱验证规则
     const emailValidateRule = (field: any): Rule[] => [
@@ -388,109 +396,6 @@ export default function Page() {
                 return
             }
 
-            // A. 处理营业执照附件
-            const attachments = []
-            const attachment = values.businessLicenseAttachment
-            console.log('营业执照附件原始数据:', attachment)
-
-            try {
-                // 确保提交数据的格式正确
-                if (
-                    attachment &&
-                    Array.isArray(attachment) &&
-                    attachment.length > 0
-                ) {
-                    // 判断附件数据格式
-                    const file = attachment[0]
-
-                    if (file.response) {
-                        // 新上传的附件
-                        console.log('处理新上传的附件', file.response)
-                        const url =
-                            file.response.url ||
-                            (file.response.data && file.response.data.url) ||
-                            file.url ||
-                            'https://example.com/default-license.jpg'
-
-                        attachments.push({
-                            fileName: file.name || 'business_license.jpg',
-                            fileType: file.type || 'image/jpeg',
-                            fileSize: file.size || 1024,
-                            filePath:
-                                'licenses/' +
-                                (file.name || 'business_license.jpg'),
-                            ossObjectKey: 'licenses/key-' + Date.now(),
-                            fileUrl: url,
-                            description: '营业执照'
-                        })
-                    } else if (file.url) {
-                        // 已有的附件
-                        console.log('处理已有的附件', file)
-                        attachments.push({
-                            fileName: file.name || 'business_license.jpg',
-                            fileType: file.type || 'image/jpeg',
-                            fileSize: file.size || 1024,
-                            filePath:
-                                'licenses/' +
-                                (file.name || 'business_license.jpg'),
-                            ossObjectKey: 'licenses/key-' + Date.now(),
-                            fileUrl: file.url,
-                            description: '营业执照'
-                        })
-                    } else {
-                        // 尝试其他可能的格式
-                        console.log('尝试其他格式解析附件:', file)
-                        attachments.push({
-                            fileName: 'default-license.jpg',
-                            fileType: 'image/jpeg',
-                            fileSize: 1024,
-                            filePath: 'licenses/default-license.jpg',
-                            ossObjectKey: 'licenses/key-' + Date.now(),
-                            fileUrl: 'https://example.com/default-license.jpg',
-                            description: '营业执照'
-                        })
-                    }
-                } else {
-                    // 设置默认图片，方便测试
-                    console.log('未找到有效附件，使用默认图片')
-                    attachments.push({
-                        fileName: 'default-license.jpg',
-                        fileType: 'image/jpeg',
-                        fileSize: 1024,
-                        filePath: 'licenses/default-license.jpg',
-                        ossObjectKey: 'licenses/key-' + Date.now(),
-                        fileUrl: 'https://example.com/default-license.jpg',
-                        description: '营业执照'
-                    })
-                }
-            } catch (error) {
-                console.error('附件处理错误:', error)
-                // 出错时使用默认图片避免整个表单提交失败
-                attachments.push({
-                    fileName: 'default-license.jpg',
-                    fileType: 'image/jpeg',
-                    fileSize: 1024,
-                    filePath: 'licenses/default-license.jpg',
-                    ossObjectKey: 'licenses/error-key-' + Date.now(),
-                    fileUrl: 'https://example.com/default-license.jpg',
-                    description: '营业执照'
-                })
-            }
-
-            console.log('处理后的附件数据:', attachments)
-
-            // 设置附件到公司信息中
-            const companyInfo = {
-                ...values.registrationDetails,
-                companyNameCN: values.registrationDetails?.companyName || '',
-                companyNameEN: values.companyNameEN || '',
-                businessLicenseNo: values.businessLicenseNo,
-                location: locationId, // 使用所选的位置ID
-                attachments: attachments
-            }
-
-            console.log('处理后的公司信息:', companyInfo)
-
             // 构建要提交的数据
             const formData: any = {
                 // 账户基本信息
@@ -509,47 +414,86 @@ export default function Page() {
                 // 授权信息 - 过滤掉空值
                 auths: Array.isArray(values.auths)
                     ? values.auths
-                          .filter(
-                              (auth: any) =>
-                                  auth !== null && (auth.role || auth.value)
-                          )
-                          .map((auth: any) => ({
-                              role: Number(auth?.role) || 1,
-                              value: auth?.value || ''
-                          }))
-                    : [],
+                        .filter(
+                            (auth: any) =>
+                                auth !== null && (auth.role || auth.value)
+                        )
+                        .map((auth: any) => ({
+                            role: Number(auth?.role) || 1,
+                            value: auth?.value || ''
+                        }))
+                    : []
+            }
 
-                // 添加公司信息，确保所有字段格式正确
-                companyInfo: {
-                    companyNameCN:
-                        values.registrationDetails?.companyName || '',
+            // 如果文件已上传，准备公司信息和附件数据
+            if (fileList && fileList.length > 0) {
+                try {
+                    // 准备附件数据
+                    const attachmentRecords = fileList.map(file => {
+                        // 从上传结果中提取关键字段
+                        const ssoResponse = file.response || {};
+                        const fileName = ssoResponse.name || file.name || '';
+                        const fileUrl = ssoResponse.url || file.url || '';
+                        const fileSize = file.size || 0;
+                        const fileType = file.type || '';
+
+                        return {
+                            fileName,
+                            fileType,
+                            fileSize,
+                            filePath: `licenses/${fileName}`,
+                            ossObjectKey: fileName,
+                            fileUrl,
+                            description: '营业执照'
+                        };
+                    });
+
+                    // 设置公司信息，包含附件信息，但不再创建数据库记录
+                    formData.companyInfo = {
+                        companyNameCN: values.registrationDetails.companyName || '',
+                        companyNameEN: values.companyNameEN || '',
+                        businessLicenseNo: values.businessLicenseNo || '',
+                        location: locationId,
+
+                        // 仅当位置ID为1（中国大陆）时才填充这些字段
+                        ...(locationId === 1
+                            ? {
+                                legalRepName: values.registrationDetails?.legalRepName || '',
+                                idType: Number(values.registrationDetails?.idType) || 1,
+                                idNumber: values.registrationDetails?.idNumber || '',
+                                legalRepPhone: values.registrationDetails?.legalRepPhone || '',
+                                legalRepBankCard: values.registrationDetails?.legalRepBankCard || ''
+                            }
+                            : {}),
+
+                        // 设置附件信息
+                        attachments: attachmentRecords
+                    };
+                } catch (error) {
+                    console.error('准备附件数据失败:', error);
+                    message.error('准备附件数据失败，请稍后重试');
+                    setLoading(false);
+                    return;
+                }
+            } else {
+                // 没有文件上传，只设置基本公司信息
+                formData.companyInfo = {
+                    companyNameCN: values.registrationDetails?.companyName || '',
                     companyNameEN: values.companyNameEN || '',
                     businessLicenseNo: values.businessLicenseNo || '',
-                    location: locationId, // 使用所选的位置ID
+                    location: locationId,
 
                     // 仅当位置ID为1（中国大陆）时才填充这些字段
                     ...(locationId === 1
                         ? {
-                              legalRepName:
-                                  values.registrationDetails?.legalRepName ||
-                                  '',
-                              idType:
-                                  Number(values.registrationDetails?.idType) ||
-                                  1,
-                              idNumber:
-                                  values.registrationDetails?.idNumber || '',
-                              legalRepPhone:
-                                  values.registrationDetails?.legalRepPhone ||
-                                  '',
-                              legalRepBankCard:
-                                  values.registrationDetails
-                                      ?.legalRepBankCard || ''
-                          }
-                        : {}),
-
-                    // 设置附件
-                    attachments: attachments
-                }
+                            legalRepName: values.registrationDetails?.legalRepName || '',
+                            idType: Number(values.registrationDetails?.idType) || 1,
+                            idNumber: values.registrationDetails?.idNumber || '',
+                            legalRepPhone: values.registrationDetails?.legalRepPhone || '',
+                            legalRepBankCard: values.registrationDetails?.legalRepBankCard || ''
+                        }
+                        : {})
+                };
             }
 
             // 确保公司名称被正确设置
@@ -644,9 +588,9 @@ export default function Page() {
                     auths: mediaAccountInfo.auths?.map((auth: any) =>
                         auth
                             ? {
-                                  role: Number(auth.role),
-                                  value: auth.value
-                              }
+                                role: Number(auth.role),
+                                value: auth.value
+                            }
                             : null
                     ) || [null],
                     // 设置企业信息数据
@@ -663,19 +607,19 @@ export default function Page() {
                     // 处理附件
                     businessLicenseAttachment:
                         company.attachments &&
-                        Array.isArray(company.attachments) &&
-                        company.attachments[0] &&
-                        company.attachments[0].fileUrl
+                            Array.isArray(company.attachments) &&
+                            company.attachments[0] &&
+                            company.attachments[0].fileUrl
                             ? [
-                                  {
-                                      uid: '-1',
-                                      name:
-                                          company.attachments[0].fileName ||
-                                          'business_license.jpg',
-                                      status: 'done',
-                                      url: company.attachments[0].fileUrl
-                                  }
-                              ]
+                                {
+                                    uid: '-1',
+                                    name:
+                                        company.attachments[0].fileName ||
+                                        'business_license.jpg',
+                                    status: 'done',
+                                    url: company.attachments[0].fileUrl
+                                }
+                            ]
                             : []
                 }
 
@@ -804,43 +748,85 @@ export default function Page() {
         }
     }, [status, session, isEdit])
 
-    // 如果正在加载会话状态或数据，显示加载中
-    if (
-        status === 'loading' ||
-        (status === 'authenticated' && !dataInitialized)
-    ) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <div className="text-center">
-                    <div className="text-lg">加载中...</div>
-                    <div className="mb-4 text-sm text-gray-500">
-                        正在加载页面数据
-                    </div>
-                    <div className="mb-2 text-xs text-gray-500">
-                        如果长时间未加载，请尝试
-                    </div>
-                    <Button
-                        onClick={() => {
-                            setLoginChecked(true)
-                            setDataInitialized(true)
-                            // 尝试手动初始化数据
-                            getDicData()
-                            if (isEdit) fetchTaskDetail()
-                        }}
-                    >
-                        手动继续
-                    </Button>
-                </div>
-            </div>
-        )
-    }
+    // 修改自定义上传组件
+    const customUpload = async (options: any) => {
+        const { file, onSuccess, onError, onProgress } = options;
 
-    // 货币选项
-    const currencyOptions = [
-        { label: '美元 (USD)', value: 'USD' }
-        // { label: '人民币 (CNY)', value: 'CNY' },
-        // { label: '欧元 (EUR)', value: 'EUR' }
-    ]
+        try {
+            onProgress({ percent: 10 });
+
+            // 不再检查全局 ssoInitialized 状态，而是在每次上传时创建新的 SSOService 实例
+            console.log('开始上传文件:', file.name);
+            onProgress({ percent: 20 });
+
+            // 1. 创建 SSO 服务实例
+            const ssoService = new SSOService();
+
+            // 2. 获取 token
+            try {
+                await ssoService.getToken('13268125705', 'aa123456');
+                console.log('获取 SSO Token 成功');
+                onProgress({ percent: 30 });
+            } catch (tokenError) {
+                console.error('获取 Token 失败:', tokenError);
+                message.error('获取授权失败，请稍后重试');
+                onError();
+                return;
+            }
+
+            // 3. 获取 SSO 配置
+            try {
+                await ssoService.getSSOConfig();
+                console.log('获取 SSO 配置成功');
+                onProgress({ percent: 50 });
+            } catch (configError) {
+                console.error('获取 SSO 配置失败:', configError);
+                message.error('获取配置失败，请稍后重试');
+                onError();
+                return;
+            }
+
+            // 4. 上传文件
+            let result;
+            try {
+                // 构建上传路径
+                const userId = 'user_' + Math.floor(Math.random() * 1000000);
+                const date = new Date().toISOString().split('T')[0];
+                const directory = `account-application/${userId}/${date}`;
+
+                // 执行上传
+                result = await ssoService.uploadFile(file, directory);
+                console.log('文件上传成功:', result);
+                onProgress({ percent: 100 });
+            } catch (uploadError) {
+                console.error('文件上传失败:', uploadError);
+                message.error('文件上传失败，请稍后重试');
+                onError();
+                return;
+            }
+
+            // 5. 返回上传结果
+            if (result) {
+                onSuccess({
+                    url: result.fileUrl,
+                    name: result.fileName,
+                    response: {
+                        url: result.fileUrl,
+                        name: result.fileName
+                    }
+                });
+
+                message.success('文件上传成功');
+            } else {
+                message.error('文件上传失败，未获取到结果');
+                onError();
+            }
+        } catch (error) {
+            console.error('文件上传过程中发生错误:', error);
+            message.error('文件上传失败: ' + (error instanceof Error ? error.message : '未知错误'));
+            onError();
+        }
+    };
 
     // 添加手动验证函数
     const validateFormManually = () => {
@@ -1048,15 +1034,13 @@ export default function Page() {
             '智能',
             '科学'
         ]
-        const randomCompanyName = `${
-            companyNamePrefixes[
-                Math.floor(Math.random() * companyNamePrefixes.length)
+        const randomCompanyName = `${companyNamePrefixes[
+            Math.floor(Math.random() * companyNamePrefixes.length)
+        ]
+            }${companyNameSuffixes[
+            Math.floor(Math.random() * companyNameSuffixes.length)
             ]
-        }${
-            companyNameSuffixes[
-                Math.floor(Math.random() * companyNameSuffixes.length)
-            ]
-        }有限公司`
+            }有限公司`
 
         // 随机英文公司名称
         const engCompanyPrefixes = [
@@ -1078,15 +1062,13 @@ export default function Page() {
             'Systems',
             'Solutions'
         ]
-        const randomEngCompanyName = `${
-            engCompanyPrefixes[
-                Math.floor(Math.random() * engCompanyPrefixes.length)
+        const randomEngCompanyName = `${engCompanyPrefixes[
+            Math.floor(Math.random() * engCompanyPrefixes.length)
+        ]
+            } ${engCompanySuffixes[
+            Math.floor(Math.random() * engCompanySuffixes.length)
             ]
-        } ${
-            engCompanySuffixes[
-                Math.floor(Math.random() * engCompanySuffixes.length)
-            ]
-        } Co., Ltd.`
+            } Co., Ltd.`
 
         // 标准统一社会信用代码格式（18位）
         const generateValidCode = () => {
@@ -1123,9 +1105,8 @@ export default function Page() {
             '秀',
             '磊'
         ]
-        const randomName = `${
-            firstNames[Math.floor(Math.random() * firstNames.length)]
-        }${lastNames[Math.floor(Math.random() * lastNames.length)]}`
+        const randomName = `${firstNames[Math.floor(Math.random() * firstNames.length)]
+            }${lastNames[Math.floor(Math.random() * lastNames.length)]}`
 
         // 有效的身份证号（18位）
         const generateValidID = () => {
@@ -1195,9 +1176,8 @@ export default function Page() {
         // 随机账户名称
         const accountPrefixes = ['广告', '营销', '推广', '品牌', '销售']
         const accountSuffixes = ['账户', '平台', '中心', '服务', '渠道']
-        const randomAccountName = `${
-            accountPrefixes[Math.floor(Math.random() * accountPrefixes.length)]
-        }${accountSuffixes[Math.floor(Math.random() * accountSuffixes.length)]}`
+        const randomAccountName = `${accountPrefixes[Math.floor(Math.random() * accountPrefixes.length)]
+            }${accountSuffixes[Math.floor(Math.random() * accountSuffixes.length)]}`
 
         // 确保产品类型有效
         let randomProductType
@@ -1229,9 +1209,8 @@ export default function Page() {
                 'business.org',
                 'enterprise.co'
             ]
-            return `${names[Math.floor(Math.random() * names.length)]}@${
-                domains[Math.floor(Math.random() * domains.length)]
-            }`
+            return `${names[Math.floor(Math.random() * names.length)]}@${domains[Math.floor(Math.random() * domains.length)]
+                }`
         }
 
         // 有效的URL（确保包含https://）
@@ -1251,9 +1230,8 @@ export default function Page() {
                 'landing',
                 'promo'
             ]
-            return `https://www.${
-                domains[Math.floor(Math.random() * domains.length)]
-            }/${paths[Math.floor(Math.random() * paths.length)]}`
+            return `https://www.${domains[Math.floor(Math.random() * domains.length)]
+                }/${paths[Math.floor(Math.random() * paths.length)]}`
         }
 
         // 设置表单数据
@@ -1318,6 +1296,44 @@ export default function Page() {
 
         message.success('已填入随机测试数据，请检查并提交')
     }
+
+    // 如果正在加载会话状态或数据，显示加载中
+    if (
+        status === 'loading' ||
+        (status === 'authenticated' && !dataInitialized)
+    ) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <div className="text-center">
+                    <div className="text-lg">加载中...</div>
+                    <div className="mb-4 text-sm text-gray-500">
+                        正在加载页面数据
+                    </div>
+                    <div className="mb-2 text-xs text-gray-500">
+                        如果长时间未加载，请尝试
+                    </div>
+                    <Button
+                        onClick={() => {
+                            setLoginChecked(true)
+                            setDataInitialized(true)
+                            // 尝试手动初始化数据
+                            getDicData()
+                            if (isEdit) fetchTaskDetail()
+                        }}
+                    >
+                        手动继续
+                    </Button>
+                </div>
+            </div>
+        )
+    }
+
+    // 货币选项
+    const currencyOptions = [
+        { label: '美元 (USD)', value: 'USD' }
+        // { label: '人民币 (CNY)', value: 'CNY' },
+        // { label: '欧元 (EUR)', value: 'EUR' }
+    ]
 
     // 正常渲染页面内容
     return (
@@ -1425,52 +1441,43 @@ export default function Page() {
                                             <Upload
                                                 name="file"
                                                 accept="image/*,.pdf"
-                                                action="/api/upload"
-                                                headers={{
-                                                    authorization:
-                                                        'authorization-text'
-                                                }}
                                                 listType="picture"
                                                 fileList={fileList}
-                                                onChange={({
-                                                    fileList: newFileList
-                                                }) => {
-                                                    console.log(
-                                                        '上传文件变化:',
-                                                        newFileList
-                                                    )
+                                                customRequest={customUpload}
+                                                onChange={({ fileList: newFileList }) => {
+                                                    console.log('上传文件变化:', newFileList)
                                                     // 避免频繁设置状态
-                                                    const formattedList =
-                                                        newFileList.map(
-                                                            (file) => ({
-                                                                ...file,
-                                                                status:
-                                                                    file.status ||
-                                                                    'done',
-                                                                uid:
-                                                                    file.uid ||
-                                                                    `-${Date.now()}`,
-                                                                name:
-                                                                    file.name ||
-                                                                    'file.jpg'
-                                                            })
-                                                        )
+                                                    const formattedList = newFileList.map((file) => ({
+                                                        ...file,
+                                                        status: file.status || 'done',
+                                                        uid: file.uid || `-${Date.now()}`,
+                                                        name: file.name || 'file.jpg'
+                                                    }))
 
                                                     // 检查是否真的变化了
-                                                    if (
-                                                        JSON.stringify(
-                                                            formattedList
-                                                        ) !==
-                                                        JSON.stringify(fileList)
-                                                    ) {
-                                                        setFileList(
-                                                            formattedList
-                                                        )
+                                                    if (JSON.stringify(formattedList) !== JSON.stringify(fileList)) {
+                                                        setFileList(formattedList)
                                                         form.setFieldsValue({
-                                                            businessLicenseAttachment:
-                                                                formattedList
+                                                            businessLicenseAttachment: formattedList
                                                         })
                                                     }
+                                                }}
+                                                beforeUpload={(file) => {
+                                                    // 检查文件大小
+                                                    const isLt10M = file.size / 1024 / 1024 < 10
+                                                    if (!isLt10M) {
+                                                        message.error('文件大小不能超过10MB')
+                                                        return Upload.LIST_IGNORE
+                                                    }
+
+                                                    // 检查文件类型
+                                                    const isValidType = file.type.startsWith('image/') || file.type === 'application/pdf';
+                                                    if (!isValidType) {
+                                                        message.error('只支持图片和PDF文件');
+                                                        return Upload.LIST_IGNORE;
+                                                    }
+
+                                                    return true
                                                 }}
                                             >
                                                 <Button
@@ -1724,24 +1731,24 @@ export default function Page() {
                                                                                     <Input placeholder="请输入推广链接" />
                                                                                     {fields.length >
                                                                                         1 && (
-                                                                                        <DeleteOutlined
-                                                                                            style={{
-                                                                                                color: 'red',
-                                                                                                fontSize:
-                                                                                                    '16px',
-                                                                                                cursor: 'pointer',
-                                                                                                position:
-                                                                                                    'absolute',
-                                                                                                right: '-24px',
-                                                                                                bottom: '8px'
-                                                                                            }}
-                                                                                            onClick={() =>
-                                                                                                remove(
-                                                                                                    field.name
-                                                                                                )
-                                                                                            }
-                                                                                        />
-                                                                                    )}
+                                                                                            <DeleteOutlined
+                                                                                                style={{
+                                                                                                    color: 'red',
+                                                                                                    fontSize:
+                                                                                                        '16px',
+                                                                                                    cursor: 'pointer',
+                                                                                                    position:
+                                                                                                        'absolute',
+                                                                                                    right: '-24px',
+                                                                                                    bottom: '8px'
+                                                                                                }}
+                                                                                                onClick={() =>
+                                                                                                    remove(
+                                                                                                        field.name
+                                                                                                    )
+                                                                                                }
+                                                                                            />
+                                                                                        )}
                                                                                 </FormItem>
                                                                             </Col>
                                                                         </Row>
@@ -1846,24 +1853,24 @@ export default function Page() {
                                                                         />
                                                                         {fields.length >
                                                                             1 && (
-                                                                            <DeleteOutlined
-                                                                                style={{
-                                                                                    color: 'red',
-                                                                                    fontSize:
-                                                                                        '16px',
-                                                                                    cursor: 'pointer',
-                                                                                    position:
-                                                                                        'absolute',
-                                                                                    right: '-24px',
-                                                                                    bottom: '8px'
-                                                                                }}
-                                                                                onClick={() =>
-                                                                                    remove(
-                                                                                        field.name
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                        )}
+                                                                                <DeleteOutlined
+                                                                                    style={{
+                                                                                        color: 'red',
+                                                                                        fontSize:
+                                                                                            '16px',
+                                                                                        cursor: 'pointer',
+                                                                                        position:
+                                                                                            'absolute',
+                                                                                        right: '-24px',
+                                                                                        bottom: '8px'
+                                                                                    }}
+                                                                                    onClick={() =>
+                                                                                        remove(
+                                                                                            field.name
+                                                                                        )
+                                                                                    }
+                                                                                />
+                                                                            )}
                                                                     </FormItem>
                                                                 </Col>
                                                             </Row>
@@ -1906,12 +1913,12 @@ export default function Page() {
                                         >
                                             重置
                                         </Button>
-                                        <Button
+                                        {/* <Button
                                             type="default"
                                             onClick={generateTestData}
                                         >
                                             填入测试数据
-                                        </Button>
+                                        </Button> */}
                                         <Button
                                             type="primary"
                                             onClick={() => {

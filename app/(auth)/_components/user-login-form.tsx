@@ -140,32 +140,11 @@ export default function UserLoginForm() {
 
     // 独立的重定向函数，确保一定会执行
     const forceRedirect = (url: string) => {
-        console.log('开始执行强制重定向到:', url)
-
-        // 方法1: location.replace
-        try {
-            window.location.replace(url)
-            console.log('location.replace已执行')
-        } catch (e) {
-            console.error('location.replace失败:', e)
-        }
-
-        // 方法2: 备用重定向(如果方法1失败)
-        setTimeout(() => {
-            try {
-                console.log('执行备用重定向方法')
-                document.location.href = url
-                console.log('document.location.href已执行')
-            } catch (e) {
-                console.error('备用重定向也失败:', e)
-
-                // 方法3: 最后尝试
-                setTimeout(() => {
-                    window.open(url, '_self')
-                    console.log('尝试window.open')
-                }, 100)
-            }
-        }, 200)
+        console.log('执行重定向到:', url)
+        // 设置标记防止循环重定向
+        sessionStorage.setItem('redirectedAfterLogin', 'true')
+        // 直接使用location.href进行跳转
+        window.location.href = url
     }
 
     // const onFinishFailed: FormProps<UserFormValue>['onFinishFailed'] = (

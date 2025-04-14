@@ -1,6 +1,6 @@
 'use client'
 import type { FormProps } from 'antd'
-import { useTransition } from 'react'
+import { useTransition, useState } from 'react'
 // import { useRouter } from 'next/navigation'
 import { Form, Input, Button, Checkbox, Select, Typography } from 'antd'
 // import Option from 'antd/es/select'
@@ -29,11 +29,16 @@ export default function UserRegisterForm() {
     //     resolver: zodResolver(LoginSchema)
     // })
     const rule = createSchemaFieldRule(RegisterSchema)
-    // const [defaultValues, setDefaultValues] = useState<UserFormValue>({
-    //     username: '',
-    //     password: ''
-    //     // remember: false
-    // })
+    const [defaultValues, setDefaultValues] = useState<UserFormValue>({
+        username: '',
+        password: '',
+        verifyCode: '',
+        name: '',
+        companyName: '',
+        email: '',
+        areaCode: '86'
+        // remember: false
+    })
     // const {
     //     // control,
     //     register,
@@ -126,7 +131,7 @@ export default function UserRegisterForm() {
         <Form
             form={form}
             // name="login"
-            // initialValues={defaultValues}
+            initialValues={defaultValues}
             onFinish={onFinish}
             // onFinishFailed={onFinishFailed}
             style={{ width: '620px' }}
@@ -194,12 +199,9 @@ export default function UserRegisterForm() {
                     />
                 </Item>
             </div>
-            <Item
+            {/* <Item
                 name="verifyCode"
                 rules={[rule]}
-            // validateStatus={errors.username ? 'error' : ''}
-            // help={errors.username?.message}
-            // rules={[{ required: true, message: '验证码为能为空' }]}
             >
                 <Input
                     prefix={
@@ -216,9 +218,7 @@ export default function UserRegisterForm() {
                         </Button>
                     }
                 />
-                {/* <Button style={{ marginRight: '-8px' }}>获取验证码</Button>
-                    <Button style={{ marginRight: '-8px' }}>获取验证码</Button> */}
-            </Item>
+            </Item> */}
 
             <Item
                 name="password"

@@ -18,7 +18,7 @@ export const RegisterSchema = z.object({
     password: z.string({ required_error: '密码不能为空' }).min(6, {
         message: '密码不能少于6位'
     }),
-    verifyCode: z.string({ required_error: '验证码不能为空' }),
+    verifyCode: z.string({ required_error: '验证码不能为空' }).optional(),
     username: z.string({ required_error: '手机号不能为空' }),
     name: z.string(),
     companyName: z.string({ required_error: '公司名称不能为空' }),
@@ -32,7 +32,8 @@ export const ForgotPasswordSchema = z
             .regex(/^1[3-9]\d{9}$/, { message: '请输入有效的手机号' }),
         verificationCode: z
             .string({ required_error: '验证码不能为空' })
-            .length(6, { message: '验证码长度应为6位' }),
+            .optional(),
+        // .length(6, { message: '验证码长度应为6位' }),
         newPassword: z
             .string({ required_error: '新密码不能为空' })
             .min(8, { message: '密码长度至少8位' })

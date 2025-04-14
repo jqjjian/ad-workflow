@@ -33,10 +33,10 @@ export const resetPassword = async (
         // 2. 验证验证码是否正确
         // TODO: 实际环境中需要从数据库或缓存中获取验证码进行比对
         // 这里是示例验证逻辑，实际应用需要调整
-        const isValidCode = await verifyCode(phoneNumber, verificationCode)
-        if (!isValidCode) {
-            return { error: '验证码错误或已过期' }
-        }
+        // const isValidCode = await verifyCode(phoneNumber, verificationCode)
+        // if (!isValidCode) {
+        //     return { error: '验证码错误或已过期' }
+        // }
 
         // 3. 更新用户密码
         const hashedPassword = await bcryptjs.hash(newPassword, 10)

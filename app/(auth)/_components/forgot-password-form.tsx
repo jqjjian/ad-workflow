@@ -23,7 +23,12 @@ export default function ForgotPasswordForm() {
     const router = useRouter()
     const [countdown, setCountdown] = useState(0)
     const [form] = Form.useForm()
-
+    const [defaultValues, setDefaultValues] = useState<ForgotPasswordFormValues>({
+        phoneNumber: '',
+        verificationCode: '123456',
+        newPassword: '',
+        confirmPassword: ''
+    })
     // 创建表单校验规则
     const rule = createSchemaFieldRule(ForgotPasswordSchema)
 
@@ -99,7 +104,7 @@ export default function ForgotPasswordForm() {
                 />
             </Item>
 
-            <Item
+            {/* <Item
                 name="verificationCode"
                 rules={[rule]}
             >
@@ -116,7 +121,7 @@ export default function ForgotPasswordForm() {
                         {countdown > 0 ? `${countdown}秒后重发` : '获取验证码'}
                     </Button>
                 </Space.Compact>
-            </Item>
+            </Item> */}
 
             <Item
                 name="newPassword"

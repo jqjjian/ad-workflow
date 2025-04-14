@@ -186,7 +186,7 @@ fi
 
 # 确保API环境变量设置正确
 echo "确保API环境变量设置正确..."
-export OPEN_API_URL=${OPEN_API_URL:-"https://test-ua-gw.tec-develop.cn/uni-agency"}
+export OPEN_API_URL=${OPEN_API_URL:-"https://business.uniagency.net/uni-agency"}
 export OPEN_API_URL_TEST=${OPEN_API_URL_TEST:-"https://test-ua-gw.tec-develop.cn/uni-agency"}
 export ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET:-"ad776656d49f4adb840ef6187115fb8b"}
 export ACCESS_TOKEN_SECRET_TEST=${ACCESS_TOKEN_SECRET_TEST:-"ad776656d49f4adb840ef6187115fb8b"}
@@ -198,4 +198,10 @@ echo "OPEN_API_URL_TEST: $OPEN_API_URL_TEST"
 echo "ACCESS_TOKEN_SECRET: $ACCESS_TOKEN_SECRET"
 echo "ACCESS_TOKEN_SECRET_TEST: $ACCESS_TOKEN_SECRET_TEST"
 echo "启动应用服务器..."
+
+# 添加这些环境变量设置
+export NEXTAUTH_URL=http://localhost:3000
+export NEXTAUTH_URL_INTERNAL=http://localhost:3000
+export NEXTAUTH_TRUST_HOST=true
+
 exec pnpm start 

@@ -51,10 +51,102 @@ import {
 // import { WorkOrderSubtype } from '@prisma/client'
 import type { WorkOrder } from '@/app/actions/workorder/account-management/types'
 
+// 根据工单类型添加筛选条件的辅助函数
+const addWorkOrderTypeConditions = (queryParams: any, type: any) => {
+    // 如果没有type值，直接返回
+    if (!type) return;
+
+    switch (type) {
+        case WorkOrderType.DEPOSIT:
+            queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+            queryParams.workOrderSubtype = 'DEPOSIT'
+            break
+        case WorkOrderType.DEDUCTION:
+            queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+            queryParams.workOrderSubtype = 'WITHDRAWAL'
+            break
+        case WorkOrderType.TRANSFER:
+            queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+            queryParams.workOrderSubtype = 'TRANSFER'
+            break
+        case WorkOrderType.BIND:
+            // 如果需要查询所有绑定类型，可以通过IN条件
+            queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+            queryParams.workOrderSubtype = [
+                'BIND_ACCOUNT',
+                'BIND_EMAIL',
+                'BIND_PIXEL'
+            ]
+            break
+        case 'ZEROING':
+            queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+            queryParams.workOrderSubtype = 'ZEROING'
+            break
+        case 'ACCOUNT_APPLICATION':
+            queryParams.workOrderType = 'ACCOUNT_APPLICATION';
+            break
+        case 'GOOGLE_ACCOUNT':
+            queryParams.workOrderType = 'ACCOUNT_APPLICATION';
+            queryParams.workOrderSubtype = 'GOOGLE_ACCOUNT';
+            break
+        case 'FACEBOOK_ACCOUNT':
+            queryParams.workOrderType = 'ACCOUNT_APPLICATION';
+            queryParams.workOrderSubtype = 'FACEBOOK_ACCOUNT';
+            break
+        case 'TIKTOK_ACCOUNT':
+            queryParams.workOrderType = 'ACCOUNT_APPLICATION';
+            queryParams.workOrderSubtype = 'TIKTOK_ACCOUNT';
+            break
+        default:
+            // 其他情况，如果是有效字符串，使用type作为workOrderSubtype
+            if (typeof type === 'string' && type.trim()) {
+                queryParams.workOrderSubtype = type
+            }
+    }
+}
+
+// 辅助函数：判断是否为开户申请类型工单
+const isAccountApplicationWorkOrder = (record: ExtendedWorkOrder): boolean => {
+    if (!record) return false;
+
+    // 检查workOrderSubtype - 最直接的方式
+    if (record.workOrderSubtype &&
+        ['GOOGLE_ACCOUNT', 'FACEBOOK_ACCOUNT', 'TIKTOK_ACCOUNT'].includes(record.workOrderSubtype)) {
+        return true;
+    }
+
+    // 检查workOrderType是否为ACCOUNT_APPLICATION
+    if (record.workOrderType === 'ACCOUNT_APPLICATION') {
+        return true;
+    }
+
+    // 检查metadata中的信息
+    if (record.metadata) {
+        if (record.metadata.workOrderType === 'ACCOUNT_APPLICATION') {
+            return true;
+        }
+
+        if (record.metadata.workOrderSubtype &&
+            ['GOOGLE_ACCOUNT', 'FACEBOOK_ACCOUNT', 'TIKTOK_ACCOUNT'].includes(record.metadata.workOrderSubtype)) {
+            return true;
+        }
+
+        // 如果包含accountApplicationInfo字段，也视为开户申请
+        if (record.metadata.accountApplicationInfo) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // 扩展WorkOrder类型，添加metadata和workOrderSubtype字段
 interface ExtendedWorkOrder extends WorkOrder {
     metadata?: Record<string, any>;
     workOrderSubtype?: string;
+    workOrderType?: string;
+    orderNumber?: string;
+    taskNumber?: string;
 }
 
 const { Title } = Typography
@@ -62,7 +154,7 @@ const { RangePicker } = DatePicker
 
 // 搜索表单
 interface SearchForm {
-    id?: string
+    taskNumber?: string
     mediaAccountName?: string
     mediaAccountId?: string
     status?: WorkOrderStatus
@@ -87,34 +179,41 @@ export default function AdminWorkOrdersPage() {
     const [activeTab, setActiveTab] = useState('all')
     const [pendingCount, setPendingCount] = useState(0)
 
-    // 获取待处理工单数量
+    // 获取待处理工单数量 - 独立函数，不受当前标签影响
     const fetchPendingCount = async () => {
         try {
+            // 单独请求只获取待处理状态的工单数量
             const response = await getWorkOrders({
                 status: WorkOrderStatus.PENDING,
                 page: 1,
                 pageSize: 1
             })
-            console.log('获取待处理工单数量:', response)
             if (response.success && response.data) {
                 setPendingCount(response.data.total)
             }
         } catch (error) {
-            console.error('获取待处理工单数量失败:', error)
+            // 忽略错误
         }
     }
 
     // 初始化时获取待处理数量
     useEffect(() => {
+        // 初始化时获取待处理工单数量
         fetchPendingCount()
+
+        // 设置定时器，每分钟更新一次待处理数量
+        const timer = setInterval(fetchPendingCount, 60000);
+
+        // 组件卸载时清除定时器
+        return () => clearInterval(timer);
     }, [])
 
     // 表格列定义
     const columns: TableColumnsType<ExtendedWorkOrder> = [
         {
-            title: '工单ID',
-            dataIndex: 'id',
-            key: 'id',
+            title: '工单编号',
+            dataIndex: 'taskNumber',
+            key: 'taskNumber',
             width: 180
         },
         {
@@ -122,7 +221,28 @@ export default function AdminWorkOrdersPage() {
             dataIndex: 'type',
             key: 'type',
             width: 100,
-            render: (type) => {
+            render: (type, record) => {
+                // 检查是否为开户申请类型
+                const extRecord = record as ExtendedWorkOrder;
+                if (isAccountApplicationWorkOrder(extRecord)) {
+                    // 根据平台类型返回不同的开户类型名称
+                    let platformText = '';
+                    switch (extRecord.workOrderSubtype) {
+                        case 'GOOGLE_ACCOUNT':
+                            platformText = 'Google开户';
+                            return <Tag color="blue">{platformText}</Tag>;
+                        case 'FACEBOOK_ACCOUNT':
+                            platformText = 'Facebook开户';
+                            return <Tag color="purple">{platformText}</Tag>;
+                        case 'TIKTOK_ACCOUNT':
+                            platformText = 'TikTok开户';
+                            return <Tag color="black">{platformText}</Tag>;
+                        default:
+                            platformText = '账户开户';
+                            return <Tag color="cyan">{platformText}</Tag>;
+                    }
+                }
+
                 // 完善工单类型映射
                 const typeMap = {
                     [WorkOrderType.DEPOSIT]: { text: '充值', color: 'blue' },
@@ -306,34 +426,52 @@ export default function AdminWorkOrdersPage() {
             key: 'action',
             fixed: 'right',
             width: 200,
-            render: (_, record) => (
-                <Space size="small">
-                    <Button
-                        size="small"
-                        onClick={() => handleViewDetail(record)}
-                    >
-                        查看
-                    </Button>
-                    {record.status === WorkOrderStatus.PENDING && (
-                        <>
-                            <Button
-                                size="small"
-                                type="primary"
-                                onClick={() => handleApprove(record)}
-                            >
-                                通过
-                            </Button>
-                            <Button
-                                size="small"
-                                danger
-                                onClick={() => handleReject(record)}
-                            >
-                                拒绝
-                            </Button>
-                        </>
-                    )}
-                </Space>
-            )
+            render: (_, record) => {
+                // 判断是否为开户申请类型工单
+                const extRecord = record as ExtendedWorkOrder;
+                const isAccountApplication = isAccountApplicationWorkOrder(extRecord);
+
+                return (
+                    <Space size="small">
+                        <Button
+                            size="small"
+                            onClick={() => handleViewDetail(record)}
+                        >
+                            查看
+                        </Button>
+                        {isAccountApplication ? (
+                            extRecord.status === WorkOrderStatus.PROCESSING ?
+                                null : // 处理中状态不显示修改按钮
+                                <Button
+                                    size="small"
+                                    type="primary"
+                                    onClick={() => handleEdit(extRecord)}
+                                >
+                                    修改
+                                </Button>
+                        ) : (
+                            extRecord.status === WorkOrderStatus.PENDING && (
+                                <>
+                                    <Button
+                                        size="small"
+                                        type="primary"
+                                        onClick={() => handleApprove(extRecord)}
+                                    >
+                                        通过
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        danger
+                                        onClick={() => handleReject(extRecord)}
+                                    >
+                                        拒绝
+                                    </Button>
+                                </>
+                            )
+                        )}
+                    </Space>
+                )
+            }
         }
     ]
 
@@ -379,6 +517,35 @@ export default function AdminWorkOrdersPage() {
         doSearch(queryParams)
     }
 
+    // 处理标签页切换
+    const handleTabChange = (activeKey: string) => {
+        // 重置表单
+        form.resetFields()
+        // 重置页码
+        setCurrentPage(1)
+        // 先更新标签状态
+        setActiveTab(activeKey)
+
+        // 使用传入的activeKey而不是依赖状态变量activeTab
+        // 构建查询参数
+        const queryParams: any = { page: 1, pageSize }
+
+        // 根据当前激活的标签添加状态过滤
+        if (activeKey !== 'all') {
+            if (activeKey === 'pending') {
+                queryParams.status = WorkOrderStatus.PENDING
+            } else if (activeKey === 'processing') {
+                queryParams.status = WorkOrderStatus.PROCESSING
+            } else if (activeKey === 'completed') {
+                // 修改为单个查询条件，不使用数组
+                queryParams.status = WorkOrderStatus.COMPLETED
+            }
+        }
+
+        // 执行查询，使用新构建的查询参数
+        doSearch(queryParams)
+    }
+
     // 抽取实际执行搜索的函数，可以接收自定义参数
     const doSearch = async (params: any) => {
         setLoading(true)
@@ -390,22 +557,13 @@ export default function AdminWorkOrdersPage() {
                 pageSize: params.pageSize || pageSize
             }
 
-            // 根据当前标签页过滤状态
-            if (activeTab === 'pending') {
-                queryParams.status = WorkOrderStatus.PENDING
-            } else if (activeTab === 'processing') {
-                queryParams.status = WorkOrderStatus.PROCESSING
-            } else if (activeTab === 'completed') {
-                queryParams.status = [
-                    WorkOrderStatus.COMPLETED,
-                    WorkOrderStatus.REJECTED,
-                    WorkOrderStatus.FAILED
-                ]
+            // 使用传入的status参数，不依赖于activeTab
+            if (params.status !== undefined) {
+                queryParams.status = params.status
             }
 
-            // 添加其他查询条件
-            if (params.id) {
-                queryParams.taskNumber = params.id
+            if (params.taskNumber) {
+                queryParams.taskNumber = params.taskNumber
             }
 
             if (params.mediaAccountName) {
@@ -414,42 +572,6 @@ export default function AdminWorkOrdersPage() {
 
             if (params.mediaAccountId) {
                 queryParams.mediaAccountId = params.mediaAccountId
-            }
-
-            if (params.status) {
-                queryParams.status = params.status
-            }
-
-            // 添加工单类型映射
-            if (params.type) {
-                // 前端使用的WorkOrderType需要映射到后端的workOrderType和workOrderSubtype
-                queryParams.workOrderType = 'ACCOUNT_MANAGEMENT'
-
-                switch (params.type) {
-                    case WorkOrderType.DEPOSIT:
-                        queryParams.workOrderSubtype = 'DEPOSIT'
-                        break
-                    case WorkOrderType.DEDUCTION:
-                        queryParams.workOrderSubtype = 'WITHDRAWAL'
-                        break
-                    case WorkOrderType.TRANSFER:
-                        queryParams.workOrderSubtype = 'TRANSFER'
-                        break
-                    case WorkOrderType.BIND:
-                        // 如果需要查询所有绑定类型，可以通过IN条件
-                        queryParams.workOrderSubtype = [
-                            'BIND_ACCOUNT',
-                            'BIND_EMAIL',
-                            'BIND_PIXEL'
-                        ]
-                        break
-                    case 'ZEROING':
-                        queryParams.workOrderSubtype = 'ZEROING'
-                        break
-                    default:
-                        // 其他情况，直接使用type作为workOrderSubtype
-                        queryParams.workOrderSubtype = params.type
-                }
             }
 
             if (params.mediaPlatform) {
@@ -467,9 +589,53 @@ export default function AdminWorkOrdersPage() {
                 }
             }
 
+            // 只有在明确选择了类型时才添加类型过滤
+            if (params.type) {
+                switch (params.type) {
+                    case WorkOrderType.DEPOSIT:
+                        queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+                        queryParams.workOrderSubtype = 'DEPOSIT';
+                        break;
+                    case WorkOrderType.DEDUCTION:
+                        queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+                        queryParams.workOrderSubtype = 'WITHDRAWAL';
+                        break;
+                    case WorkOrderType.TRANSFER:
+                        queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+                        queryParams.workOrderSubtype = 'TRANSFER';
+                        break;
+                    case WorkOrderType.BIND:
+                        queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+                        queryParams.workOrderSubtype = [
+                            'BIND_ACCOUNT',
+                            'BIND_EMAIL',
+                            'BIND_PIXEL'
+                        ];
+                        break;
+                    case 'ZEROING':
+                        queryParams.workOrderType = 'ACCOUNT_MANAGEMENT';
+                        queryParams.workOrderSubtype = 'ZEROING';
+                        break;
+                    case 'ACCOUNT_APPLICATION':
+                        queryParams.workOrderType = 'ACCOUNT_APPLICATION';
+                        break;
+                    case 'GOOGLE_ACCOUNT':
+                        queryParams.workOrderType = 'ACCOUNT_APPLICATION';
+                        queryParams.workOrderSubtype = 'GOOGLE_ACCOUNT';
+                        break;
+                    case 'FACEBOOK_ACCOUNT':
+                        queryParams.workOrderType = 'ACCOUNT_APPLICATION';
+                        queryParams.workOrderSubtype = 'FACEBOOK_ACCOUNT';
+                        break;
+                    case 'TIKTOK_ACCOUNT':
+                        queryParams.workOrderType = 'ACCOUNT_APPLICATION';
+                        queryParams.workOrderSubtype = 'TIKTOK_ACCOUNT';
+                        break;
+                }
+            }
+
             // 调用服务端查询函数
             const response = await getWorkOrders(queryParams)
-            console.log('查询结果:', response)
 
             if (response.success && response.data) {
                 // 辅助函数解析metadata
@@ -485,7 +651,6 @@ export default function AdminWorkOrdersPage() {
                             metadata = item.metadata as Record<string, any>
                         }
                     } catch (e) {
-                        console.error('解析元数据失败:', e, item.metadata)
                         metadata = {}
                     }
                     return metadata
@@ -497,8 +662,6 @@ export default function AdminWorkOrdersPage() {
                         try {
                             // 从metadata中提取信息
                             const metadata = parseMeta(item)
-                            console.log('工单ID:', item.id, '元数据:', metadata)
-                            console.log('原始item数据:', JSON.stringify(item, null, 2))
 
                             // 优先使用数字形式，其次尝试转换
                             let mediaPlatform = metadata.mediaPlatformNumber
@@ -545,13 +708,14 @@ export default function AdminWorkOrdersPage() {
                                 metadata.displayName ||
                                 '未知'
 
-                            console.log('处理工单:', {
-                                id: item.id,
-                                mediaPlatform,
-                                mediaAccountName,
-                                amount,
-                                createdBy
-                            })
+                            // 提取工单编号
+                            const taskNumber =
+                                item.taskNumber ||
+                                metadata.taskNumber ||
+                                (item.workOrderSubtype ?
+                                    `${item.workOrderSubtype.substring(0, 2)}-${item.id}` :
+                                    item.id) ||
+                                '';
 
                             return {
                                 id: item.id,
@@ -609,10 +773,12 @@ export default function AdminWorkOrdersPage() {
                                 taskId: item.taskId || item.thirdPartyTaskId,
                                 reason: item.failureReason,
                                 thirdPartyResponse: item.thirdPartyResponse,
-                                metadata: metadata // 添加元数据字段到工单对象
+                                workOrderSubtype: item.workOrderSubtype,
+                                workOrderType: item.workOrderType,
+                                metadata: metadata, // 添加元数据字段到工单对象
+                                taskNumber: taskNumber
                             }
                         } catch (err) {
-                            console.error('处理工单数据错误:', err, item)
                             // 返回一个最小可用的工单对象
                             return {
                                 id: item.id || `error-${Date.now()}`,
@@ -625,7 +791,11 @@ export default function AdminWorkOrdersPage() {
                                 updatedAt: new Date().toLocaleString(),
                                 createdBy: '未知',
                                 updatedBy: '未知',
-                                companyName: ''
+                                companyName: '',
+                                workOrderSubtype: '',
+                                workOrderType: '',
+                                metadata: {},
+                                taskNumber: ''
                             }
                         }
                     }
@@ -639,15 +809,11 @@ export default function AdminWorkOrdersPage() {
                 setTotal(0)
             }
 
-            // 如果不是查询待处理标签，更新待处理数量
-            if (activeTab !== 'pending') {
+            // 工单状态变更后刷新待处理数量
+            if (params.updatePendingCount === true) {
                 fetchPendingCount()
-            } else {
-                // 如果是查询待处理标签，直接使用总数
-                setPendingCount(response.data?.total || 0)
             }
         } catch (error) {
-            console.error('查询工单失败:', error)
             message.error('查询失败，请稍后重试')
             setData([])
             setTotal(0)
@@ -660,6 +826,15 @@ export default function AdminWorkOrdersPage() {
     const handleViewDetail = (record: ExtendedWorkOrder) => {
         setCurrentWorkOrder(record)
         setDetailVisible(true)
+    }
+
+    // 处理编辑工单
+    const handleEdit = (record: ExtendedWorkOrder) => {
+        // 首先查看详情
+        setCurrentWorkOrder(record)
+        setDetailVisible(true)
+        // 在这里可以添加编辑工单的逻辑
+        // 如有需要，可以后续实现更复杂的编辑功能
     }
 
     // 批准工单
@@ -747,11 +922,13 @@ export default function AdminWorkOrdersPage() {
                         message.success(result.message || '工单已通过')
                         // 刷新待处理工单数量
                         fetchPendingCount()
+
+                        // 重新加载当前数据
+                        doSearch({ page: currentPage, pageSize, updatePendingCount: true })
                     } else {
                         message.error(result?.message || '审批工单失败')
                     }
                 } catch (error) {
-                    console.error('工单审批失败:', error)
                     message.error(
                         error instanceof Error
                             ? error.message
@@ -864,11 +1041,13 @@ export default function AdminWorkOrdersPage() {
                         message.success(result.message || '工单已拒绝')
                         // 刷新待处理工单数量
                         fetchPendingCount()
+
+                        // 重新加载当前数据
+                        doSearch({ page: currentPage, pageSize, updatePendingCount: true })
                     } else {
                         message.error(result?.message || '拒绝工单失败')
                     }
                 } catch (error) {
-                    console.error('拒绝工单失败:', error)
                     message.error(
                         error instanceof Error ? error.message : '拒绝工单失败'
                     )
@@ -883,14 +1062,8 @@ export default function AdminWorkOrdersPage() {
     const handleSearch = async (values: SearchForm) => {
         // 重置页码，保持其他参数
         setCurrentPage(1)
+        // 执行查询，携带表单中的所有筛选条件
         doSearch({ ...values, page: 1 })
-    }
-
-    // 处理标签页切换
-    const handleTabChange = (activeKey: string) => {
-        setActiveTab(activeKey)
-        setCurrentPage(1)
-        doSearch({ ...form.getFieldsValue(), page: 1 })
     }
 
     // 处理重置
@@ -902,6 +1075,7 @@ export default function AdminWorkOrdersPage() {
 
     // 初始化
     useEffect(() => {
+        // 只加载第一页，不添加任何筛选条件
         doSearch({ page: 1 })
     }, [])
 
@@ -930,7 +1104,7 @@ export default function AdminWorkOrdersPage() {
                         <Flex gap={16} wrap>
                             <Form.Item
                                 label="工单编号"
-                                name="id"
+                                name="taskNumber"
                                 style={{ marginBottom: 0 }}
                             >
                                 <Input
@@ -1052,6 +1226,18 @@ export default function AdminWorkOrdersPage() {
                                     <Select.Option value="ZEROING">
                                         清零
                                     </Select.Option>
+                                    <Select.Option value="ACCOUNT_APPLICATION">
+                                        开户申请
+                                    </Select.Option>
+                                    <Select.Option value="GOOGLE_ACCOUNT">
+                                        Google开户
+                                    </Select.Option>
+                                    <Select.Option value="FACEBOOK_ACCOUNT">
+                                        Facebook开户
+                                    </Select.Option>
+                                    <Select.Option value="TIKTOK_ACCOUNT">
+                                        TikTok开户
+                                    </Select.Option>
                                 </Select>
                             </Form.Item>
                             <Form.Item
@@ -1076,32 +1262,6 @@ export default function AdminWorkOrdersPage() {
                         </Flex>
                     </Form>
                 </Card>
-
-                {/* 调试信息区域，仅在开发环境显示 */}
-                {process.env.NODE_ENV === 'development' && data.length > 0 && (
-                    <Card style={{ marginTop: 16 }}>
-                        <details>
-                            <summary>调试信息</summary>
-                            <p><strong>第一个工单信息：</strong></p>
-                            <pre style={{ maxHeight: 300, overflow: 'auto' }}>
-                                {JSON.stringify(data[0], null, 2)}
-                            </pre>
-                            <p><strong>第一个工单的metadata：</strong></p>
-                            <pre style={{ maxHeight: 300, overflow: 'auto' }}>
-                                {JSON.stringify(data[0]?.metadata || {}, null, 2)}
-                            </pre>
-                            <p><strong>申请人字段提取路径：</strong></p>
-                            <ul>
-                                <li>直接createdBy: {data[0]?.createdBy}</li>
-                                <li>metadata.createdBy: {data[0]?.metadata?.createdBy}</li>
-                                <li>metadata.creator: {data[0]?.metadata?.creator}</li>
-                                <li>metadata.applicant: {data[0]?.metadata?.applicant}</li>
-                                <li>metadata.userName: {data[0]?.metadata?.userName}</li>
-                                <li>metadata.displayName: {data[0]?.metadata?.displayName}</li>
-                            </ul>
-                        </details>
-                    </Card>
-                )}
 
                 {/* 数据表格 */}
                 <Table
@@ -1135,32 +1295,54 @@ export default function AdminWorkOrdersPage() {
                         </Button>,
                         currentWorkOrder?.status ===
                         WorkOrderStatus.PENDING && (
-                            <>
-                                <Button
-                                    key="reject"
-                                    danger
-                                    loading={actionLoading}
-                                    onClick={() => {
-                                        if (currentWorkOrder) {
-                                            handleReject(currentWorkOrder)
-                                        }
-                                    }}
-                                >
-                                    拒绝
-                                </Button>
-                                <Button
-                                    key="approve"
-                                    type="primary"
-                                    loading={actionLoading}
-                                    onClick={() => {
-                                        if (currentWorkOrder) {
-                                            handleApprove(currentWorkOrder)
-                                        }
-                                    }}
-                                >
-                                    通过
-                                </Button>
-                            </>
+                            (() => {
+                                const extWorkOrder = currentWorkOrder as ExtendedWorkOrder;
+                                const isAccountApplication = isAccountApplicationWorkOrder(extWorkOrder);
+
+                                if (isAccountApplication) {
+                                    return (
+                                        extWorkOrder.status === WorkOrderStatus.PROCESSING ?
+                                            null : // 处理中状态不显示修改按钮
+                                            <Button
+                                                key="edit"
+                                                type="primary"
+                                                loading={actionLoading}
+                                                onClick={() => handleEdit(extWorkOrder)}
+                                            >
+                                                修改
+                                            </Button>
+                                    );
+                                } else {
+                                    return (
+                                        <>
+                                            <Button
+                                                key="reject"
+                                                danger
+                                                loading={actionLoading}
+                                                onClick={() => {
+                                                    if (currentWorkOrder) {
+                                                        handleReject(currentWorkOrder)
+                                                    }
+                                                }}
+                                            >
+                                                拒绝
+                                            </Button>
+                                            <Button
+                                                key="approve"
+                                                type="primary"
+                                                loading={actionLoading}
+                                                onClick={() => {
+                                                    if (currentWorkOrder) {
+                                                        handleApprove(currentWorkOrder)
+                                                    }
+                                                }}
+                                            >
+                                                通过
+                                            </Button>
+                                        </>
+                                    );
+                                }
+                            })()
                         )
                     ]}
                     width={700}
@@ -1168,7 +1350,7 @@ export default function AdminWorkOrdersPage() {
                     {currentWorkOrder && (
                         <Descriptions bordered column={2}>
                             <Descriptions.Item label="工单编号" span={2}>
-                                {currentWorkOrder.id}
+                                {currentWorkOrder.taskNumber}
                             </Descriptions.Item>
                             <Descriptions.Item label="工单类型">
                                 {(() => {

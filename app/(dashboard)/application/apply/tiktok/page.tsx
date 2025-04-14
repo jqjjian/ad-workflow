@@ -51,6 +51,8 @@ import {
 } from '@ant-design/icons'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { type Rule } from 'antd/es/form'
+import { SSOService } from '@/lib/sso-service'
+import { FileUploadUtil, UploadType } from '@/utils/file-upload'
 const { Text, Title } = Typography
 const { Item: FormItem, List } = Form
 // const url = 'https://test-ua-gw.tec-develop.cn/uni-agency'
@@ -246,6 +248,87 @@ export default function Page() {
     }
     const [isPending, startTransition] = useTransition()
     const [form] = Form.useForm()
+
+    // 添加自定义上传组件
+    const customUpload = async (options: any) => {
+        const { file, onSuccess, onError, onProgress } = options;
+
+        try {
+            onProgress({ percent: 10 });
+
+            // 不再检查全局初始化状态，在每次上传时创建新的SSOService实例
+            console.log('开始上传文件:', file.name);
+            onProgress({ percent: 20 });
+
+            // 1. 创建SSO服务实例
+            const ssoService = new SSOService();
+
+            // 2. 获取token
+            try {
+                await ssoService.getToken('13268125705', 'aa123456');
+                console.log('获取SSO Token成功');
+                onProgress({ percent: 30 });
+            } catch (tokenError) {
+                console.error('获取Token失败:', tokenError);
+                message.error('获取授权失败，请稍后重试');
+                onError();
+                return;
+            }
+
+            // 3. 获取SSO配置
+            try {
+                await ssoService.getSSOConfig();
+                console.log('获取SSO配置成功');
+                onProgress({ percent: 50 });
+            } catch (configError) {
+                console.error('获取SSO配置失败:', configError);
+                message.error('获取配置失败，请稍后重试');
+                onError();
+                return;
+            }
+
+            // 4. 上传文件
+            let result;
+            try {
+                // 构建上传路径
+                const userId = 'user_' + Math.floor(Math.random() * 1000000);
+                const date = new Date().toISOString().split('T')[0];
+                const directory = `account-application/${userId}/${date}`;
+
+                // 执行上传
+                result = await ssoService.uploadFile(file, directory);
+                console.log('文件上传成功:', result);
+                onProgress({ percent: 100 });
+            } catch (uploadError) {
+                console.error('文件上传失败:', uploadError);
+                message.error('文件上传失败，请稍后重试');
+                onError();
+                return;
+            }
+
+            // 5. 返回上传结果
+            if (result) {
+                onSuccess({
+                    url: result.fileUrl,
+                    name: result.fileName,
+                    response: {
+                        url: result.fileUrl,
+                        name: result.fileName
+                    }
+                });
+
+                message.success('文件上传成功');
+            } else {
+                message.error('文件上传失败，未获取到结果');
+                onError();
+            }
+        } catch (error) {
+            console.error('文件上传过程中发生错误:', error);
+            message.error('文件上传失败: ' + (error instanceof Error ? error.message : '未知错误'));
+            onError();
+        }
+    };
+
     const handleSubmit = async (values: any) => {
         // 简单的手动验证
         const requiredFields = [
@@ -381,81 +464,33 @@ export default function Page() {
                     Array.isArray(attachment) &&
                     attachment.length > 0
                 ) {
-                    // 判断附件数据格式
-                    const file = attachment[0]
+                    // 准备附件数据
+                    const attachmentRecords = attachment.map(file => {
+                        // 从上传结果中提取关键字段
+                        const ssoResponse = file.response || {};
+                        const fileName = ssoResponse.name || file.name || '';
+                        const fileUrl = ssoResponse.url || file.url || '';
+                        const fileSize = file.size || 0;
+                        const fileType = file.type || '';
 
-                    if (file.response) {
-                        // 新上传的附件
-                        console.log('处理新上传的附件', file.response)
-                        const url =
-                            file.response.url ||
-                            (file.response.data && file.response.data.url) ||
-                            file.url ||
-                            'https://example.com/default-license.jpg'
+                        return {
+                            fileName,
+                            fileType,
+                            fileSize,
+                            filePath: `licenses/${fileName}`,
+                            ossObjectKey: fileName,
+                            fileUrl,
+                            description: '营业执照'
+                        };
+                    });
 
-                        attachments.push({
-                            fileName: file.name || 'business_license.jpg',
-                            fileType: file.type || 'image/jpeg',
-                            fileSize: file.size || 1024,
-                            filePath:
-                                'licenses/' +
-                                (file.name || 'business_license.jpg'),
-                            ossObjectKey: 'licenses/key-' + Date.now(),
-                            fileUrl: url,
-                            description: '营业执照'
-                        })
-                    } else if (file.url) {
-                        // 已有的附件
-                        console.log('处理已有的附件', file)
-                        attachments.push({
-                            fileName: file.name || 'business_license.jpg',
-                            fileType: file.type || 'image/jpeg',
-                            fileSize: file.size || 1024,
-                            filePath:
-                                'licenses/' +
-                                (file.name || 'business_license.jpg'),
-                            ossObjectKey: 'licenses/key-' + Date.now(),
-                            fileUrl: file.url,
-                            description: '营业执照'
-                        })
-                    } else {
-                        // 尝试其他可能的格式
-                        console.log('尝试其他格式解析附件:', file)
-                        attachments.push({
-                            fileName: 'default-license.jpg',
-                            fileType: 'image/jpeg',
-                            fileSize: 1024,
-                            filePath: 'licenses/default-license.jpg',
-                            ossObjectKey: 'licenses/key-' + Date.now(),
-                            fileUrl: 'https://example.com/default-license.jpg',
-                            description: '营业执照'
-                        })
-                    }
-                } else {
-                    // 设置默认图片，方便测试
-                    console.log('未找到有效附件，使用默认图片')
-                    attachments.push({
-                        fileName: 'default-license.jpg',
-                        fileType: 'image/jpeg',
-                        fileSize: 1024,
-                        filePath: 'licenses/default-license.jpg',
-                        ossObjectKey: 'licenses/key-' + Date.now(),
-                        fileUrl: 'https://example.com/default-license.jpg',
-                        description: '营业执照'
-                    })
+                    attachments.push(...attachmentRecords);
                 }
             } catch (error) {
                 console.error('附件处理错误:', error)
-                // 出错时使用默认图片避免整个表单提交失败
-                attachments.push({
-                    fileName: 'default-license.jpg',
-                    fileType: 'image/jpeg',
-                    fileSize: 1024,
-                    filePath: 'licenses/default-license.jpg',
-                    ossObjectKey: 'licenses/error-key-' + Date.now(),
-                    fileUrl: 'https://example.com/default-license.jpg',
-                    description: '营业执照'
-                })
+                message.error('附件处理错误，请稍后重试')
+                setLoading(false)
+                return
             }
 
             console.log('处理后的附件数据:', attachments)
@@ -490,20 +525,19 @@ export default function Page() {
                 // 授权信息 - 过滤掉空值
                 auths: Array.isArray(values.auths)
                     ? values.auths
-                          .filter(
-                              (auth: any) =>
-                                  auth !== null && (auth.role || auth.value)
-                          )
-                          .map((auth: any) => ({
-                              role: Number(auth?.role) || 1,
-                              value: auth?.value || ''
-                          }))
+                        .filter(
+                            (auth: any) =>
+                                auth !== null && (auth.role || auth.value)
+                        )
+                        .map((auth: any) => ({
+                            role: Number(auth?.role) || 1,
+                            value: auth?.value || ''
+                        }))
                     : [],
 
                 // 添加公司信息，确保所有字段格式正确
                 companyInfo: {
-                    companyNameCN:
-                        values.registrationDetails?.companyName || '',
+                    companyNameCN: values.registrationDetails?.companyName || '',
                     companyNameEN: values.companyNameEN || '',
                     businessLicenseNo: values.businessLicenseNo || '',
                     location: locationId, // 使用所选的位置ID
@@ -511,21 +545,21 @@ export default function Page() {
                     // 仅当位置ID为1（中国大陆）时才填充这些字段
                     ...(locationId === 1
                         ? {
-                              legalRepName:
-                                  values.registrationDetails?.legalRepName ||
-                                  '',
-                              idType:
-                                  Number(values.registrationDetails?.idType) ||
-                                  1,
-                              idNumber:
-                                  values.registrationDetails?.idNumber || '',
-                              legalRepPhone:
-                                  values.registrationDetails?.legalRepPhone ||
-                                  '',
-                              legalRepBankCard:
-                                  values.registrationDetails
-                                      ?.legalRepBankCard || ''
-                          }
+                            legalRepName:
+                                values.registrationDetails?.legalRepName ||
+                                '',
+                            idType:
+                                Number(values.registrationDetails?.idType) ||
+                                1,
+                            idNumber:
+                                values.registrationDetails?.idNumber || '',
+                            legalRepPhone:
+                                values.registrationDetails?.legalRepPhone ||
+                                '',
+                            legalRepBankCard:
+                                values.registrationDetails
+                                    ?.legalRepBankCard || ''
+                        }
                         : {}),
 
                     // 设置附件
@@ -628,9 +662,9 @@ export default function Page() {
                     auths: mediaAccountInfo.auths?.map((auth: any) =>
                         auth
                             ? {
-                                  role: Number(auth.role),
-                                  value: auth.value
-                              }
+                                role: Number(auth.role),
+                                value: auth.value
+                            }
                             : null
                     ) || [null],
                     // 设置企业信息数据
@@ -647,19 +681,19 @@ export default function Page() {
                     // 处理附件
                     businessLicenseAttachment:
                         company.attachments &&
-                        Array.isArray(company.attachments) &&
-                        company.attachments[0] &&
-                        company.attachments[0].fileUrl
+                            Array.isArray(company.attachments) &&
+                            company.attachments[0] &&
+                            company.attachments[0].fileUrl
                             ? [
-                                  {
-                                      uid: '-1',
-                                      name:
-                                          company.attachments[0].fileName ||
-                                          'business_license.jpg',
-                                      status: 'done',
-                                      url: company.attachments[0].fileUrl
-                                  }
-                              ]
+                                {
+                                    uid: '-1',
+                                    name:
+                                        company.attachments[0].fileName ||
+                                        'business_license.jpg',
+                                    status: 'done',
+                                    url: company.attachments[0].fileUrl
+                                }
+                            ]
                             : []
                 }
 
@@ -982,15 +1016,13 @@ export default function Page() {
             '智能',
             '科学'
         ]
-        const randomCompanyName = `${
-            companyNamePrefixes[
-                Math.floor(Math.random() * companyNamePrefixes.length)
+        const randomCompanyName = `${companyNamePrefixes[
+            Math.floor(Math.random() * companyNamePrefixes.length)
+        ]
+            }${companyNameSuffixes[
+            Math.floor(Math.random() * companyNameSuffixes.length)
             ]
-        }${
-            companyNameSuffixes[
-                Math.floor(Math.random() * companyNameSuffixes.length)
-            ]
-        }有限公司`
+            }有限公司`
 
         // 随机英文公司名称
         const engCompanyPrefixes = [
@@ -1012,15 +1044,13 @@ export default function Page() {
             'Systems',
             'Solutions'
         ]
-        const randomEngCompanyName = `${
-            engCompanyPrefixes[
-                Math.floor(Math.random() * engCompanyPrefixes.length)
+        const randomEngCompanyName = `${engCompanyPrefixes[
+            Math.floor(Math.random() * engCompanyPrefixes.length)
+        ]
+            } ${engCompanySuffixes[
+            Math.floor(Math.random() * engCompanySuffixes.length)
             ]
-        } ${
-            engCompanySuffixes[
-                Math.floor(Math.random() * engCompanySuffixes.length)
-            ]
-        } Co., Ltd.`
+            } Co., Ltd.`
 
         // 标准统一社会信用代码格式（18位）
         const generateValidCode = () => {
@@ -1057,9 +1087,8 @@ export default function Page() {
             '秀',
             '磊'
         ]
-        const randomName = `${
-            firstNames[Math.floor(Math.random() * firstNames.length)]
-        }${lastNames[Math.floor(Math.random() * lastNames.length)]}`
+        const randomName = `${firstNames[Math.floor(Math.random() * firstNames.length)]
+            }${lastNames[Math.floor(Math.random() * lastNames.length)]}`
 
         // 有效的身份证号（18位）
         const generateValidID = () => {
@@ -1129,9 +1158,8 @@ export default function Page() {
         // 随机账户名称
         const accountPrefixes = ['广告', '营销', '推广', '品牌', '销售']
         const accountSuffixes = ['账户', '平台', '中心', '服务', '渠道']
-        const randomAccountName = `${
-            accountPrefixes[Math.floor(Math.random() * accountPrefixes.length)]
-        }${accountSuffixes[Math.floor(Math.random() * accountSuffixes.length)]}`
+        const randomAccountName = `${accountPrefixes[Math.floor(Math.random() * accountPrefixes.length)]
+            }${accountSuffixes[Math.floor(Math.random() * accountSuffixes.length)]}`
 
         // 确保产品类型有效
         let randomProductType
@@ -1163,9 +1191,8 @@ export default function Page() {
                 'business.org',
                 'enterprise.co'
             ]
-            return `${names[Math.floor(Math.random() * names.length)]}@${
-                domains[Math.floor(Math.random() * domains.length)]
-            }`
+            return `${names[Math.floor(Math.random() * names.length)]}@${domains[Math.floor(Math.random() * domains.length)]
+                }`
         }
 
         // 有效的URL（确保包含https://）
@@ -1185,9 +1212,8 @@ export default function Page() {
                 'landing',
                 'promo'
             ]
-            return `https://www.${
-                domains[Math.floor(Math.random() * domains.length)]
-            }/${paths[Math.floor(Math.random() * paths.length)]}`
+            return `https://www.${domains[Math.floor(Math.random() * domains.length)]
+                }/${paths[Math.floor(Math.random() * paths.length)]}`
         }
 
         // 设置表单数据
@@ -1358,13 +1384,13 @@ export default function Page() {
                                             <Upload
                                                 name="file"
                                                 accept="image/*,.pdf"
-                                                action="/api/upload"
                                                 headers={{
                                                     authorization:
                                                         'authorization-text'
                                                 }}
                                                 listType="picture"
                                                 fileList={fileList}
+                                                customRequest={customUpload}
                                                 onChange={({
                                                     fileList: newFileList
                                                 }) => {
@@ -1404,6 +1430,23 @@ export default function Page() {
                                                                 formattedList
                                                         })
                                                     }
+                                                }}
+                                                beforeUpload={(file) => {
+                                                    // 检查文件大小
+                                                    const isLt10M = file.size / 1024 / 1024 < 10
+                                                    if (!isLt10M) {
+                                                        message.error('文件大小不能超过10MB')
+                                                        return Upload.LIST_IGNORE
+                                                    }
+
+                                                    // 检查文件类型
+                                                    const isValidType = file.type.startsWith('image/') || file.type === 'application/pdf';
+                                                    if (!isValidType) {
+                                                        message.error('只支持图片和PDF文件');
+                                                        return Upload.LIST_IGNORE;
+                                                    }
+
+                                                    return true
                                                 }}
                                             >
                                                 <Button
@@ -1657,24 +1700,24 @@ export default function Page() {
                                                                                     <Input placeholder="请输入推广链接" />
                                                                                     {fields.length >
                                                                                         1 && (
-                                                                                        <DeleteOutlined
-                                                                                            style={{
-                                                                                                color: 'red',
-                                                                                                fontSize:
-                                                                                                    '16px',
-                                                                                                cursor: 'pointer',
-                                                                                                position:
-                                                                                                    'absolute',
-                                                                                                right: '-24px',
-                                                                                                bottom: '8px'
-                                                                                            }}
-                                                                                            onClick={() =>
-                                                                                                remove(
-                                                                                                    field.name
-                                                                                                )
-                                                                                            }
-                                                                                        />
-                                                                                    )}
+                                                                                            <DeleteOutlined
+                                                                                                style={{
+                                                                                                    color: 'red',
+                                                                                                    fontSize:
+                                                                                                        '16px',
+                                                                                                    cursor: 'pointer',
+                                                                                                    position:
+                                                                                                        'absolute',
+                                                                                                    right: '-24px',
+                                                                                                    bottom: '8px'
+                                                                                                }}
+                                                                                                onClick={() =>
+                                                                                                    remove(
+                                                                                                        field.name
+                                                                                                    )
+                                                                                                }
+                                                                                            />
+                                                                                        )}
                                                                                 </FormItem>
                                                                             </Col>
                                                                         </Row>
@@ -1779,24 +1822,24 @@ export default function Page() {
                                                                         />
                                                                         {fields.length >
                                                                             1 && (
-                                                                            <DeleteOutlined
-                                                                                style={{
-                                                                                    color: 'red',
-                                                                                    fontSize:
-                                                                                        '16px',
-                                                                                    cursor: 'pointer',
-                                                                                    position:
-                                                                                        'absolute',
-                                                                                    right: '-24px',
-                                                                                    bottom: '8px'
-                                                                                }}
-                                                                                onClick={() =>
-                                                                                    remove(
-                                                                                        field.name
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                        )}
+                                                                                <DeleteOutlined
+                                                                                    style={{
+                                                                                        color: 'red',
+                                                                                        fontSize:
+                                                                                            '16px',
+                                                                                        cursor: 'pointer',
+                                                                                        position:
+                                                                                            'absolute',
+                                                                                        right: '-24px',
+                                                                                        bottom: '8px'
+                                                                                    }}
+                                                                                    onClick={() =>
+                                                                                        remove(
+                                                                                            field.name
+                                                                                        )
+                                                                                    }
+                                                                                />
+                                                                            )}
                                                                     </FormItem>
                                                                 </Col>
                                                             </Row>
@@ -1839,12 +1882,12 @@ export default function Page() {
                                         >
                                             重置
                                         </Button>
-                                        <Button
+                                        {/* <Button
                                             type="default"
                                             onClick={generateTestData}
                                         >
                                             填入测试数据
-                                        </Button>
+                                        </Button> */}
                                         <Button
                                             type="primary"
                                             onClick={() => {
@@ -1950,7 +1993,7 @@ export default function Page() {
                                                 } else {
                                                     message.error(
                                                         res.message ||
-                                                            '绑定失败'
+                                                        '绑定失败'
                                                     )
                                                 }
                                             } catch (error) {

@@ -26,8 +26,6 @@ services:
       timeout: 10s
       retries: 10
       start_period: "30s"
-    ports:
-      - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql-data-x86:/var/lib/mysql
     networks:
@@ -36,7 +34,7 @@ services:
           - mysql
 
   app:
-    image: jqjjian/ad-workflow-x86:latest
+    image: ad-workflow-x86:latest
     platform: linux/amd64
     container_name: ${APP_CONTAINER_NAME:-ad-workflow-app-x86}
     restart: unless-stopped
@@ -53,11 +51,15 @@ services:
       MYSQL_USER: ${MYSQL_USER:-ad_workflow}
       MYSQL_PASSWORD: /run/secrets/db_password
       # NextAuth配置
-      NEXTAUTH_URL: "http://${SERVER_IP:-localhost}:3000"
-      NEXTAUTH_URL_INTERNAL: "http://${SERVER_IP:-localhost}:3000"
-      NEXTAUTH_SECRET: "Xo0W6XZGEWcNIyFnSqSsD+aLRcMQfDcLkK7Rp71wsqE="
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_URL_INTERNAL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "J1jhQbNzHQ5VUtfoErPejEdDpL0z7rAYSCPfvBpQslk="
+      AUTH_SECRET: "J1jhQbNzHQ5VUtfoErPejEdDpL0z7rAYSCPfvBpQslk="
       NEXTAUTH_TRUST_HOST: "true"
-      NEXT_PUBLIC_APP_URL: "http://${SERVER_IP:-localhost}:3000"
+      NEXT_PUBLIC_APP_URL: "https://${SERVER_IP:-myad.shopwis.cn}"
+      NEXTAUTH_COOKIE_DOMAIN: ""
+      # 添加对Nginx代理的支持
+      PROXY_PROTOCOL: "true"
       # Prisma配置
       PRISMA_VERSION: "6.3.1"
       PRISMA_BINARY_TARGETS: "linux-musl-x64-openssl-3.0.x"
@@ -71,7 +73,7 @@ services:
       DEBUG: "prisma:*,engine,next-auth:*"
       NPM_CONFIG_PREFIX: "/home/nextjs/.npm-global"
       PRISMA_ENGINES_MIRROR: "/home/nextjs/.prisma"
-      NEXTAUTH_TRUSTED_HOSTS: "124.81.178.221,localhost,127.0.0.1"
+      NEXTAUTH_TRUSTED_HOSTS: "myad.shopwis.cn,localhost,127.0.0.1,47.113.103.64,0.0.0.0"
       DATABASE_URL: "mysql://${MYSQL_USER:-ad_workflow}:${MYSQL_PASSWORD:-ad_workflow_password}@${MYSQL_HOST:-mysql}:3306/${MYSQL_DATABASE:-ad_workflow}?ssl=false"
     volumes:
       - prisma-cache-x86:/home/nextjs/.prisma
