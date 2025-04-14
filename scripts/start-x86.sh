@@ -200,8 +200,8 @@ echo "ACCESS_TOKEN_SECRET_TEST: $ACCESS_TOKEN_SECRET_TEST"
 echo "启动应用服务器..."
 
 # 添加这些环境变量设置
-export NEXTAUTH_URL=http://localhost:3000
-export NEXTAUTH_URL_INTERNAL=http://localhost:3000
+export NEXTAUTH_URL=${NEXTAUTH_URL:-"https://myad.shopwis.cn"}
+export NEXTAUTH_URL_INTERNAL=${NEXTAUTH_URL_INTERNAL:-"https://myad.shopwis.cn"}
 export NEXTAUTH_TRUST_HOST=true
 
 exec pnpm start 

@@ -12,8 +12,9 @@ const nextConfig = {
         // 禁用 barrel optimizations
         optimizePackageImports: [],
         serverActions: {
-            allowedOrigins: ["myad.shopwis.cn", "localhost", "127.0.0.1", '*'],
-            allowedForwardedHosts: ["myad.shopwis.cn", "localhost", "127.0.0.1", '*']
+            bodySizeLimit: '50mb',
+            allowedOrigins: ['localhost:3000', 'myad.shopwis.cn', 'https://myad.shopwis.cn'],
+            allowedHostnames: ['localhost:3000', 'myad.shopwis.cn', 'https://myad.shopwis.cn']
         },
     },
 
