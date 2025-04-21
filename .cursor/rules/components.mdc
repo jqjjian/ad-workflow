@@ -1,0 +1,326 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# 组件设计规范
+
+本文档定义了广告工作流项目的组件设计规范，确保组件实现的一致性、可复用性和可维护性。
+
+## 组件设计原则
+
+### 单一职责
+- 每个组件应专注于单一功能或表现
+- 复杂组件应分解为多个小型、专注的子组件
+- 避免"超级组件"，功能过于复杂的组件应重构
+
+### 可复用性
+- 组件设计应考虑在多个场景下的复用
+- 通过属性配置实现组件的多态性
+- 避免针对特定页面的硬编码逻辑
+
+### 可组合性
+- 遵循组合优于继承的原则
+- 使用组件组合创建复杂UI，而非扩展现有组件
+- 使用children属性和插槽模式增强组件灵活性
+
+### 可测试性
+- 组件设计应便于单元测试
+- 关注点分离，UI和业务逻辑解耦
+- 避免直接依赖全局状态，使用依赖注入
+
+## 组件分类
+
+### 页面组件
+- 位于`app`目录下的路由组件
+- 负责组合其他组件形成完整页面
+- 可包含页面级状态管理和数据获取
+- 示例：`app/(dashboard)/application/detail/page.tsx`
+
+### 布局组件
+- 位于`components/layout`或相应的路由布局中
+- 负责内容的整体布局和结构
+- 不包含复杂的业务逻辑
+- 示例：`DashboardLayout`, `SidebarLayout`
+
+### UI组件
+- 位于`components/ui`目录
+- 无业务逻辑的纯展示组件
+- 高度可复用，通过属性配置
+- 示例：`Button`, `Card`, `Modal`
+
+### 功能组件
+- 位于`components`目录下的业务相关文件夹
+- 包含特定业务功能的组件
+- 可能包含一定的业务逻辑和状态
+- 示例：`AccountSelector`, `WorkOrderForm`
+
+### 容器组件
+- 负责数据获取和状态管理
+- 将数据和回调传递给展示组件
+- 分离数据逻辑和视图逻辑
+- 服务器组件通常作为容器组件
+
+## 组件结构规范
+
+### 基本结构
+```tsx
+// Button.tsx
+import React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+
+// 使用cva定义样式变体
+const buttonVariants = cva(
+  'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+  {
+    variants: {
+      variant: {
+        primary: 'bg-blue-500 text-white hover:bg-blue-600',
+        secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50',
+        danger: 'bg-red-500 text-white hover:bg-red-600',
+      },
+      size: {
+        sm: 'h-9 px-3 text-sm',
+        md: 'h-10 px-4',
+        lg: 'h-11 px-6',
+      },
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md',
+    },
+  }
+);
+
+// 组件属性定义
+export interface ButtonProps 
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, 
+    VariantProps<typeof buttonVariants> {
+  isLoading?: boolean;
+}
+
+// 组件实现
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, isLoading, children, ...props }, ref) => {
+    return (
+      <button
+        className={buttonVariants({ variant, size, className })}
+        ref={ref}
+        disabled={isLoading || props.disabled}
+        {...props}
+      >
+        {isLoading && <span className="mr-2">Loading...</span>}
+        {children}
+      </button>
+    );
+  }
+);
+
+Button.displayName = 'Button';
+```
+
+### 客户端组件
+```tsx
+'use client';
+
+import { useState } from 'react';
+
+export interface CounterProps {
+  initialCount?: number;
+  step?: number;
+}
+
+export function Counter({ initialCount = 0, step = 1 }: CounterProps) {
+  const [count, setCount] = useState(initialCount);
+  
+  return (
+    <div className="flex items-center space-x-4">
+      <button 
+        className="px-3 py-1 border rounded-md"
+        onClick={() => setCount(count - step)}
+      >
+        -
+      </button>
+      <span>{count}</span>
+      <button 
+        className="px-3 py-1 border rounded-md"
+        onClick={() => setCount(count + step)}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+```
+
+### 服务器组件
+```tsx
+import { prisma } from '@/lib/prisma';
+import { UserCard } from '@/components/user/UserCard';
+
+export interface UserListProps {
+  departmentId?: string;
+}
+
+export async function UserList({ departmentId }: UserListProps) {
+  const users = await prisma.user.findMany({
+    where: departmentId ? { departmentId } : undefined,
+    take: 10,
+  });
+  
+  return (
+    <div className="space-y-4">
+      {users.map(user => (
+        <UserCard key={user.id} user={user} />
+      ))}
+    </div>
+  );
+}
+```
+
+## 命名与导出规范
+
+### 文件命名
+- 组件文件使用PascalCase：`Button.tsx`, `UserProfile.tsx`
+- 多组件文件按主要组件命名：`Table.tsx`（包含Table及相关子组件）
+- 工具文件使用camelCase：`useForm.ts`, `formatDate.ts`
+- 类型定义文件使用kebab-case：`auth-types.ts`
+
+### 导出规范
+- 每个组件文件应有一个主要的默认导出或命名导出
+- 相关小型组件可在同一文件中定义并导出
+- 类型定义应该使用命名导出
+- 使用barrel文件(index.ts)组织复杂目录结构
+
+```tsx
+// components/ui/index.ts
+export * from './Button';
+export * from './Card';
+export * from './Input';
+// ...
+```
+
+## 状态管理
+
+### 本地状态
+- 使用useState管理简单的组件内状态
+- 使用useReducer管理复杂的组件内状态
+- 优先使用受控组件模式传递状态
+
+### 全局状态
+- 轻量场景使用Context API
+- 复杂场景根据需要选择适当的状态管理库
+- 遵循最小权限原则，状态访问范围最小化
+
+### 服务器状态
+- 使用React Server Components获取和处理数据
+- 使用React Server Actions处理表单提交和数据修改
+- 客户端组件通过props接收服务器数据
+
+## 组件通信
+
+### 属性传递
+- 使用强类型定义组件属性接口
+- 遵循单向数据流原则
+- 使用默认属性简化使用
+
+### 回调函数
+- 回调函数命名使用on前缀：`onClick`, `onSubmit`
+- 处理函数命名使用handle前缀：`handleClick`, `handleSubmit`
+- 事件处理函数应放在JSX结构前定义
+
+### 上下文传递
+- 适用于跨多层组件的数据传递
+- Context应该是专注的，避免"万能"Context
+- 遵循最小影响原则，控制Context范围
+
+## 性能优化
+
+### 记忆化
+- 使用React.memo避免不必要的重渲染
+- 使用useMemo缓存计算结果
+- 使用useCallback缓存事件处理函数
+
+### 代码分割
+- 使用动态导入(dynamic import)延迟加载组件
+- 路由级别的代码分割
+- 大型第三方库单独分割
+
+### 虚拟列表
+- 长列表使用虚拟化技术
+- 使用react-window或react-virtualized
+- 避免一次渲染大量DOM节点
+
+## 可访问性
+
+### 语义化HTML
+- 使用语义化的HTML元素
+- 合理使用标题层级(h1-h6)
+- 列表内容使用ul/ol元素
+
+### 键盘导航
+- 确保所有交互元素可通过键盘访问
+- 使用适当的tabIndex
+- 实现键盘快捷键增强用户体验
+
+### ARIA属性
+- 使用aria-label为非文本元素提供标签
+- 使用aria-expanded, aria-controls等状态属性
+- 遵循ARIA设计模式实现复杂组件
+
+## 错误边界
+
+### 实现方式
+- 使用客户端错误边界组件捕获渲染错误
+- 在适当的层级设置错误边界
+- 提供用户友好的错误UI
+
+```tsx
+'use client';
+
+import { Component, ErrorInfo, ReactNode } from 'react';
+
+interface ErrorBoundaryProps {
+  fallback: ReactNode;
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    console.error('组件错误:', error, errorInfo);
+  }
+
+  render(): ReactNode {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+
+    return this.props.children;
+  }
+}
+```
+
+## 组件文档
+
+### 注释规范
+- 组件顶部添加简要描述
+- 复杂逻辑添加必要注释
+- 使用JSDoc风格注释公共API
+
+### 示例代码
+- 提供基本用法示例
+- 展示不同场景和配置的用法
+- 避免过于复杂的示例

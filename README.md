@@ -80,3 +80,17 @@ docker-compose logs mysql
 ```
 
 详细的故障排除指南请参考完整的DEPLOYMENT.md文档。
+
+## 项目状态
+
+请查看[项目状态跟踪文档](./PROJECT_STATUS.md)获取最新的开发进展。
+
+**当前版本:** v0.5.0
+**下一版本:** v0.8.0 (计划发布日期: 2025-05-15)
+**总体进度:** 60%
+
+### 快速链接
+
+- [已知问题](./PROJECT_STATUS.md#已知问题)
+- [开发路线图](./PROJECT_STATUS.md#未来计划)
+- [版本里程碑](./PROJECT_STATUS.md#版本里程碑)

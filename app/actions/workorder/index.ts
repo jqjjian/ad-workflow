@@ -54,4 +54,4 @@ export {
 } from './common'
 
 // 导出第三方API调用处理器
-export { callThirdPartyApi } from './handlers/index'
+// export { callThirdPartyApi } from './handlers/index'

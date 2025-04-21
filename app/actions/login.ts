@@ -2,8 +2,6 @@
 import { signIn } from '@/auth'
 import { getUserbyUsername } from '@/data/user'
 import { db } from '@/lib/db'
-// import { sendVerificationEmail } from '@/lib/mail'
-// import { generateVerificationToken } from '@/lib/tokens'
 import { DEFAULT_LOGIN_REDIRECT } from '@/routes'
 import { LoginSchema } from '@/schemas/auth'
 import { AuthError } from 'next-auth'
@@ -29,6 +27,7 @@ export const login = async (values: z.infer<typeof LoginSchema>) => {
         role: existingUser.role
     })
 
+    // 检查用户是否已验证邮箱
     // if (!existingUser.emailVerified) {
     //     const verificationToken = await generateVerificationToken(
     //         existingUser.email
@@ -42,6 +41,7 @@ export const login = async (values: z.infer<typeof LoginSchema>) => {
     //     )
     //     return { success: '邮箱未验证，已重新发送确认邮件！' }
     // }
+
     try {
         const res = await signIn('credentials', {
             username,
